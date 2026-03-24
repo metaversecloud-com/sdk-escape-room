@@ -1,6 +1,9 @@
 import express from "express";
-import { handleGetGameState } from "./controllers/index.js";
+import { handleGetGameState } from "./controllers/handleGetGameState.js";
 import { getVersion } from "@utils/getVersion.js";
+import { handleStartGame } from "./controllers/handleStartGame.js";
+import { handleCheckSession } from "./controllers/handleCheckSession.js";
+import { handleExitGame } from "./controllers/handleExitGame.js";
 
 const router = express.Router();
 const SERVER_START_DATE = new Date();
@@ -24,5 +27,8 @@ router.get("/system/health", (req, res) => {
 });
 
 router.get("/game-state", handleGetGameState);
+router.post("/game/start", handleStartGame);
+router.get("/check-session", handleCheckSession);
+router.post("/exit-game", handleExitGame);
 
 export default router;

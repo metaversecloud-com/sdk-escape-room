@@ -1,17 +1,10 @@
-/**
- * Shared types between client and server for visitor data
- */
+// shared/types/DataObjects.ts
 
-// server/utils/timer.ts
-// shared/types/VisitorData.ts
-export interface VisitorData {
-  // Session fields
+export interface VisitorGameData {
   startTime?: string;
   sessionActive: boolean;
   sessionExpired: boolean;
   timedOut: boolean;
-  
-  // Progression
   currentRoom: 'A' | 'B' | 'C' | null;
   puzzlesCompleted: {
     1: boolean;
@@ -21,20 +14,16 @@ export interface VisitorData {
     5: boolean;
     6: boolean;
   };
-  
-  // Inventory
   inventory: {
     fuse?: { id: string; serial: string };
     wrench?: { id: string; serial: string };
     accessCard?: { id: string; partialCode: string };
   };
-  
-  // Completion
-  completionTime?: number;
   badges: string[];
+  completionTime?: number;
 }
 
-export interface WorldConfig {
+export interface WorldGameConfig {
   keyAssetId: string;
   config: {
     startSpawnId: string;
@@ -43,8 +32,4 @@ export interface WorldConfig {
     roomCSpawnId: string;
     maxSessionMinutes: number;
   };
-}
-
-export interface LeaderboardEntry {
-  [profileId: string]: string; // "displayName|completionTime"
 }
