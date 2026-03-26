@@ -1,5 +1,15 @@
 import express from "express";
-import { handleGetGameState } from "./controllers/index.js";
+import {
+  handleCheckSession,
+  handleExitGame,
+  handleGetGameState,
+  handleGrantInventory,
+  handleStartGame,
+  handleSubmitLeaderboard,
+  handleTeleport,
+  handleTrackAnalytics,
+  handleUpdateProgress,
+} from "./controllers/index.js";
 import { getVersion } from "@utils/getVersion.js";
 
 const router = express.Router();
@@ -23,6 +33,16 @@ router.get("/system/health", (req, res) => {
   });
 });
 
+router.post("/start-game", handleStartGame);
+
 router.get("/game-state", handleGetGameState);
+
+router.post("/session/check", handleCheckSession);
+router.post("/progress/update", handleUpdateProgress);
+router.post("/inventory/grant", handleGrantInventory);
+router.post("/teleport", handleTeleport);
+router.post("/exit", handleExitGame);
+router.post("/leaderboard/submit", handleSubmitLeaderboard);
+router.post("/analytics/track", handleTrackAnalytics);
 
 export default router;

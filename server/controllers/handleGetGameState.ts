@@ -1,59 +1,47 @@
 import { Request, Response } from "express";
 import { errorHandler, getCredentials, getDroppedAsset, getVisitor, World } from "@utils/index.js";
-import axios from "axios";
+import { VisitorData, WorldConfig } from "../../shared/types/DataObjects.js";
+//visitorgamedata
+//checl what this is
 
 export const handleGetGameState = async (req: Request, res: Response) => {
   try {
+    // Get credentials from query parameters
     const credentials = getCredentials(req.query);
+    
     const { assetId, displayName, interactiveNonce, interactivePublicKey, profileId, urlSlug, visitorId } = credentials;
 
-    const droppedAsset = await getDroppedAsset(credentials);
-
+    // Create a world instance to trigger particle effects and fire toasts; errors in these actions will be caught and logged but won't prevent the main response from being returned
     const world = World.create(urlSlug, { credentials });
-    world.triggerParticle({ name: "Sparkle", duration: 3, position: droppedAsset.position }).catch((error: any) =>
-      errorHandler({
-        error,
-        functionName: "handleGetGameState",
-        message: "Error triggering particle effects",
-      }),
-    );
-
-    const { visitor } = await getVisitor(credentials, true);
-    const { isAdmin } = visitor;
-
+    let worldData: WorldConfig | null = null;
     try {
-      await axios.post(
-        `${process.env.LEADERBOARD_BASE_URL || "http://v2lboard0-prod-topia.topia-rtsdk.com"}/api/dropped-asset/increment-player-stats?assetId=${assetId}&displayName=${displayName}&interactiveNonce=${interactiveNonce}&interactivePublicKey=${interactivePublicKey}&profileId=${profileId}&urlSlug=${urlSlug}&visitorId=${visitorId}`,
-        {
-          publicKey: interactivePublicKey,
-          secret: process.env.INTERACTIVE_SECRET,
-          profileId,
-          displayName,
-          incrementBy: 1,
-        },
-      );
+      const fetchedData = await world.fetchDataObject();
+      worldData = fetchedData as WorldConfig;
     } catch (error) {
-      errorHandler({
-        error,
-        functionName: "handleGetGameState",
-        message: "Error posting player stats to Leaderboard",
-      });
+      console.log("No world config found");
     }
 
-    await world.fireToast({ title: "Nice Work!", text: "You've successfully completed the task!" }).catch((error) =>
-      errorHandler({
-        error,
-        functionName: "handleGetGameState",
-        message: "Error firing toast in world",
-      }),
-    );
+    // Get visitor data to check if the user is an admin; this will allow us to conditionally return admin-only data in the response if needed
+    const { visitor } = await getVisitor(credentials, true);
 
-    return res.json({ droppedAsset, isAdmin, success: true });
+    let visitorData: VisitorData | null = null;
+    try {
+      const fetchedData = await visitor.fetchDataObject();
+      visitorData = fetchedData as VisitorData;
+    } catch (error) {
+      console.log("No visitor data found");
+    }
+
+    return res.json({
+      success: true,
+      visitorData: visitorData || {},  // Defaults if missing
+      worldConfig: worldData?.config || {},
+    });
   } catch (error) {
     return errorHandler({
       error,
-      functionName: "getDroppedAssetDetails",
-      message: "Error getting dropped asset instance and data object",
+      functionName: "handleGetGameState",
+      message: "Error getting game state",
       req,
       res,
     });
