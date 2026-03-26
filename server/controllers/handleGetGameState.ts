@@ -60,6 +60,7 @@
 //   }
 // };
 // server/controllers/handleGetGameState.ts
+
 import { Request, Response } from "express";
 import { errorHandler, getCredentials, getVisitor } from "@utils/index.js";
 import { VisitorGameData } from "../../shared/types/DataObjects.js";
