@@ -5,59 +5,54 @@
 // this function will be called in the frontend when the user clicks the "Start Game" button on the landing page
 
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getVisitor, World, incrementAnalytics, teleportVisitor } from "@utils/index.js";
-import { VisitorGameData, WorldConfig } from "../../shared/types/DataObjects.js";
+import { errorHandler, getCredentials, getVisitor, World, incrementAnalytics, teleportVisitorToKeyAsset } from "@utils/index.js";
+import { VisitorData, WorldConfig} from "../../shared/types/VisitorData.js";
 export const handleStartGame = async (req: Request, res: Response) => {
   try {
     // Get credentials and visitor data
     const credentials = getCredentials(req.query);
-    const { sceneDropId, urlSlug, assetId, visitorId } = credentials;
-    //mayve get assetID and visitorID
+    const { sceneDropId, urlSlug, assetId, visitorId, profileId } = credentials;
+    const sessionKey = `${urlSlug}-${sceneDropId}`;
 
 
     // Get world
     const world = World.create(urlSlug, { credentials });
 
-    
-    let worldData: WorldConfig | null = null;
-    try {
-      const fetchedWorldData = await world.fetchDataObject();
-      worldData = fetchedWorldData as WorldConfig;
-    } catch (error) {
-      console.log("No existing world data, creating new one");
+    let worldDataObject = (await world.fetchDataObject()) as Record<string, WorldConfig> | null;
+
+    // Ensure the world data object has an entry for this scene keyed by sceneDropId.
+    const existingSceneConfig = worldDataObject?.[sceneDropId];
+    const mergedSceneConfig: WorldConfig = {
+      keyAssetId: existingSceneConfig?.keyAssetId || assetId || "",
+      config: {
+        startSpawnId: existingSceneConfig?.config?.startSpawnId || "",
+        roomASpawnId: existingSceneConfig?.config?.roomASpawnId || "",
+        roomBSpawnId: existingSceneConfig?.config?.roomBSpawnId || "",
+        roomCSpawnId: existingSceneConfig?.config?.roomCSpawnId || "",
+        maxSessionMinutes: existingSceneConfig?.config?.maxSessionMinutes ?? 30,
+      },
+    };
+
+    if (!existingSceneConfig) {
+      const lockId = `${sceneDropId}-${Date.now()}-world`;
+      if (!worldDataObject) {
+        worldDataObject = { [sceneDropId]: mergedSceneConfig } as Record<string, WorldConfig> | null;
+        await world.setDataObject(worldDataObject, { lock: { lockId, releaseLock: true } });
+      } else {
+        await world.updateDataObject({ [sceneDropId]: mergedSceneConfig }, { lock: { lockId, releaseLock: true } });
+        worldDataObject = { ...worldDataObject, [sceneDropId]: mergedSceneConfig };
+      }
     }
 
-    if (!worldData || !worldData.config) {
-      worldData = {
-        keyAssetId: assetId || "",
-        config: {
-          startSpawnId: "YOUR_START_SPAWN_ID",
-          roomASpawnId: "YOUR_ROOM_A_SPAWN_ID",
-          roomBSpawnId: "YOUR_ROOM_B_SPAWN_ID",
-          roomCSpawnId: "YOUR_ROOM_C_SPAWN_ID",
-          maxSessionMinutes: 30,
-        },
-      };
-      await world.setDataObject(worldData, {});
-    }
-
-    const { visitor} = (await getVisitor(credentials, true));
-
-    // Fetch existing visitor data or initialize defaults
-    let visitorData: VisitorGameData | null = null;
-    try {
-      const fetchedVisitorData = await visitor.fetchDataObject();
-      visitorData = fetchedVisitorData as VisitorGameData;
-    } catch (error) {
-      console.log("No existing visitor data, creating new one");
-    }
+    const { visitor } = await getVisitor(credentials, true);
 
     const now = new Date().toISOString();
-    // Always reset session for new game start (remove !visitorData.sessionActive to force reset even if active)
-    visitorData = {
+    const newSession: VisitorData = {
+      escaped: false,
+      completionTime: null,
       startTime: now,
+      endTime: null,
       sessionActive: true,
-      sessionExpired: false,
       timedOut: false,
       currentRoom: "A",
       puzzlesCompleted: {
@@ -68,27 +63,47 @@ export const handleStartGame = async (req: Request, res: Response) => {
         5: false,
         6: false,
       },
-      inventory: {},
+      inventory: {
+        fuse: null,
+        wrench: null,
+        accessCard: null,
+      },
       badges: [],
     };
-    await visitor.setDataObject(visitorData, {});
+
+    let visitorDataObject = (await visitor.fetchDataObject()) as Record<string, VisitorData> | null;
+    if (!visitorDataObject) {
+      visitorDataObject = { [sessionKey]: newSession };
+    } else {
+      visitorDataObject[sessionKey] = newSession;
+    }
+
+    await visitor.setDataObject(newSession, { lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true },
+      analytics: [
+        {
+          analyticName: "gameStarts",
+          profileId,
+          urlSlug,
+          uniqueKey: `${profileId}-${sessionKey}-start`,
+        },
+        {
+          analyticName: "roomAEntries",
+          profileId,
+          urlSlug,
+          uniqueKey: `${profileId}-${sessionKey}-roomA`,
+        },
+      ], }  );
 
     
     console.log("gameStarts", { visitorId, urlSlug, timestamp: now });
 
-    // Analytics: game start + entering Room A
-    incrementAnalytics(credentials, "gameStarts").catch((err) => console.warn("Analytics gameStarts failed", err));
-    incrementAnalytics(credentials, "roomAEntries").catch((err) => console.warn("Analytics roomAEntries failed", err));
-
-    // Teleport player to Room A spawn if available
-    try {
-      await teleportVisitor(credentials, "A");
-    } catch (teleportError) {
-      console.warn("Teleport failed, continuing without teleport:", teleportError);
-    }
-
     // Return updated visitor data object in response
-    return res.json({ success: true, message: "Game started", visitorData, worldConfig: worldData?.config });
+    return res.json({
+      success: true,
+      message: "Game started",
+      visitorData: newSession,
+      worldConfig: worldDataObject?.[sceneDropId]?.config,
+    });
   } 
   catch (error) {
     return errorHandler({

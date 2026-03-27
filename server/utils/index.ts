@@ -14,3 +14,6 @@ export * from "./inventory.js";
 export * from "./badges.js";
 export * from "./inventoryCache.js";
 export * from "./leaderboard.js";
+export * from "./teleportVisitorToKeyAsset.js";
+
+

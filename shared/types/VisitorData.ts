@@ -6,10 +6,11 @@
 // shared/types/VisitorData.ts
 export interface VisitorData {
   // Session fields
-  startTime?: string;
+  startTime: string | null;
+  endTime: string | null;
   sessionActive: boolean;
-  sessionExpired: boolean;
   timedOut: boolean;
+  escaped: boolean;
   
   // Progression
   currentRoom: 'A' | 'B' | 'C' | null;
@@ -24,36 +25,23 @@ export interface VisitorData {
   
   // Inventory
   inventory: {
-    fuse?: { id: string; serial: string };
-    wrench?: { id: string; serial: string };
-    accessCard?: { id: string; partialCode: string };
+    fuse: { id: string; serial: string } | null;
+    wrench: { id: string; serial: string } | null;
+    accessCard: { id: string; partialCode: string } | null;
   };
   
   // Completion
-  completionTime?: number;
+  completionTime: number | null;
   badges: string[];
 }
-
-export type InventoryItemId = "fuse" | "wrench" | "accessCard";
-export interface InventoryItem {
-  id: string;
-  serial?: string;
-  partialCode?: string;
-}
-
-export interface VisitorDataObjectType {
-  [key: string]: VisitorData;
-}
-
-export type VisitorDataObject = VisitorDataObjectType;
 
 export interface WorldConfig {
   keyAssetId: string;
   config: {
-    startSpawnId: string;
-    roomASpawnId: string;
-    roomBSpawnId: string;
-    roomCSpawnId: string;
+    startSpawnId: string | null;
+    roomASpawnId: string | null;
+    roomBSpawnId: string | null;
+    roomCSpawnId: string | null;
     maxSessionMinutes: number;
   };
 }
@@ -61,3 +49,5 @@ export interface WorldConfig {
 export interface LeaderboardEntry {
   [profileId: string]: string; // "displayName|completionTime"
 }
+
+export type WorldDataObject = Record<string, WorldConfig>;

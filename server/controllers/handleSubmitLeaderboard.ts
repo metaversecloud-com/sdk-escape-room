@@ -1,15 +1,19 @@
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, updateLeaderboard, getDroppedAsset } from "@utils/index.js";
+import { errorHandler, getCredentials, updateLeaderboard, World } from "@utils/index.js";
+import { WorldDataObject } from "@shared/types/DataObjects.js";
 
 export const handleSubmitLeaderboard = async (req: Request, res: Response) => {
   try {
     const credentials = getCredentials(req.query);
     const { keyAssetId: bodyKeyAssetId, metrics } = req.body as { keyAssetId?: string; metrics?: (string | number)[] };
-    const { sceneDropId } = credentials;
+    const { sceneDropId, urlSlug } = credentials;
 
-    const droppedAsset = await getDroppedAsset(credentials);
-    const worldKeyAssetId = (droppedAsset.dataObject as any)?.keyAssetId;
-    const keyAssetId = bodyKeyAssetId || worldKeyAssetId;
+    const world = World.create(urlSlug, { credentials });
+    await world.fetchDataObject();
+    const worldData = world.dataObject as WorldDataObject | undefined;
+    const sceneConfig = worldData?.[sceneDropId];
+
+    const keyAssetId = bodyKeyAssetId || sceneConfig?.keyAssetId;
 
     if (!keyAssetId) return res.status(400).json({ success: false, message: "keyAssetId is required" });
 

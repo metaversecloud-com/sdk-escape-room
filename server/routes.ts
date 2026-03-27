@@ -6,9 +6,10 @@ import {
   handleGrantInventory,
   handleStartGame,
   handleSubmitLeaderboard,
-  handleTeleport,
   handleTrackAnalytics,
   handleUpdateProgress,
+  handleTeleportPlayer,
+  handleSubmitPuzzle,
 } from "./controllers/index.js";
 import { getVersion } from "@utils/getVersion.js";
 
@@ -34,13 +35,11 @@ router.get("/system/health", (req, res) => {
 });
 
 router.post("/start-game", handleStartGame);
-
 router.get("/game-state", handleGetGameState);
-
+router.post("/teleport", handleTeleportPlayer);
 router.post("/session/check", handleCheckSession);
 router.post("/progress/update", handleUpdateProgress);
 router.post("/inventory/grant", handleGrantInventory);
-router.post("/teleport", handleTeleport);
 router.post("/exit", handleExitGame);
 router.post("/leaderboard/submit", handleSubmitLeaderboard);
 router.post("/analytics/track", handleTrackAnalytics);

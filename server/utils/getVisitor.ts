@@ -22,7 +22,7 @@ export const getVisitor = async (credentials: Credentials, shouldGetVisitorDetai
     // The session state includes information about whether the game has started, when it started, which room the player is currently in, which rooms are unlocked, which puzzles have been completed, and whether the session has expired or timed out; by initializing this data structure when the visitor first interacts with the game, we can reliably track their progress and manage their game state as they play through the escape room experience.
     // We use a lock when creating or updating the visitor data object to prevent race conditions
     const defaultSessionData = {
-      startTime: new Date().toISOString(),
+      startTime: undefined,
       sessionActive: false,
       sessionExpired: false,
       timedOut: false,

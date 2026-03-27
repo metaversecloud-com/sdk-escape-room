@@ -1,61 +1,72 @@
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getVisitor, checkSessionTimer, incrementAnalytics, teleportVisitor, World } from "@utils/index.js";
-import { VisitorDataObjectType } from "@shared/types/VisitorData.js";
+import { errorHandler, getCredentials, getVisitor, checkSessionTimer, incrementAnalytics, teleportVisitor, teleportVisitorToKeyAsset, World } from "@utils/index.js";
+import { VisitorData } from "@shared/types/VisitorData.js";
 
+const SESSION_MINUTES = 30; // This should ideally come from the world config, but hardcoding for now as it's needed in multiple places.
 export const handleCheckSession = async (req: Request, res: Response) => {
   try {
     // Extract credentials from the request query parameters to identify the visitor and session.
     const credentials = getCredentials(req.query);
     const { sceneDropId, urlSlug } = credentials;
-
-    // Fetch the visitor and their data object using the credentials; this will allow us to check the session state stored in the visitor's data.
-    const { visitor, visitorDataObject } = (await getVisitor(credentials, true)) as {
-      visitor: any;
-      visitorDataObject: VisitorDataObjectType;
-    };
-
-    // Construct the session key to access the specific session state for this scene drop and URL slug from the visitor data object.
     const sessionKey = `${urlSlug}-${sceneDropId}`;
-    const existingState = visitorDataObject?.[sessionKey];
+    // Fetch the visitor and their data object using the credentials; this will allow us to check the session state stored in the visitor's data.
+    
+    const world = World.create(urlSlug, { credentials }); // Create a world instance to access world-level data like session timeout settings, which may be needed to determine if the session has expired.
+    const {visitor } = await getVisitor(credentials, true);
 
-    if (!existingState) {
-      return res.status(400).json({ success: false, message: "No visitor session state found" });
+    let visitorDataObject = (await visitor.fetchDataObject()) as Record<string, VisitorData> | null;
+
+    if (!visitorDataObject || !visitorDataObject[sessionKey]) {
+      console.log("No visitor data found");
+      return res.json({
+        active: false,
+        message: "No active session. Please start a new game.",
+      });
     }
 
-    const world = World.create(urlSlug, { credentials });
-    await world.fetchDataObject();
-    const worldData = (world as any).dataObject as Record<string, any>;
-    const maxMinutes = worldData?.[sceneDropId]?.config?.maxSessionMinutes || 30;
+    const existingState = visitorDataObject[sessionKey];
 
-    const startedAt = existingState.startTime ? new Date(existingState.startTime).getTime() : null;
-    const { expired, remainingMs } = checkSessionTimer(startedAt, maxMinutes);
+    if (!existingState.sessionActive || !existingState.startTime) {
+      return res.json({ success: true, active: false });
+    }
 
-    // If newly expired, persist the flag so the client can show timeout and block further play.
-    if (expired && !existingState.sessionExpired) {
-      const updatedState = {
-        ...existingState,
-        sessionExpired: true,
-        timedOut: true,
-        sessionActive: false,
-      };
+    const start = new Date(existingState.startTime).getTime();
+    const now = Date.now();
+    const elapsedSeconds = (now - start) / 1000;
+    const maxSeconds = SESSION_MINUTES * 60;
+    if (elapsedSeconds >= maxSeconds) {
+      existingState.sessionActive = false;
+      existingState.timedOut = true;
 
-      // Use a lock to prevent race conditions if the session expires and the user interacts with the game at the same time, which could lead to multiple requests trying to update the visitor data object simultaneously.
-      const lockId = `${sceneDropId}-${Date.now()}`;
-      // Update the visitor data object with the new expired session state, ensuring that we acquire a lock to prevent race conditions.
-      await visitor.updateDataObject({ [sessionKey]: updatedState }, { lock: { lockId, releaseLock: true } });
+      visitorDataObject[sessionKey] = existingState;
+
+      await visitor.setDataObject(visitorDataObject, {
+        lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true },
+        analytics: [
+          {
+            analyticName: "gameTimeouts",
+            profileId: credentials.profileId,
+            urlSlug,
+            uniqueKey: `${credentials.profileId}-${sessionKey}-timeout`,
+          },
+        ],
+      });
 
       // Analytics: game timeouts; this will help us track how often players are timing out of their sessions, which can provide insights into game difficulty and player engagement.
       incrementAnalytics(credentials, "gameTimeouts").catch((err) => console.warn("Analytics gameTimeouts failed", err));
-      teleportVisitor(credentials, "start").catch((err) =>
-        console.warn("Teleport on timeout failed", err),
-      );
+        
+      try {
+        await teleportVisitorToKeyAsset(world, visitor, "escape_room_start_spawn");
+      } catch (err) {
+        console.warn("Exit teleport failed", err);
+      }
 
       // Return the updated state with expired flag set to true and remaining time as 0, so the client can immediately reflect the session expiration without waiting for another interaction that would trigger a data fetch.
-      return res.json({ success: true, expired: true, remainingMs: 0, visitorData: updatedState });
+      return res.json({ success: true, active: false, timedOut: true, remainingMs: 0, visitorData: existingState });
     }
 
     // If the session is not expired or was already marked as expired, return the current expired status and remaining time without modifying the visitor data object, allowing the client to update its UI accordingly.
-    return res.json({ success: true, expired, remainingMs, visitorData: existingState });
+    return res.json({ success: true, active: true, timedOut: false, remainingMs: maxSeconds - elapsedSeconds, visitorData: existingState });
   } catch (error) {
     return errorHandler({
       error,

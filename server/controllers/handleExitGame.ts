@@ -1,38 +1,42 @@
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getVisitor, incrementAnalytics, teleportVisitor } from "@utils/index.js";
-import { VisitorDataObjectType } from "@shared/types/VisitorData.js";
+import { errorHandler, getCredentials, getVisitor, incrementAnalytics, teleportVisitor, teleportVisitorToKeyAsset, World } from "@utils/index.js";
+import { VisitorData } from "@shared/types/VisitorData.js";
 
 export const handleExitGame = async (req: Request, res: Response) => {
   try {
     const credentials = getCredentials(req.query);
-    const { sceneDropId, urlSlug } = credentials;
-
-    const { visitor, visitorDataObject } = (await getVisitor(credentials, true)) as {
-      visitor: any;
-      visitorDataObject: VisitorDataObjectType;
-    };
+    const { sceneDropId, urlSlug, visitorId } = credentials;
 
     const sessionKey = `${urlSlug}-${sceneDropId}`;
-    const existingState = visitorDataObject?.[sessionKey];
-    if (!existingState) return res.status(400).json({ success: false, message: "No visitor session state found" });
+    const world = World.create(urlSlug, { credentials });
+    const { visitor } = await getVisitor(credentials, true);
 
-    const updatedState = {
-      ...existingState,
-      sessionActive: false,
-    };
+    let visitorDataObject = (await visitor.fetchDataObject()) as Record<string, VisitorData> | null;
 
-    const lockId = `${sceneDropId}-${Date.now()}`;
-    await visitor.updateDataObject({ [sessionKey]: updatedState }, { lock: { lockId, releaseLock: true } });
+    if (!visitorDataObject || !visitorDataObject[sessionKey]) {
+      return res.json({ success: true, message: "No existing visitor data, nothing to update" });
+    }
+    const existingState = visitorDataObject[sessionKey];
+
+    existingState.sessionActive = false;
+    existingState.endTime = new Date().toISOString();
+
+    visitorDataObject[sessionKey] = existingState;
+    
+    await visitor.setDataObject(visitorDataObject, { lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true } });
 
     incrementAnalytics(credentials, "manualGameExits").catch((err) =>
       console.warn("Analytics manualGameExits failed", err),
     );
 
-    teleportVisitor(credentials, "start" as any).catch((err) =>
-      console.warn("Teleport on exit failed", err),
-    );
+    try {
+      await teleportVisitorToKeyAsset(world, visitor, "escape_room_start_spawn");
+    }
+    catch (teleportError) {
+      console.warn("Teleport on exit failed, continuing without teleport:", teleportError);
+    }
 
-    return res.json({ success: true, visitorData: updatedState });
+    return res.json({ success: true, visitorData: existingState, message: "Game exited. You can start a new game anytime." });
   } catch (error) {
     return errorHandler({
       error,
