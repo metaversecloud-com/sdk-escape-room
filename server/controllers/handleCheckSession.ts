@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getVisitor, checkSessionTimer, incrementAnalytics, teleportVisitor, teleportVisitorToKeyAsset, World } from "@utils/index.js";
+import { errorHandler, getCredentials, getVisitor, checkSessionTimer, incrementAnalytics, teleportVisitorToKeyAsset, World } from "@utils/index.js";
 import { VisitorData } from "@shared/types/VisitorData.js";
 
 const SESSION_MINUTES = 30; // This should ideally come from the world config, but hardcoding for now as it's needed in multiple places.

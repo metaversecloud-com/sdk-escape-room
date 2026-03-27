@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getVisitor, incrementAnalytics, teleportVisitor, teleportVisitorToKeyAsset, World } from "@utils/index.js";
+import { errorHandler, getCredentials, getVisitor, incrementAnalytics, teleportVisitorToKeyAsset, World } from "@utils/index.js";
 import { VisitorData } from "@shared/types/VisitorData.js";
 
 export const handleExitGame = async (req: Request, res: Response) => {
