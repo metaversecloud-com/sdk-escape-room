@@ -3,11 +3,7 @@ import {
   handleCheckSession,
   handleExitGame,
   handleGetGameState,
-  handleGrantInventory,
   handleStartGame,
-  handleSubmitLeaderboard,
-  handleTrackAnalytics,
-  handleUpdateProgress,
   handleTeleportPlayer,
   handleSubmitPuzzle,
 } from "./controllers/index.js";
@@ -38,10 +34,6 @@ router.post("/start-game", handleStartGame);
 router.get("/game-state", handleGetGameState);
 router.post("/teleport", handleTeleportPlayer);
 router.post("/session/check", handleCheckSession);
-router.post("/progress/update", handleUpdateProgress);
-router.post("/inventory/grant", handleGrantInventory);
 router.post("/exit", handleExitGame);
-router.post("/leaderboard/submit", handleSubmitLeaderboard);
-router.post("/analytics/track", handleTrackAnalytics);
 
 export default router;
