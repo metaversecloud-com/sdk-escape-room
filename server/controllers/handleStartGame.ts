@@ -7,11 +7,13 @@
 import { Request, Response } from "express";
 import { errorHandler, getCredentials, getVisitor, World, incrementAnalytics, teleportVisitorToKeyAsset } from "@utils/index.js";
 import { VisitorData, WorldConfig} from "../../shared/types/VisitorData.js";
+import { teleportPlayer } from "./index.js";
+import { DroppedAsset } from "@rtsdk/topia";
 export const handleStartGame = async (req: Request, res: Response) => {
   try {
     // Get credentials and visitor data
     const credentials = getCredentials(req.query);
-    const { sceneDropId, urlSlug, assetId, visitorId, profileId } = credentials;
+    const { sceneDropId, urlSlug, assetId, visitorId, profileId, uniqueName } = credentials;
     const sessionKey = `${urlSlug}-${sceneDropId}`;
 
 
@@ -25,10 +27,10 @@ export const handleStartGame = async (req: Request, res: Response) => {
     const mergedSceneConfig: WorldConfig = {
       keyAssetId: existingSceneConfig?.keyAssetId || assetId || "",
       config: {
-        startSpawnId: existingSceneConfig?.config?.startSpawnId || "",
-        roomASpawnId: existingSceneConfig?.config?.roomASpawnId || "",
-        roomBSpawnId: existingSceneConfig?.config?.roomBSpawnId || "",
-        roomCSpawnId: existingSceneConfig?.config?.roomCSpawnId || "",
+        startSpawnId: existingSceneConfig?.config?.startSpawnId || "escape_start_game",
+        roomASpawnId: existingSceneConfig?.config?.roomASpawnId || "YOUR_ROOM_A_SPAWN_ID",
+        roomBSpawnId: existingSceneConfig?.config?.roomBSpawnId || "YOUR_ROOM_B_SPAWN_ID",
+        roomCSpawnId: existingSceneConfig?.config?.roomCSpawnId || "YOUR_ROOM_C_SPAWN_ID",
         maxSessionMinutes: existingSceneConfig?.config?.maxSessionMinutes ?? 30,
       },
     };
@@ -73,12 +75,11 @@ export const handleStartGame = async (req: Request, res: Response) => {
 
     let visitorDataObject = (await visitor.fetchDataObject()) as Record<string, VisitorData> | null;
     if (!visitorDataObject) {
-      visitorDataObject = { [sessionKey]: newSession };
-    } else {
-      visitorDataObject[sessionKey] = newSession;
-    }
+      visitorDataObject = {};
+    } 
+    visitorDataObject[sessionKey] = newSession;
 
-    await visitor.setDataObject(newSession, { lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true },
+    await visitor.setDataObject(visitorDataObject, { lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true },
       analytics: [
         {
           analyticName: "gameStarts",
@@ -97,12 +98,20 @@ export const handleStartGame = async (req: Request, res: Response) => {
     
     console.log("gameStarts", { visitorId, urlSlug, timestamp: now });
 
+    try {
+      await teleportVisitorToKeyAsset(world, visitor, "escape_room_start_spawn");
+    } catch (error) {
+      console.error("Error teleporting visitor to key asset:", error);
+    }
+
     // Return updated visitor data object in response
     return res.json({
       success: true,
       message: "Game started",
       visitorData: newSession,
       worldConfig: worldDataObject?.[sceneDropId]?.config,
+      uniqueName: credentials.uniqueName,
+      sessionKey: sessionKey,
     });
   } 
   catch (error) {

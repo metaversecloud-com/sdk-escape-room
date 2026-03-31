@@ -52,4 +52,4 @@ export interface LeaderboardEntry {
 
 export type WorldDataObject = Record<string, WorldConfig>;
 
-export type VisitorDataObjectType = Record<string, VisitorData>;
+export type VisitorDataObject = Record<string, VisitorData>;

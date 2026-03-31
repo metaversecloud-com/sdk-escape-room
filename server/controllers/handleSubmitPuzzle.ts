@@ -36,7 +36,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     if (!game.sessionActive) {
       return res.status(400).json({
         success: false,
-        message: "Game is not active",
+        message: "Game is not active. Please press Start before submitting a puzzle.",
       });
     }
 

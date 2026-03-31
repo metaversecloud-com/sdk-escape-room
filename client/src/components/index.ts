@@ -16,3 +16,5 @@ export * from "./puzzles/PuzzleTransmissionRebuild.js";
 export * from "./puzzles/PuzzleValveOrder.js";
 export * from "./puzzles/PuzzleCircuit.js";
 export * from "./puzzles/FinalCode.js";
+export * from "./RoomAPuzzle1.js"
+export * from "./RoomAPuzzle2.js"

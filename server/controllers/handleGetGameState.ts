@@ -75,6 +75,7 @@ export const handleGetGameState = async (req: Request, res: Response) => {
       sessionKey: sessionKey,
       visitorData: visitorDataObject?.[sessionKey] || {},  // Defaults if missing
       worldConfig: worldData?.[sceneDropId]?.config || {},
+      uniqueName: droppedAsset?.uniqueName || null,
     });
   } catch (error) {
     return errorHandler({

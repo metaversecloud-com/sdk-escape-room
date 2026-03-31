@@ -52,11 +52,8 @@ export const handleCheckSession = async (req: Request, res: Response) => {
         ],
       });
 
-      // Analytics: game timeouts; this will help us track how often players are timing out of their sessions, which can provide insights into game difficulty and player engagement.
-      incrementAnalytics(credentials, "gameTimeouts").catch((err) => console.warn("Analytics gameTimeouts failed", err));
-        
       try {
-        await teleportVisitorToKeyAsset(world, visitor, "escape_room_start_spawn");
+        await teleportVisitorToKeyAsset(world, visitor, "escape_room_start");
       } catch (err) {
         console.warn("Exit teleport failed", err);
       }
