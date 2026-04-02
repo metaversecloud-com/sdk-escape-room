@@ -1,37 +1,37 @@
-import { useContext, useEffect, useState } from "react";
-import { PageContainer, ExitButton, TimerBadge, LockedState, RoomAPuzzle1, RoomAPuzzle2 } from "@/components";
+import { useContext, useEffect, useMemo, useState } from "react";
+import { PageContainer, LockedState, RoomAPuzzle1, RoomAPuzzle2 } from "@/components";
 import { GlobalDispatchContext, GlobalStateContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
-import { backendAPI, setErrorMessage, setGameState, setActivePuzzle} from "@/utils";
+import { backendAPI, setErrorMessage, setGameState} from "@/utils";
 import { useLocation } from "react-router-dom";
 
-const getPuzzleFromUniqueName = (uniqueName?: string): 1 | 2 | 3 | 4 | 5 | 6 | null => {
-  switch (uniqueName) {
-    case "room_a_puzzle_1":
-      return 1;
-    case "room_a_puzzle_2":
-      return 2;
-    case "room_b_puzzle_1":
-      return 3;
-    case "room_b_puzzle_2":
-      return 4;
-    case "room_c_puzzle_1":
-      return 5;
-    case "room_c_puzzle_2":
-      return 6;
+type ScreenType = "start" | "exit" | "puzzle1" | "puzzle2" | "puzzle3" | "puzzle4" | "puzzle5" | "puzzle6" | null;
+
+const getScreenFromSearch = (): ScreenType => {
+  const params = new URLSearchParams(window.location.search);
+  const screen = params.get("screen");
+
+  switch (screen) {
+    case "start":
+      return "start";
+    case "exit":
+      return "exit";
+    case "puzzle1":
+      return "puzzle1";
+    case "puzzle2":
+      return "puzzle2";
+    case "puzzle3":
+      return "puzzle3";
+    case "puzzle4":
+      return "puzzle4";
+    case "puzzle5":
+      return "puzzle5";
+    case "puzzle6":
+      return "puzzle6";
     default:
       return null;
   }
 };
-
-const NotStartedCard = ({ message }: { message: string }) => (
-  <div className="card w-full">
-    <div className="card-details">
-      <h3 className="card-title">Puzzle Locked</h3>
-      <p className="card-description p2">{message}</p>
-    </div>
-  </div>
-);
 
 const StartGameCard = ({ 
   onStart, 
@@ -43,7 +43,7 @@ const StartGameCard = ({
   <div className="card w-full">
     <div className="card-details">
       <h3 className="card-title">Escape Room Start</h3>
-      <p className="card-description p2">Click the button below to start your adventure!</p>
+      <p className="card-description p2">Click the button below to begin the escape room.</p>
       <div className="card-actions mt-4">
         <button className="btn" onClick={onStart} disabled={isLoading}>
           Start Game
@@ -63,7 +63,7 @@ const ExitGameCard = ({
   <div className="card w-full">
     <div className="card-details">
       <h3 className="card-title">Exit Escape Room</h3>
-      <p className="card-description p2">End your current session and return to the start terminal.</p>
+      <p className="card-description p2">End your current session and return to the start area.</p>
       <div className="card-actions mt-4">
         <button className="btn btn-outline" onClick={onExit} disabled={isLoading}>
           Exit Game
@@ -84,22 +84,17 @@ const InfoCard = ({ title, message }: { title: string; message: string }) => (
 
 export const Home = () => {
   const dispatch = useContext(GlobalDispatchContext);
-  const { droppedAsset, hasInteractiveParams, activePuzzle, visitorData, uniqueName } = useContext(GlobalStateContext);
-  const imgSrc = droppedAsset?.topLayerURL || droppedAsset?.bottomLayerURL;
-
+  const {  hasInteractiveParams, visitorData } = useContext(GlobalStateContext);
   const visitorSession = visitorData || null;
-  const hasStarted = visitorSession?.sessionActive === true;
-  const startedAt = visitorSession?.startTime ? new Date(visitorSession.startTime).getTime() : null;
-  const currentRoom = visitorData?.currentRoom || null;
 
-  const [showInventory, setShowInventory] = useState(false);
-
+  const screen = useMemo(() => getScreenFromSearch(), []);
   const [isLoading, setIsLoading] = useState(false);
+
+  const hasStarted = visitorSession?.sessionActive === true;
 
   const refreshGameState = async () => {
     const response = await backendAPI.get("/game-state");
     setGameState(dispatch, response.data);
-    setActivePuzzle(dispatch, getPuzzleFromUniqueName(response.data?.uniqueName));
   };
 
   const startGame = async () => {
@@ -107,8 +102,9 @@ export const Home = () => {
     try {
       const res = await backendAPI.post("/start-game");
       setGameState(dispatch, res.data);
-      setActivePuzzle(dispatch, null); // stay on start screen; user must walk to puzzle
-    } catch(e) { setErrorMessage(dispatch, e); }
+    } catch (error) {
+      setErrorMessage(dispatch, error as ErrorType);
+    }
     setIsLoading(false);
   };
 
@@ -117,8 +113,7 @@ export const Home = () => {
     try {
       const res = await backendAPI.post("/exit");
       setGameState(dispatch, res.data);
-      setActivePuzzle(dispatch, null);
-    } catch(e) { setErrorMessage(dispatch, e); }
+    } catch(error) { setErrorMessage(dispatch, error as ErrorType); }
     setIsLoading(false);
   };
 
@@ -129,30 +124,31 @@ export const Home = () => {
         .get("/game-state")
         .then((response) => {
           setGameState(dispatch, response.data);
-          setActivePuzzle(dispatch, getPuzzleFromUniqueName(response.data?.uniqueName));
         })
         .catch((error) => setErrorMessage(dispatch, error as ErrorType))
         .finally(() => setIsLoading(false));
     } else {
       setIsLoading(false);
     }
-  }, [hasInteractiveParams]);
+  }, [hasInteractiveParams, dispatch]);
 
   // Pre-start view
   if (!hasStarted) {
     return (
       <PageContainer isLoading={isLoading} headerText="Escape Room">
         <div className="flex flex-col w-full items-start gap-4">
-          {uniqueName === "escape_start_game" && (
+          {screen === "start" && (
             <StartGameCard onStart={startGame} isLoading={isLoading || !hasInteractiveParams} />
           )}
-
-          {uniqueName === "escape_exit_game" && (
-            <InfoCard title="No Game In Session" message="Start a game first before using the exit terminal." />
+          {screen === "exit" && (
+            <InfoCard title="No Active Session" message="Start the game first before using the exit terminal." />
           )}
 
-          {uniqueName !== "escape_start_game" && uniqueName !== "escape_exit_game" && (
-            <LockedState title="Game Not Started" message="You must start the game at the start terminal before playing puzzles." />
+          {screen !== "start" && screen !== "exit" && (
+            <LockedState
+              title="Game Not Started"
+              message="You must begin at the start terminal before accessing any puzzle."
+            />
           )}
         </div>
       </PageContainer>
@@ -162,27 +158,50 @@ export const Home = () => {
   return (
     <PageContainer isLoading={isLoading} headerText="Escape Room">
       <div className="flex flex-col w-full items-start gap-4">
-        {uniqueName === "escape_exit_game" && (
+        {screen === "exit" && (
           <ExitGameCard onExit={exitGame} isLoading={isLoading} />
         )}
 
-        {uniqueName === "escape_start_game" && (
-          <InfoCard title="Game In Session" message="Game already running. Proceed to the puzzle terminals." />
+        {screen === "start" && (
+          <InfoCard title="Game In Session" message="Your session is already running. Continue to the puzzle terminals." />
         )}
 
-        {activePuzzle === 1 && hasStarted && (
+        {screen === "puzzle1" && (
           visitorData?.puzzlesCompleted?.[1] ? (
             <InfoCard title="Puzzle Already Complete" message="You’ve already restored the power console." />
           ) : (
             <RoomAPuzzle1 refreshGameState={refreshGameState} isCompleted={visitorData?.puzzlesCompleted?.[1]} />
           )
         )}
-        {activePuzzle === 2 && hasStarted && (<RoomAPuzzle2 refreshGameState={refreshGameState}/>)}
-        {activePuzzle === 3 && hasStarted && (<p className="p2">Room B Puzzle 1</p>)}
-        {activePuzzle === 4 && hasStarted && (<p className="p2">Room B Puzzle 2</p>)}
-        {activePuzzle === 5 && hasStarted && (<p className="p2">Room C Puzzle 1</p>)}
-        {activePuzzle === 6 && hasStarted && (<p className="p2">Room C Puzzle 2</p>)}
-        {!activePuzzle && <p className="p2">No puzzle selected</p>}
+        {screen === "puzzle2" &&
+          (visitorData?.puzzlesCompleted?.[2] ? (
+            <InfoCard title="Puzzle Already Complete" message="You have already restored the reactor switch sequence." />
+          ) : (
+            <RoomAPuzzle2 refreshGameState={refreshGameState} />
+          ))}
+
+        {screen === "puzzle3" && (
+          <InfoCard title="Room B Puzzle 1" message="This puzzle screen will be built next." />
+        )}
+
+        {screen === "puzzle4" && (
+          <InfoCard title="Room B Puzzle 2" message="This puzzle screen will be built next." />
+        )}
+
+        {screen === "puzzle5" && (
+          <InfoCard title="Room C Puzzle 1" message="This puzzle screen will be built next." />
+        )}
+
+        {screen === "puzzle6" && (
+          <InfoCard title="Room C Puzzle 2" message="This puzzle screen will be built next." />
+        )}
+
+        {screen === null && (
+          <InfoCard
+            title="No Screen Selected"
+            message="This asset is missing a screen query parameter. Use ?screen=start, ?screen=exit, or ?screen=puzzle1 through ?screen=puzzle6."
+          />
+        )}
       </div>
     </PageContainer>
   );
