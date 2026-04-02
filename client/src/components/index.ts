@@ -7,14 +7,6 @@ export * from "./PageContainer.js";
 export * from "./PageFooter.js";
 export * from "./TimerBadge.js";
 export * from "./ExitButton.js";
-export * from "./InventoryDrawer.js";
 export * from "./LockedState.js";
-export * from "./puzzles/PuzzlePowerConsole.js";
-export * from "./puzzles/PuzzleReactorSwitch.js";
-export * from "./puzzles/PuzzleSatelliteAlignment.js";
-export * from "./puzzles/PuzzleTransmissionRebuild.js";
-export * from "./puzzles/PuzzleValveOrder.js";
-export * from "./puzzles/PuzzleCircuit.js";
-export * from "./puzzles/FinalCode.js";
 export * from "./RoomAPuzzle1.js"
 export * from "./RoomAPuzzle2.js"

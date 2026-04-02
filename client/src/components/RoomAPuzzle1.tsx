@@ -128,12 +128,6 @@ export const RoomAPuzzle1 = ({ refreshGameState, isCompleted }: RoomAPuzzle1Prop
     setLights(updated);
   };
 
-  const handleReset = () => {
-    setLights(["OFF", "OFF", "OFF"]);
-    setLocalError("");
-    setSuccessMessage("");
-  };
-
   const handleSubmit = async () => {
     if (completed) return;
     setLocalError("");

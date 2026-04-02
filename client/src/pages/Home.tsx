@@ -1,9 +1,9 @@
 import { useContext, useEffect, useState } from "react";
-import { PageContainer, ExitButton, InventoryDrawer, TimerBadge, LockedState, PuzzlePowerConsole, RoomAPuzzle1, RoomAPuzzle2 } from "@/components";
+import { PageContainer, ExitButton, TimerBadge, LockedState, RoomAPuzzle1, RoomAPuzzle2 } from "@/components";
 import { GlobalDispatchContext, GlobalStateContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
 import { backendAPI, setErrorMessage, setGameState, setActivePuzzle} from "@/utils";
-
+import { useLocation } from "react-router-dom";
 
 const getPuzzleFromUniqueName = (uniqueName?: string): 1 | 2 | 3 | 4 | 5 | 6 | null => {
   switch (uniqueName) {

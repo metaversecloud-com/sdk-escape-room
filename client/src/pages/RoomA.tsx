@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { PageContainer, PuzzlePowerConsole, PuzzleReactorSwitch, LockedState } from "@/components";
+import { PageContainer,  LockedState } from "@/components";
 import { GlobalStateContext } from "@/context/GlobalContext";
 
 export const RoomA = () => {
@@ -12,8 +12,6 @@ export const RoomA = () => {
       {!unlocked && <LockedState title="Locked" message="Complete prior steps to enter Room A." />}
       {unlocked && (
         <div className="flex flex-col gap-4">
-          <PuzzlePowerConsole />
-          <PuzzleReactorSwitch />
         </div>
       )}
     </PageContainer>

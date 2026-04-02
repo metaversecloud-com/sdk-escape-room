@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { PageContainer, PuzzleCircuit, FinalCode, LockedState } from "@/components";
+import { PageContainer, LockedState } from "@/components";
 import { GlobalStateContext } from "@/context/GlobalContext";
 
 export const RoomC = () => {
@@ -12,8 +12,6 @@ export const RoomC = () => {
       {!unlocked && <LockedState title="Locked" message="Complete Room B to unlock Room C." />}
       {unlocked && (
         <div className="flex flex-col gap-4">
-          <PuzzleCircuit />
-          <FinalCode />
         </div>
       )}
     </PageContainer>
