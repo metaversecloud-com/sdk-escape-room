@@ -33,20 +33,41 @@ const getScreenFromSearch = (): ScreenType => {
   }
 };
 
-const StartGameCard = ({ 
-  onStart, 
+const StartGameCard = ({
+  onStart,
   isLoading,
-}: { 
+}: {
   onStart: () => Promise<void>;
   isLoading: boolean;
 }) => (
-  <div className="card w-full">
-    <div className="card-details">
-      <h3 className="card-title">Escape Room Start</h3>
-      <p className="card-description p2">Click the button below to begin the escape room.</p>
-      <div className="card-actions mt-4">
-        <button className="btn" onClick={onStart} disabled={isLoading}>
-          Start Game
+  <div className="card w-full" style={{ background: "linear-gradient(135deg, #0d1629 0%, #0a1120 100%)", borderColor: "#24304a" }}>
+    <div className="card-details flex flex-col gap-3">
+      <h3 className="card-title" style={{ color: "#f6b300", letterSpacing: "0.04em" }}>Escape Room Briefing</h3>
+      <p className="card-description p2" style={{ color: "#c7d0e5" }}>
+        Power is down across the facility. Restore systems, stabilize the reactor, and reach the exit airlock.
+      </p>
+      <div className="rounded-xl p-4" style={{ background: "rgba(23,33,52,0.75)", border: "1px solid #2f3c58" }}>
+        <p className="p2" style={{ color: "#9babc7" }}>
+          • Puzzle 1: Re-energize the power console.<br />
+          • Puzzle 2: Prime the reactor switches.<br />
+          • Continue through remaining rooms to escape.
+        </p>
+      </div>
+      <div className="card-actions mt-2">
+        <button
+          className="btn"
+          style={{
+            background: "linear-gradient(135deg, #1f5ad7 0%, #1a4ebc 100%)",
+            borderColor: "#1f5ad7",
+            fontWeight: 700,
+            letterSpacing: "0.02em",
+            paddingTop: "12px",
+            paddingBottom: "12px",
+          }}
+          onClick={onStart}
+          disabled={isLoading}
+        >
+          Start Mission
         </button>
       </div>
     </div>
@@ -89,8 +110,28 @@ export const Home = () => {
 
   const screen = useMemo(() => getScreenFromSearch(), []);
   const [isLoading, setIsLoading] = useState(false);
+  const [elapsed, setElapsed] = useState("--:--");
+  const [showInventory, setShowInventory] = useState(false);
 
   const hasStarted = visitorSession?.sessionActive === true;
+
+  // simple timer display (mm:ss) once a session is active
+  useEffect(() => {
+    if (!hasStarted || !visitorSession?.startTime) {
+      setElapsed("--:--");
+      return;
+    }
+    const start = new Date(visitorSession.startTime).getTime();
+    const tick = () => {
+      const seconds = Math.max(0, Math.floor((Date.now() - start) / 1000));
+      const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
+      const ss = String(seconds % 60).padStart(2, "0");
+      setElapsed(`${mm}:${ss}`);
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [hasStarted, visitorSession?.startTime]);
 
   const refreshGameState = async () => {
     const response = await backendAPI.get("/game-state");
@@ -132,6 +173,44 @@ export const Home = () => {
     }
   }, [hasInteractiveParams, dispatch]);
 
+  const StatusBar = () => (
+    <div
+      className="w-full"
+      style={{
+        background: "linear-gradient(135deg, #0f172a 0%, #0a1120 100%)",
+        border: "1px solid #24304a",
+        borderRadius: "16px",
+        padding: "12px 16px",
+        boxShadow: "0 8px 18px rgba(0,0,0,0.35)",
+      }}
+    >
+      <div className="flex flex-wrap gap-3 items-center justify-between">
+        <div className="flex gap-3 items-center">
+          <span className="p2" style={{ color: "#c7d0e5", fontWeight: 700 }}>Timer: {elapsed}</span>
+          <span className="p2" style={{ color: "#c7d0e5" }}>Room: {visitorSession?.currentRoom || "--"}</span>
+        </div>
+        <div className="flex gap-2">
+          <button
+            className="btn btn-outline"
+            style={{ borderColor: "#2f3c58" }}
+            onClick={() => setShowInventory(true)}
+            disabled={!hasStarted}
+          >
+            Inventory
+          </button>
+          <button
+            className="btn btn-outline"
+            style={{ borderColor: "#2f3c58" }}
+            onClick={exitGame}
+            disabled={isLoading}
+          >
+            Exit
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   // Pre-start view
   if (!hasStarted) {
     return (
@@ -158,6 +237,8 @@ export const Home = () => {
   return (
     <PageContainer isLoading={isLoading} headerText="Escape Room">
       <div className="flex flex-col w-full items-start gap-4">
+        <StatusBar />
+
         {screen === "exit" && (
           <ExitGameCard onExit={exitGame} isLoading={isLoading} />
         )}

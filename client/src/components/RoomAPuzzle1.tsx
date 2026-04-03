@@ -53,50 +53,7 @@ const COLOR_STYLES: Record<
   },
 };
 
-const CREW = [
-  { name: "Chief Engineer Aria", symbol: "Triangle", rank: "I", stars: 3 },
-  { name: "Technician Matea", symbol: "Circle", rank: "II", stars: 1 },
-  { name: "Systems Analyst Lin", symbol: "Square", rank: "III", stars: 4 },
-];
 
-const PANEL_A = [
-  { symbol: "Triangle", channel: "3" },
-  { symbol: "Circle", channel: "1" },
-  { symbol: "Square", channel: "4" },
-];
-
-const PANEL_B = [
-  { channel: "1", color: "Red" },
-  { channel: "3", color: "Blue" },
-  { channel: "4", color: "Green" },
-];
-
-const Shape = ({ type, size = 28, color = "#f6b300" }: { type: "Triangle" | "Circle" | "Square"; size?: number; color?: string }) => {
-  const common: React.CSSProperties = { display: "inline-block" };
-  if (type === "Circle") return <span style={{ ...common, width: size, height: size, borderRadius: "999px", background: color }} />;
-  if (type === "Square")
-    return <span style={{ ...common, width: size, height: size, background: color, borderRadius: 4 }} />;
-  // Triangle
-  return (
-    <span
-      style={{
-        ...common,
-        width: 0,
-        height: 0,
-        borderLeft: `${size / 2}px solid transparent`,
-        borderRight: `${size / 2}px solid transparent`,
-        borderBottom: `${size}px solid ${color}`,
-        transform: "translateY(2px)",
-      }}
-    />
-  );
-};
-
-const Stars = ({ count }: { count: number }) => (
-  <span style={{ color: "#f6b300", letterSpacing: "0.05em", fontWeight: 700 }}>
-    {"★".repeat(count)}
-  </span>
-);
 
 export const RoomAPuzzle1 = ({ refreshGameState, isCompleted }: RoomAPuzzle1Props) => {
   const dispatch = useContext(GlobalDispatchContext);
@@ -168,90 +125,17 @@ export const RoomAPuzzle1 = ({ refreshGameState, isCompleted }: RoomAPuzzle1Prop
 
   return (
     <div className="flex flex-col gap-4 w-full">
-      <div className="card w-full">
-        <div className="card-details">
-          <h3 className="card-title">Room A Puzzle 1: Power Console Color Sequence</h3>
-          <p className="card-description p2">
-            Use the crew and reference panels to determine the correct three-color power sequence.
-          </p>
-        </div>
-      </div>
-
       <div className="card w-full" style={{ background: "linear-gradient(135deg, #0d1629 0%, #0a1120 100%)", borderColor: "#24304a" }}>
         <div className="card-details">
-          <h4 className="h4" style={{ color: "#f6b300", letterSpacing: "0.04em" }}>Crew Portraits</h4>
-          <p className="p2" style={{ color: "#9babc7" }}>
-            Use the portraits to establish the order by rank: Triangle → Circle → Square.
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
-            {CREW.map(({ name, symbol, rank, stars }) => (
-              <div
-                key={name}
-                className="rounded-xl p-4"
-                style={{
-                  background: "rgba(23,33,52,0.75)",
-                  border: "1px solid #2f3c58",
-                  boxShadow: "0 10px 22px rgba(0,0,0,0.3)",
-                }}
-              >
-                <div className="flex items-center justify-between">
-                  <p className="p2" style={{ color: "#c7d0e5", fontWeight: 700 }}>{name}</p>
-                  <Shape type={symbol as any} size={22} color="#8dc4ff" />
-                </div>
-                <p className="p2" style={{ color: "#9babc7" }}>Rank: {rank}</p>
-                <p className="p2" style={{ color: "#9babc7" }}>Stars: <Stars count={stars} /></p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="card w-full" style={{ background: "linear-gradient(135deg, #0d1629 0%, #0a1120 100%)", borderColor: "#24304a" }}>
-        <div className="card-details">
-          <h4 className="h4" style={{ color: "#f6b300", letterSpacing: "0.04em" }}>Reference Panels</h4>
-          <p className="p2" style={{ color: "#9babc7" }}>Match symbols to channels, then channels to colors.</p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-            <div
-              className="rounded-xl p-4"
-              style={{ background: "rgba(23,33,52,0.75)", border: "1px solid #2f3c58" }}
-            >
-              <p className="p2" style={{ color: "#c7d0e5", fontWeight: 700 }}>Panel A — Symbol → Channel</p>
-              <div className="mt-3 flex flex-col gap-2">
-                {PANEL_A.map(({ symbol, channel }) => (
-                  <div key={symbol} className="flex justify-between p-2 rounded-lg" style={{ background: "rgba(15,24,40,0.7)" }}>
-                    <span className="p2" style={{ color: "#c7d0e5" }}>{symbol}</span>
-                    <span className="p2" style={{ color: "#8dc4ff", fontWeight: 700 }}>{channel}</span>
-                  </div>
-                ))}
-              </div>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h4 className="h4" style={{ color: "#f6b300", letterSpacing: "0.04em" }}>
+                Power Console
+              </h4>
+              <p className="p2" style={{ color: "#9babc7" }}>
+                Set the three dials to the correct color sequence. Use the crew and reference panels to determine the correct sequence.
+              </p>
             </div>
-
-            <div
-              className="rounded-xl p-4"
-              style={{ background: "rgba(23,33,52,0.75)", border: "1px solid #2f3c58" }}
-            >
-              <p className="p2" style={{ color: "#c7d0e5", fontWeight: 700 }}>Panel B — Channel → Dial Color</p>
-              <div className="mt-3 flex flex-col gap-2">
-                {PANEL_B.map(({ channel, color }) => (
-                  <div key={channel} className="flex justify-between p-2 rounded-lg" style={{ background: "rgba(15,24,40,0.7)" }}>
-                    <span className="p2" style={{ color: "#c7d0e5" }}>Channel {channel}</span>
-                    <span className="p2" style={{ color: "#8dc4ff", fontWeight: 700 }}>{color}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="card w-full" style={{ background: "linear-gradient(135deg, #0d1629 0%, #0a1120 100%)", borderColor: "#24304a" }}>
-        <div className="card-details">
-          <div className="flex items-center justify-between">
-            <h4 className="h4" style={{ color: "#f6b300", letterSpacing: "0.04em" }}>
-              POWER CONSOLE CONTROLS
-            </h4>
             <span className="tag">Preview</span>
           </div>
           <div
