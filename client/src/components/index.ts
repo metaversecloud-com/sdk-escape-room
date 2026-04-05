@@ -10,3 +10,5 @@ export * from "./ExitButton.js";
 export * from "./LockedState.js";
 export * from "./RoomAPuzzle1.js"
 export * from "./RoomAPuzzle2.js"
+export * from "./RoomCPuzzle1.js"
+export * from "./RoomCPuzzle2.js"

@@ -1,5 +1,5 @@
 import { useContext, useEffect, useMemo, useState } from "react";
-import { PageContainer, LockedState, RoomAPuzzle1, RoomAPuzzle2 } from "@/components";
+import { PageContainer, LockedState, RoomAPuzzle1, RoomAPuzzle2, RoomCPuzzle1, RoomCPuzzle2 } from "@/components";
 import { GlobalDispatchContext, GlobalStateContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
 import { backendAPI, setErrorMessage, setGameState} from "@/utils";
@@ -269,13 +269,17 @@ export const Home = () => {
           <InfoCard title="Room B Puzzle 2" message="This puzzle screen will be built next." />
         )}
 
-        {screen === "puzzle5" && (
-          <InfoCard title="Room C Puzzle 1" message="This puzzle screen will be built next." />
-        )}
+        {screen === "puzzle5" && (visitorData?.puzzlesCompleted?.[5] ? (
+            <InfoCard title="Puzzle Already Complete" message="You have already restored the reactor switch sequence." />
+          ) : (
+            <RoomCPuzzle1 refreshGameState={refreshGameState} />
+          ))}
 
-        {screen === "puzzle6" && (
-          <InfoCard title="Room C Puzzle 2" message="This puzzle screen will be built next." />
-        )}
+        {screen === "puzzle6" && (visitorData?.puzzlesCompleted?.[5] ? (
+            <InfoCard title="Puzzle Already Complete" message="You have already restored the reactor switch sequence." />
+          ) : (
+            <RoomCPuzzle2 refreshGameState={refreshGameState} />
+          ))}
 
         {screen === null && (
           <InfoCard
