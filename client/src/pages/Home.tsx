@@ -1,10 +1,11 @@
+// client/src/pages/Home.tsx
 import { useContext, useEffect, useMemo, useState } from "react";
-import { PageContainer, LockedState, RoomAPuzzle1, RoomAPuzzle2, RoomCPuzzle1, RoomCPuzzle2 } from "@/components";
+import { PageContainer, LockedState, RoomAPuzzle1, RoomAPuzzle2, RoomCPuzzle1, RoomCPuzzle2, RoomBPuzzle1 } from "@/components";
 import { GlobalDispatchContext, GlobalStateContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
 import { backendAPI, setErrorMessage, setGameState} from "@/utils";
 
-type ScreenType = "start" | "exit" | "puzzle1" | "puzzle2" | "puzzle3" | "puzzle4" | "puzzle5" | "puzzle6" | "puzzle7" | "null";
+type ScreenType = "start" | "exit" | "puzzle1" | "puzzle2" | "puzzle3" | "puzzle4" | "puzzle5" | "puzzle6" | "null";
 
 const getScreenFromSearch = (): ScreenType => {
   const params = new URLSearchParams(window.location.search);
@@ -27,20 +28,12 @@ const getScreenFromSearch = (): ScreenType => {
       return "puzzle5";
     case "puzzle6":
       return "puzzle6";
-    case "puzzle7":
-      return "puzzle7";
     default:
       return "null";
   }
 };
 
-const StartGameCard = ({
-  onStart,
-  isLoading,
-}: {
-  onStart: () => Promise<void>;
-  isLoading: boolean;
-}) => (
+const StartGameCard = ({ onStart, isLoading }: { onStart: () => Promise<void>; isLoading: boolean }) => (
   <div className="card w-full" style={{ background: "linear-gradient(135deg, #0d1629 0%, #0a1120 100%)", borderColor: "#24304a" }}>
     <div className="card-details flex flex-col gap-3">
       <h3 className="card-title" style={{ color: "#f6b300", letterSpacing: "0.04em" }}>Escape Room Briefing</h3>
@@ -75,13 +68,7 @@ const StartGameCard = ({
   </div>
 );
 
-const ExitGameCard = ({ 
-  onExit, 
-  isLoading,
-}: { 
-  onExit: () => Promise<void>;
-  isLoading: boolean;
-}) => (
+const ExitGameCard = ({ onExit, isLoading }: { onExit: () => Promise<void>; isLoading: boolean }) => (
   <div className="card w-full">
     <div className="card-details">
       <h3 className="card-title">Exit Escape Room</h3>
@@ -106,7 +93,7 @@ const InfoCard = ({ title, message }: { title: string; message: string }) => (
 
 export const Home = () => {
   const dispatch = useContext(GlobalDispatchContext);
-  const {  hasInteractiveParams, visitorData } = useContext(GlobalStateContext);
+  const { hasInteractiveParams, visitorData } = useContext(GlobalStateContext);
   const visitorSession = visitorData || null;
 
   const screen = useMemo(() => getScreenFromSearch(), []);
@@ -223,7 +210,6 @@ export const Home = () => {
           {screen === "exit" && (
             <InfoCard title="No Active Session" message="Start the game first before using the exit terminal." />
           )}
-
           {screen !== "start" && screen !== "exit" && (
             <LockedState
               title="Game Not Started"
@@ -248,41 +234,59 @@ export const Home = () => {
           <InfoCard title="Game In Session" message="Your session is already running. Continue to the puzzle terminals." />
         )}
 
+        {/* Room A Puzzles */}
         {screen === "puzzle1" && (
           visitorData?.puzzlesCompleted?.[1] ? (
-            <InfoCard title="Puzzle Already Complete" message="You’ve already restored the power console." />
+            <InfoCard title="Puzzle Already Complete" message="You've already restored the power console." />
           ) : (
             <RoomAPuzzle1 refreshGameState={refreshGameState} isCompleted={visitorData?.puzzlesCompleted?.[1]} />
           )
         )}
-        {screen === "puzzle2" &&
-          (visitorData?.puzzlesCompleted?.[2] ? (
+        
+        {screen === "puzzle2" && (
+          visitorData?.puzzlesCompleted?.[2] ? (
             <InfoCard title="Puzzle Already Complete" message="You have already restored the reactor switch sequence." />
           ) : (
             <RoomAPuzzle2 refreshGameState={refreshGameState} />
-          ))}
+          )
+        )}
 
+        {/* Room B Puzzle 1 - Your Satellite Alignment Puzzle */}
         {screen === "puzzle3" && (
-          <InfoCard title="Room B Puzzle 1" message="This puzzle screen will be built next." />
+          // Check if Room A is complete (puzzles 1 and 2)
+          (!visitorData?.puzzlesCompleted?.[1] || !visitorData?.puzzlesCompleted?.[2]) ? (
+            <LockedState 
+              title="Room B Locked" 
+              message="You must restore power in Room A before accessing the Comms Deck." 
+            />
+          ) : visitorData?.puzzlesCompleted?.[3] ? (
+            <InfoCard title="Puzzle Already Complete" message="Satellites are already aligned. Communications restored!" />
+          ) : (
+            <RoomBPuzzle1 refreshGameState={refreshGameState} />
+          )
         )}
 
         {screen === "puzzle4" && (
           <InfoCard title="Room B Puzzle 2" message="This puzzle screen will be built next." />
         )}
 
-        {screen === "puzzle5" && (visitorData?.puzzlesCompleted?.[5] ? (
-            <InfoCard title="Puzzle Already Complete" message="You have already restored the reactor switch sequence." />
+        {screen === "puzzle5" && (
+          visitorData?.puzzlesCompleted?.[5] ? (
+            <InfoCard title="Puzzle Already Complete" message="You have already completed this puzzle." />
           ) : (
             <RoomCPuzzle1 refreshGameState={refreshGameState} />
-          ))}
+          )
+        )}
 
-        {screen === "puzzle6" && (visitorData?.puzzlesCompleted?.[5] ? (
-            <InfoCard title="Puzzle Already Complete" message="You have already restored the reactor switch sequence." />
+        {screen === "puzzle6" && (
+          visitorData?.puzzlesCompleted?.[6] ? (
+            <InfoCard title="Puzzle Already Complete" message="You have already completed this puzzle." />
           ) : (
             <RoomCPuzzle2 refreshGameState={refreshGameState} />
-          ))}
+          )
+        )}
 
-        {screen === null && (
+        {screen === "null" && (
           <InfoCard
             title="No Screen Selected"
             message="This asset is missing a screen query parameter. Use ?screen=start, ?screen=exit, or ?screen=puzzle1 through ?screen=puzzle6."
