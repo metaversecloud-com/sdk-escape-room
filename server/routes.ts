@@ -1,5 +1,12 @@
 import express from "express";
-import { handleGetGameState } from "./controllers/index.js";
+import {
+  handleCheckSession,
+  handleExitGame,
+  handleGetGameState,
+  handleStartGame,
+  handleTeleportPlayer,
+  handleSubmitPuzzle,
+} from "./controllers/index.js";
 import { getVersion } from "@utils/getVersion.js";
 
 const router = express.Router();
@@ -23,6 +30,11 @@ router.get("/system/health", (req, res) => {
   });
 });
 
+router.post("/start-game", handleStartGame);
 router.get("/game-state", handleGetGameState);
+router.post("/submit-puzzle", handleSubmitPuzzle);
+router.post("/teleport", handleTeleportPlayer);
+router.post("/session/check", handleCheckSession);
+router.post("/exit", handleExitGame);
 
 export default router;

@@ -6,11 +6,11 @@ export const getCredentials = (query: any): Credentials => {
     const requiredFields = ["interactiveNonce", "interactivePublicKey", "urlSlug", "visitorId"];
     const missingFields = requiredFields.filter((variable) => !query[variable]);
     if (missingFields.length > 0) {
-      throw `Missing required parameters: ${missingFields.join(", ")}`;
+      throw new Error(`Missing required parameters: ${missingFields.join(", ")}`);
     }
 
     if (process.env.INTERACTIVE_KEY !== query.interactivePublicKey) {
-      throw "Provided public key does not match";
+      throw new Error("Provided public key does not match INTERACTIVE_KEY");
     }
 
     return {
@@ -27,10 +27,9 @@ export const getCredentials = (query: any): Credentials => {
       visitorId: Number(query.visitorId),
     };
   } catch (error) {
-    return errorHandler({
-      error,
-      functionName: "getCredentials",
-      message: "Error getting credentials from query.",
-    });
+    const err = error instanceof Error ? error : new Error(String(error));
+    // Tag as client error so controllers can return 400 instead of generic 500
+    (err as any).status = 400;
+    throw err;
   }
 };

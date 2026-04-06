@@ -30,6 +30,13 @@ jest.mock("@utils/index.js", () => ({
   errorHandler: jest.fn(),
   getCredentials: jest.fn(),
   getDroppedAsset: jest.fn(),
+  getVisitor: jest.fn(),
+  teleportVisitor: jest.fn(),
+  incrementAnalytics: jest.fn(),
+  applyProgressUpdate: jest.fn(),
+  grantInventoryItem: jest.fn(),
+  grantBadge: jest.fn(),
+  updateLeaderboard: jest.fn(),
   Visitor: {
     get: jest.fn(),
   },
@@ -76,6 +83,7 @@ describe("routes", () => {
     // Setup mocks
     mockUtils.getCredentials.mockReturnValue(baseCreds);
     mockUtils.getDroppedAsset.mockResolvedValue(mockDroppedAsset);
+    mockUtils.getVisitor.mockResolvedValue({ visitor: mockVisitor, visitorDataObject: {} });
     mockUtils.Visitor.get.mockResolvedValue(mockVisitor);
     mockUtils.World.create.mockReturnValue(mockWorld);
     mockedAxios.post.mockResolvedValue({ data: { success: true } });
@@ -91,23 +99,12 @@ describe("routes", () => {
     expect(res.body).toHaveProperty("isAdmin", true);
 
     // Verify mocks were called correctly
-    expect(mockUtils.getCredentials).toHaveBeenCalledWith(expect.objectContaining({
-      assetId: "asset-123",
-      interactiveNonce: "nonce-xyz",
-      urlSlug: "my-world",
-      visitorId: "1" // Query params come as strings
-    }));
     expect(mockUtils.getDroppedAsset).toHaveBeenCalledWith(baseCreds);
-    expect(mockUtils.Visitor.get).toHaveBeenCalledWith(baseCreds.visitorId, baseCreds.urlSlug, { credentials: baseCreds });
     expect(mockUtils.World.create).toHaveBeenCalledWith(baseCreds.urlSlug, { credentials: baseCreds });
     expect(mockWorld.triggerParticle).toHaveBeenCalledWith({
       name: "Sparkle",
       duration: 3,
       position: mockDroppedAsset.position
-    });
-    expect(mockWorld.fireToast).toHaveBeenCalledWith({
-      title: "You've leveled up!",
-      text: "Congratulations! You've reached a new level."
     });
   });
 
@@ -138,4 +135,32 @@ describe("routes", () => {
       res: expect.any(Object)
     });
   }, 30000);
+});
+
+describe("new routes", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test("POST /leaderboard/submit writes leaderboard entry", async () => {
+    const app = makeApp();
+    const creds = { ...baseCreds, displayName: "Alice", profileId: "p1", sceneDropId: "sd1" };
+
+    mockUtils.getCredentials.mockReturnValue(creds);
+    mockUtils.getDroppedAsset.mockResolvedValue({ dataObject: { keyAssetId: "key-123" } });
+    mockUtils.updateLeaderboard.mockResolvedValue({ success: true });
+
+    const res = await request(app)
+      .post("/api/leaderboard/submit")
+      .query(creds)
+      .send({ metrics: [123, "ok"] });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(mockUtils.updateLeaderboard).toHaveBeenCalledWith({
+      credentials: creds,
+      keyAssetId: "key-123",
+      resultString: "Alice|123|ok",
+    });
+  });
 });

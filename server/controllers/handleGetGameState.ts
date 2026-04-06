@@ -1,59 +1,99 @@
 import { Request, Response } from "express";
 import { errorHandler, getCredentials, getDroppedAsset, getVisitor, World } from "@utils/index.js";
-import axios from "axios";
+import { VisitorData, WorldDataObject } from "../../shared/types/VisitorData.js";
+import { checkSessionExpiration } from "@utils/checkSessionExpiration.js";
+//visitorgamedata
+//check what this is
+
+const getDefaultVisitorData = (): VisitorData => {
+      return {
+        startTime: null,
+        endTime: null,
+        escaped: false,
+        sessionActive: false,
+        timedOut: false,
+
+        currentRoom: null,
+        puzzlesCompleted: {
+          1: false,
+          2: false,
+          3: false,
+          4: false,
+          5: false,
+          6: false,
+          7: false,
+        },
+
+        inventory: {
+          fuse: null,
+          wrench: null,
+          accessCard: null,
+        },
+
+        completionTime: null,
+        badges: [],
+      };
+    };
 
 export const handleGetGameState = async (req: Request, res: Response) => {
   try {
+    // Get credentials from query parameters
     const credentials = getCredentials(req.query);
-    const { assetId, displayName, interactiveNonce, interactivePublicKey, profileId, urlSlug, visitorId } = credentials;
+    const { assetId, displayName, interactiveNonce, interactivePublicKey, profileId, urlSlug, visitorId, sceneDropId } = credentials;
+    const sessionKey = `${urlSlug}-${sceneDropId}`;
 
     const droppedAsset = await getDroppedAsset(credentials);
 
+    // Create a world instance to trigger particle effects and fire toasts; errors in these actions will be caught and logged but won't prevent the main response from being returned
     const world = World.create(urlSlug, { credentials });
-    world.triggerParticle({ name: "Sparkle", duration: 3, position: droppedAsset.position }).catch((error: any) =>
-      errorHandler({
-        error,
-        functionName: "handleGetGameState",
-        message: "Error triggering particle effects",
-      }),
-    );
-
-    const { visitor } = await getVisitor(credentials, true);
-    const { isAdmin } = visitor;
-
+    let worldData: WorldDataObject | null = null;
     try {
-      await axios.post(
-        `${process.env.LEADERBOARD_BASE_URL || "http://v2lboard0-prod-topia.topia-rtsdk.com"}/api/dropped-asset/increment-player-stats?assetId=${assetId}&displayName=${displayName}&interactiveNonce=${interactiveNonce}&interactivePublicKey=${interactivePublicKey}&profileId=${profileId}&urlSlug=${urlSlug}&visitorId=${visitorId}`,
-        {
-          publicKey: interactivePublicKey,
-          secret: process.env.INTERACTIVE_SECRET,
-          profileId,
-          displayName,
-          incrementBy: 1,
-        },
-      );
+      const fetchedData = await world.fetchDataObject();
+      worldData = fetchedData as WorldDataObject;
     } catch (error) {
-      errorHandler({
-        error,
-        functionName: "handleGetGameState",
-        message: "Error posting player stats to Leaderboard",
-      });
+      console.log("No world config found");
     }
 
-    await world.fireToast({ title: "Nice Work!", text: "You've successfully completed the task!" }).catch((error) =>
-      errorHandler({
-        error,
-        functionName: "handleGetGameState",
-        message: "Error firing toast in world",
-      }),
-    );
+    // Get visitor data to check if the user is an admin; this will allow us to conditionally return admin-only data in the response if needed
+    const { visitor } = (await getVisitor(credentials, true));
 
-    return res.json({ droppedAsset, isAdmin, success: true });
+    let visitorDataObject = (await visitor.fetchDataObject()) as Record<string, VisitorData> | null;
+
+    if (!visitorDataObject) {
+      visitorDataObject = {
+        [sessionKey]: getDefaultVisitorData(),
+      };
+      await visitor.updateDataObject(visitorDataObject, { lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true } });
+    }
+
+    if (!visitorDataObject[sessionKey] ) {
+      visitorDataObject[sessionKey] = getDefaultVisitorData();
+      await visitor.updateDataObject(visitorDataObject, { lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true } } );
+    }
+
+    let session = visitorDataObject[sessionKey];
+    let remainingMs = null; 
+
+    if (session.sessionActive && session.startTime) {
+      const checkResult = await checkSessionExpiration({ credentials, visitor, sessionKey });
+      session = checkResult.session;
+      visitorDataObject = checkResult.visitorDataObject;
+      remainingMs = checkResult.remainingMs;
+    }
+
+    return res.json({
+      success: true,
+      droppedAsset,
+      sessionKey: sessionKey,
+      visitorData: visitorDataObject?.[sessionKey] || {},  // Defaults if missing
+      worldConfig: worldData?.[sceneDropId]?.config || {},
+      uniqueName: droppedAsset?.uniqueName || null,
+    });
   } catch (error) {
     return errorHandler({
       error,
-      functionName: "getDroppedAssetDetails",
-      message: "Error getting dropped asset instance and data object",
+      functionName: "handleGetGameState",
+      message: "Error getting game state",
       req,
       res,
     });

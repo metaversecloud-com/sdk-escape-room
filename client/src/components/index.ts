@@ -5,3 +5,10 @@ export * from "./ConfirmationModal.js";
 export * from "./Loading.js";
 export * from "./PageContainer.js";
 export * from "./PageFooter.js";
+export * from "./TimerBadge.js";
+export * from "./ExitButton.js";
+export * from "./LockedState.js";
+export * from "./RoomAPuzzle1.js"
+export * from "./RoomAPuzzle2.js"
+export * from "./RoomCPuzzle1.js"
+export * from "./RoomCPuzzle2.js"

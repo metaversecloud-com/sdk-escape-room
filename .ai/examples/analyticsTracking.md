@@ -192,6 +192,7 @@ export const handleGetGameState = async (req: Request, res: Response) => {
 
 ### Standard Event Names
 
+
 | Event            | When to Track          | Unique Key Pattern          |
 | ---------------- | ---------------------- | --------------------------- |
 | `starts`         | User begins activity   | `profileId`                 |
