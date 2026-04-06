@@ -21,6 +21,7 @@ export interface VisitorData {
     4: boolean;
     5: boolean;
     6: boolean;
+    7: boolean; 
   };
   
   // Inventory

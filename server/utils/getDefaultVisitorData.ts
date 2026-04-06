@@ -15,6 +15,7 @@ export const getDefaultVisitorData = (): VisitorData => {
       4: false,
       5: false,
       6: false,
+      7: false,
     },
     inventory: {
       fuse: null,

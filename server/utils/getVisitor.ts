@@ -2,7 +2,7 @@ import { VisitorInterface } from "@rtsdk/topia";
 import { Visitor } from "./topiaInit.js";
 import { Credentials } from "../types/index.js";
 import { standardizeError } from "./standardizeError.js";
-import { VisitorDataObjectType } from "@shared/types/VisitorData.js";
+import { VisitorDataObject } from "@shared/types/VisitorData.js";
 
 export const getVisitor = async (credentials: Credentials, shouldGetVisitorDetails = false) => {
   try {
@@ -14,7 +14,7 @@ export const getVisitor = async (credentials: Credentials, shouldGetVisitorDetai
 
     if (!visitor) throw "Not in world";
 
-    const dataObject = (await visitor.fetchDataObject()) as VisitorDataObjectType | null;
+    const dataObject = (await visitor.fetchDataObject()) as VisitorDataObject | null;
 
     const lockId = `${sceneDropId}-${new Date(Math.round(new Date().getTime() / 60000) * 60000)}`;
     if (!dataObject) {

@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { errorHandler, getCredentials, Visitor, World } from "@utils/index.js";
 import { DroppedAssetInterface } from "@rtsdk/topia";
+import { Credentials } from "types";
 
 const DEFAULT_KEY_ASSET_NAME = "keyAsset";
 
@@ -32,7 +33,7 @@ export const findTeleportPosition = async (
 export const teleportPlayer = async (
   urlSlug: string,
   visitorId: number,  // Changed to number to match SDK Visitor.get
-  credentials: Record<string, unknown>,
+  credentials: Credentials,
   uniqueName = DEFAULT_KEY_ASSET_NAME,
   options: TeleportPlayerOptions = {},
 ) => {
@@ -42,7 +43,7 @@ export const teleportPlayer = async (
 
   const offsetY = options.offsetY ?? 100;
   await visitor.moveVisitor({
-    shouldTeleportVisitor: false,
+    shouldTeleportVisitor: true,
     x: target.x,
     y: target.y + offsetY,
   });
@@ -50,6 +51,7 @@ export const teleportPlayer = async (
 
 export const handleTeleportPlayer = async (req: Request, res: Response) => {
   try {
+    
     const credentials = getCredentials(req.query);
     const { urlSlug, visitorId } = credentials;
 
@@ -58,7 +60,7 @@ export const handleTeleportPlayer = async (req: Request, res: Response) => {
       credentials.assetId = keyAssetId;
     }
 
-    await teleportPlayer(urlSlug, visitorId, {credentials}, uniqueName);
+    await teleportPlayer(urlSlug, visitorId, credentials, uniqueName);
 
     return res.json({ success: true });
   } catch (error) {

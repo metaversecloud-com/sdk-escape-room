@@ -3,9 +3,8 @@ import { PageContainer, LockedState, RoomAPuzzle1, RoomAPuzzle2, RoomCPuzzle1, R
 import { GlobalDispatchContext, GlobalStateContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
 import { backendAPI, setErrorMessage, setGameState} from "@/utils";
-import { useLocation } from "react-router-dom";
 
-type ScreenType = "start" | "exit" | "puzzle1" | "puzzle2" | "puzzle3" | "puzzle4" | "puzzle5" | "puzzle6" | null;
+type ScreenType = "start" | "exit" | "puzzle1" | "puzzle2" | "puzzle3" | "puzzle4" | "puzzle5" | "puzzle6" | "puzzle7" | "null";
 
 const getScreenFromSearch = (): ScreenType => {
   const params = new URLSearchParams(window.location.search);
@@ -28,8 +27,10 @@ const getScreenFromSearch = (): ScreenType => {
       return "puzzle5";
     case "puzzle6":
       return "puzzle6";
+    case "puzzle7":
+      return "puzzle7";
     default:
-      return null;
+      return "null";
   }
 };
 

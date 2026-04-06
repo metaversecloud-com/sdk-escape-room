@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getVisitor, World, teleportVisitorToKeyAsset, getDroppedAsset, incrementAnalytics } from "@utils/index.js";
+import { errorHandler, getCredentials, getVisitor, World, getDroppedAsset } from "@utils/index.js";
 import { VisitorData, WorldConfig } from "../../shared/types/VisitorData.js";
+import { teleportPlayer } from "./index.js";
+import { checkSessionExpiration } from "@utils/checkSessionExpiration.js";
 
 export const handleSubmitPuzzle = async (req: Request, res: Response) => {
   try {
@@ -10,35 +12,34 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
 
     type LeaderboardMap = Record<string, string>;
 
-
-    const { puzzleNumber } = req.body as { puzzleNumber: 1 | 2 | 3 | 4 | 5 | 6 };
+    const { puzzleNumber } = req.body as { puzzleNumber: 1 | 2 | 3 | 4 | 5 | 6 | 7 };
 
     const world = World.create(urlSlug, { credentials });
     const { visitor } = await getVisitor(credentials, true);
     const droppedAsset = await getDroppedAsset(credentials);
 
     const worldDataObject = (await world.fetchDataObject()) as Record<string, WorldConfig> | null;
-    let visitorDataObject = (await visitor.fetchDataObject()) as Record<string, VisitorData> | null;
+    const worldConfig = worldDataObject?.[sceneDropId]?.config || {};
+    
+    const expirationResult = await checkSessionExpiration({
+      credentials,
+      visitor,
+      sessionKey,
+    });
 
-     let droppedAssetDataObject = (await droppedAsset.fetchDataObject()) as {
+    if (expirationResult.expired || !expirationResult.session.sessionActive) {
+      return res.status(400).json({
+        success: false,
+        message: "Session expired.",
+        visitorData: expirationResult.session,
+      });
+    }
+
+    let droppedAssetDataObject = (await droppedAsset.fetchDataObject()) as {
       leaderboard?: LeaderboardMap;
     } | null;
-    
-    if (!visitorDataObject || !visitorDataObject[sessionKey]) {
-      return res.status(400).json({
-        success: false,
-        message: "No active game found",
-      });
-    }
 
-    const game = visitorDataObject[sessionKey];
-
-    if (!game.sessionActive) {
-      return res.status(400).json({
-        success: false,
-        message: "Game is not active. Please press Start before submitting a puzzle.",
-      });
-    }
+    const game = expirationResult.session;
 
     game.puzzlesCompleted[puzzleNumber] = true;
 
@@ -48,34 +49,12 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         serial: "74",
       };
     }
-    
-    if (puzzleNumber === 2) {
-      game.currentRoom = "B";
 
-      try {
-        await teleportVisitorToKeyAsset(world, visitor, "escape_spawn_room_b");
-      } catch (err) {
-        console.warn("Teleport to Room B failed", err);
-      }
-    }
-
-    if (puzzleNumber === 3 && !game.inventory.wrench) {
+    if (puzzleNumber === 2 && !game.inventory.wrench) {
       game.inventory.wrench = {
         id: "wrench",
         serial: "36",
       };
-    }
-
-    
-
-    if (puzzleNumber === 4) {
-      game.currentRoom = "C";
-
-      try {
-        await teleportVisitorToKeyAsset(world, visitor, "escape_spawn_room_c");
-      } catch (err) {
-        console.warn("Teleport to Room C failed", err);
-      }
     }
 
     if (puzzleNumber === 5 && !game.inventory.accessCard) {
@@ -85,7 +64,39 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       };
     }
 
-    if (puzzleNumber === 6) {
+    if (
+      game.currentRoom === "A" &&
+      game.puzzlesCompleted[1] &&
+      game.puzzlesCompleted[2]
+    ) {
+      game.currentRoom = "B";
+
+      await teleportPlayer(
+        urlSlug,
+        credentials.visitorId,
+        credentials,
+        "escape_room_B_pad"
+      );
+    }
+
+    if (
+      game.currentRoom === "B" &&
+      game.puzzlesCompleted[3] &&
+      game.puzzlesCompleted[4] &&
+      game.puzzlesCompleted[5]
+    ) {
+      game.currentRoom = "C";
+
+      await teleportPlayer(
+        urlSlug,
+        credentials.visitorId,
+        credentials,
+        "escape_room_C_pad"
+      );
+    }
+
+    if(puzzleNumber === 7) {
+      game.escaped = true;
       game.sessionActive = false;
       game.endTime = new Date().toISOString();
 
@@ -94,10 +105,6 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         const end = new Date(game.endTime).getTime();
         game.completionTime = Math.floor((end - start) / 1000);
       }
-
-      incrementAnalytics(credentials, "gameCompletions").catch((err) => {
-        console.warn("Analytics gameCompletions failed", err);
-      });
 
       // leaderboard write
       if (!droppedAssetDataObject) {
@@ -110,34 +117,38 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
 
       droppedAssetDataObject.leaderboard[profileId] = `${displayName}|${game.completionTime ?? 0}`;
 
-      await droppedAsset.setDataObject(droppedAssetDataObject, {
+      await droppedAsset.updateDataObject({ leaderboard: droppedAssetDataObject.leaderboard }, {
         lock: { lockId: `${sessionKey}-${Date.now()}-leaderboard`, releaseLock: true },
       });
 
+      await teleportPlayer(
+        urlSlug,
+        credentials.visitorId,
+        credentials,
+        "escape_room_start_pad"
+      );
+
     }
 
-    visitorDataObject[sessionKey] = game;
-
-    await visitor.setDataObject(visitorDataObject, {
-      lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true },
-    });
-
-    await visitor.setDataObject(visitorDataObject, {
+    await visitor.updateDataObject(
+      { [sessionKey]: game },
+      {
         lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true },
         analytics: [
-            {
+          {
             analyticName: `puzzle${puzzleNumber}Completed`,
             profileId,
             urlSlug,
             uniqueKey: `${profileId}-${sessionKey}-puzzle-${puzzleNumber}`,
-            },
+          },
         ],
-    });
+      },
+    );
 
     return res.json({
       success: true,
       visitorData: game,
-      worldConfig: worldDataObject?.[sceneDropId]?.config || {},
+      worldConfig: worldConfig,
     });
   } catch (error) {
     return errorHandler({

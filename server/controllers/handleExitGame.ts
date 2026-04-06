@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getVisitor, incrementAnalytics, teleportVisitorToKeyAsset, World } from "@utils/index.js";
+import { errorHandler, getCredentials, getVisitor, World } from "@utils/index.js";
 import { VisitorData } from "@shared/types/VisitorData.js";
+import { teleportPlayer } from "./handleTeleportPlayer";
 
 export const handleExitGame = async (req: Request, res: Response) => {
   try {
@@ -23,19 +24,14 @@ export const handleExitGame = async (req: Request, res: Response) => {
 
     visitorDataObject[sessionKey] = existingState;
     
-    await visitor.setDataObject(visitorDataObject, { lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true } });
+    await visitor.updateDataObject(visitorDataObject, { lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true } });
 
-    incrementAnalytics(credentials, "manualGameExits").catch((err) =>
-      console.warn("Analytics manualGameExits failed", err),
+    await teleportPlayer(
+      urlSlug,
+      visitorId,
+      credentials,
+      "escape_room_start_pad"
     );
-
-    try {
-      await teleportVisitorToKeyAsset(world, visitor, "escape_room_start_spawn");
-    }
-    catch (teleportError) {
-      console.warn("Teleport on exit failed, continuing without teleport:", teleportError);
-    }
-
     return res.json({ success: true, visitorData: existingState, message: "Game exited. You can start a new game anytime." });
   } catch (error) {
     return errorHandler({

@@ -1,5 +1,3 @@
-import { DroppedAsset } from "@rtsdk/topia";
-
 export const initialState = {
   error: "",
   gameState: {},

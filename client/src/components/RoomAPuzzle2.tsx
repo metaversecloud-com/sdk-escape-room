@@ -103,28 +103,6 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
     }
   };
 
-  const handleSubmit = async () => {
-    if (selectedOrder.length !== CORRECT_ORDER.length) {
-      setLocalError("Complete the full correct sequence before submitting.");
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const response = await backendAPI.post("/submit-puzzle", {
-        puzzleNumber: 2,
-      });
-
-      setGameState(dispatch, response.data);
-      await refreshGameState();
-    } catch (error) {
-      setErrorMessage(dispatch, error as ErrorType);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return (
     <div className="flex flex-col gap-4 w-full">
       <div

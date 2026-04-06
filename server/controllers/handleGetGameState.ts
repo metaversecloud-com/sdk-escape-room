@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { errorHandler, getCredentials, getDroppedAsset, getVisitor, World } from "@utils/index.js";
 import { VisitorData, WorldDataObject } from "../../shared/types/VisitorData.js";
+import { checkSessionExpiration } from "@utils/checkSessionExpiration.js";
 //visitorgamedata
 //check what this is
 
@@ -20,6 +21,7 @@ const getDefaultVisitorData = (): VisitorData => {
           4: false,
           5: false,
           6: false,
+          7: false,
         },
 
         inventory: {
@@ -61,12 +63,22 @@ export const handleGetGameState = async (req: Request, res: Response) => {
       visitorDataObject = {
         [sessionKey]: getDefaultVisitorData(),
       };
-      await visitor.setDataObject(visitorDataObject, { lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true } });
+      await visitor.updateDataObject(visitorDataObject, { lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true } });
     }
 
     if (!visitorDataObject[sessionKey] ) {
       visitorDataObject[sessionKey] = getDefaultVisitorData();
-      await visitor.setDataObject(visitorDataObject, { lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true } } );
+      await visitor.updateDataObject(visitorDataObject, { lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true } } );
+    }
+
+    let session = visitorDataObject[sessionKey];
+    let remainingMs = null; 
+
+    if (session.sessionActive && session.startTime) {
+      const checkResult = await checkSessionExpiration({ credentials, visitor, sessionKey });
+      session = checkResult.session;
+      visitorDataObject = checkResult.visitorDataObject;
+      remainingMs = checkResult.remainingMs;
     }
 
     return res.json({

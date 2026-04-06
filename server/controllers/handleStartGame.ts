@@ -5,10 +5,9 @@
 // this function will be called in the frontend when the user clicks the "Start Game" button on the landing page
 
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getVisitor, World, incrementAnalytics, teleportVisitorToKeyAsset } from "@utils/index.js";
+import { errorHandler, getCredentials, getVisitor, World } from "@utils/index.js";
 import { VisitorData, WorldConfig} from "../../shared/types/VisitorData.js";
 import { teleportPlayer } from "./index.js";
-import { DroppedAsset } from "@rtsdk/topia";
 export const handleStartGame = async (req: Request, res: Response) => {
   try {
     // Get credentials and visitor data
@@ -27,23 +26,18 @@ export const handleStartGame = async (req: Request, res: Response) => {
     const mergedSceneConfig: WorldConfig = {
       keyAssetId: existingSceneConfig?.keyAssetId || assetId || "",
       config: {
-        startSpawnId: existingSceneConfig?.config?.startSpawnId || "escape_start_game",
-        roomASpawnId: existingSceneConfig?.config?.roomASpawnId || "YOUR_ROOM_A_SPAWN_ID",
-        roomBSpawnId: existingSceneConfig?.config?.roomBSpawnId || "YOUR_ROOM_B_SPAWN_ID",
-        roomCSpawnId: existingSceneConfig?.config?.roomCSpawnId || "YOUR_ROOM_C_SPAWN_ID",
+        startSpawnId: existingSceneConfig?.config?.startSpawnId || "escape_room_start_pad",
+        roomASpawnId: existingSceneConfig?.config?.roomASpawnId || "escape_room_A_pad",
+        roomBSpawnId: existingSceneConfig?.config?.roomBSpawnId || "escape_room_B_pad",
+        roomCSpawnId: existingSceneConfig?.config?.roomCSpawnId || "escape_room_C_pad",
         maxSessionMinutes: existingSceneConfig?.config?.maxSessionMinutes ?? 30,
       },
     };
 
     if (!existingSceneConfig) {
       const lockId = `${sceneDropId}-${Date.now()}-world`;
-      if (!worldDataObject) {
-        worldDataObject = { [sceneDropId]: mergedSceneConfig } as Record<string, WorldConfig> | null;
-        await world.setDataObject(worldDataObject, { lock: { lockId, releaseLock: true } });
-      } else {
-        await world.updateDataObject({ [sceneDropId]: mergedSceneConfig }, { lock: { lockId, releaseLock: true } });
-        worldDataObject = { ...worldDataObject, [sceneDropId]: mergedSceneConfig };
-      }
+      await world.updateDataObject({ [sceneDropId]: mergedSceneConfig }, { lock: { lockId, releaseLock: true } });
+      worldDataObject = { ...worldDataObject, [sceneDropId]: mergedSceneConfig };
     }
 
     const { visitor } = await getVisitor(credentials, true);
@@ -64,6 +58,7 @@ export const handleStartGame = async (req: Request, res: Response) => {
         4: false,
         5: false,
         6: false,
+        7: false,
       },
       inventory: {
         fuse: null,
@@ -73,13 +68,9 @@ export const handleStartGame = async (req: Request, res: Response) => {
       badges: [],
     };
 
-    let visitorDataObject = (await visitor.fetchDataObject()) as Record<string, VisitorData> | null;
-    if (!visitorDataObject) {
-      visitorDataObject = {};
-    } 
-    visitorDataObject[sessionKey] = newSession;
-
-    await visitor.setDataObject(visitorDataObject, { lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true },
+    await visitor.updateDataObject(
+      { [sessionKey]: newSession },
+      { lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true },
       analytics: [
         {
           analyticName: "gameStarts",
@@ -95,22 +86,21 @@ export const handleStartGame = async (req: Request, res: Response) => {
         },
       ], }  );
 
+    await teleportPlayer(
+      urlSlug,
+      visitorId,
+      credentials,
+      "escape_room_A_pad"
+    );
     
     console.log("gameStarts", { visitorId, urlSlug, timestamp: now });
-
-    try {
-      await teleportVisitorToKeyAsset(world, visitor, "escape_room_start_spawn");
-    } catch (error) {
-      console.error("Error teleporting visitor to key asset:", error);
-    }
 
     // Return updated visitor data object in response
     return res.json({
       success: true,
       message: "Game started",
       visitorData: newSession,
-      worldConfig: worldDataObject?.[sceneDropId]?.config,
-      uniqueName: credentials.uniqueName,
+      worldConfig: mergedSceneConfig.config,
       sessionKey: sessionKey,
     });
   } 
