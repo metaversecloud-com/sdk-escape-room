@@ -65,7 +65,6 @@ export const handleStartGame = async (req: Request, res: Response) => {
         wrench: null,
         accessCard: null,
       },
-      badges: [],
     };
 
     await visitor.updateDataObject(

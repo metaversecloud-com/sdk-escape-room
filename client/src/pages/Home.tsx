@@ -4,7 +4,7 @@ import { GlobalDispatchContext, GlobalStateContext } from "@/context/GlobalConte
 import { ErrorType } from "@/context/types";
 import { backendAPI, setErrorMessage, setGameState} from "@/utils";
 
-type ScreenType = "start" | "exit" | "puzzle1" | "puzzle2" | "puzzle3" | "puzzle4" | "puzzle5" | "puzzle6" | "puzzle7" | "null";
+type ScreenType = "start" | "exit" | "leaderboard" | "puzzle1" | "puzzle2" | "puzzle3" | "puzzle4" | "puzzle5" | "puzzle6" | "puzzle7" | "null";
 
 const getScreenFromSearch = (): ScreenType => {
   const params = new URLSearchParams(window.location.search);
@@ -32,6 +32,11 @@ const getScreenFromSearch = (): ScreenType => {
     default:
       return "null";
   }
+};
+
+const getForceRefreshInventoryFromSearch = () => {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("forceRefreshInventory") === "true";
 };
 
 const StartGameCard = ({
@@ -86,7 +91,7 @@ const ExitGameCard = ({
     <div className="card-details">
       <h3 className="card-title">Exit Escape Room</h3>
       <p className="card-description p2">End your current session and return to the start area.</p>
-      <div className="card-actions mt-4">
+      <div className="card-actions">
         <button className="btn btn-outline" onClick={onExit} disabled={isLoading}>
           Exit Game
         </button>
@@ -104,12 +109,118 @@ const InfoCard = ({ title, message }: { title: string; message: string }) => (
   </div>
 );
 
+const StatusBar = ({
+  elapsed,
+  currentRoom,
+  onOpenInventory,
+  onExit,
+  isLoading,
+  hasStarted,
+}: {
+  elapsed: string;
+  currentRoom?: string | null;
+  onOpenInventory: () => void;
+  onExit: () => Promise<void>;
+  isLoading: boolean;
+  hasStarted: boolean;
+}) => (
+  <div className="card w-full">
+    <div className="card-details">
+      <div className="flex items-center justify-between">
+        <div className="flex-col">
+          <p className="p2">Timer: {elapsed}</p>
+          <p className="p2">Room: {currentRoom || "--"}</p>
+        </div>
+        <div className="card-actions">
+          <button className="btn btn-outline" onClick={onOpenInventory} disabled={!hasStarted}>
+            Inventory
+          </button>
+          <button className="btn btn-outline" onClick={onExit} disabled={isLoading}>
+            Exit
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const InventoryPanel = ({
+  onClose,
+  visitorData,
+}: {
+  onClose: () => void;
+  visitorData: any;
+}) => (
+  <div className="card w-full">
+    <div className="card-details">
+      <div className="card-actions">
+        <button className="btn btn-text" onClick={onClose}>
+          Close
+        </button>
+      </div>
+
+      <h3 className="card-title">Inventory</h3>
+
+      <div className="grid gap-4">
+        <div className="card">
+          <div className="card-details">
+            <h4 className="h4">Mission Items</h4>
+            <p className="p2">Fuse: {visitorData?.inventory?.fuse?.serial || "Not collected"}</p>
+            <p className="p2">Wrench: {visitorData?.inventory?.wrench?.serial || "Not collected"}</p>
+            <p className="p2">
+              Access Card: {visitorData?.inventory?.accessCard?.partialCode || "Not collected"}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const LeaderboardPanel = ({
+  leaderboard,
+}: {
+  leaderboard: | {profileId: string; name: string; completionTime: number; escaped: boolean}[] | undefined;
+}) => (
+  <div className="card w-full">
+    <div className="card-details">
+      <h3 className="card-title">Leaderboard</h3>
+      <p className="p2">Top Escape Room Times</p>
+      {!leaderboard || leaderboard.length === 0 ? (
+        <p className="p2">No entries yet. Be the first to escape!</p>
+      ) : (
+        <table className="table">
+          <thead>
+            <tr>
+              <th></th>
+              <th className="h5">Name</th>
+              <th className="h5">Time</th>
+              <th className="h5">Escaped</th>
+            </tr>
+          </thead>
+          <tbody>
+            {leaderboard.map((entry, index) => (
+              <tr key={entry.profileId}>
+                <td className="p2">{index + 1}</td>
+                <td className="p2">{entry.name}</td>
+                <td className="p2">{entry.completionTime}s</td>
+                <td className="p2">{entry.escaped ? "Yes" : "No"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  </div>
+);
+
 export const Home = () => {
   const dispatch = useContext(GlobalDispatchContext);
-  const {  hasInteractiveParams, visitorData } = useContext(GlobalStateContext);
+  const {  hasInteractiveParams, visitorData, badges, visitorInventory, leaderboard } = useContext(GlobalStateContext);
   const visitorSession = visitorData || null;
 
   const screen = useMemo(() => getScreenFromSearch(), []);
+  const forceRefreshInventory = useMemo(() => getForceRefreshInventoryFromSearch(), []);
   const [isLoading, setIsLoading] = useState(false);
   const [elapsed, setElapsed] = useState("--:--");
   const [showInventory, setShowInventory] = useState(false);
@@ -163,7 +274,7 @@ export const Home = () => {
     if (hasInteractiveParams) {
       setIsLoading(true);
       backendAPI
-        .get("/game-state")
+        .get("/game-state", { params: { forceRefreshInventory } })
         .then((response) => {
           setGameState(dispatch, response.data);
         })
@@ -174,44 +285,15 @@ export const Home = () => {
     }
   }, [hasInteractiveParams, dispatch]);
 
-  const StatusBar = () => (
-    <div
-      className="w-full"
-      style={{
-        background: "linear-gradient(135deg, #0f172a 0%, #0a1120 100%)",
-        border: "1px solid #24304a",
-        borderRadius: "16px",
-        padding: "12px 16px",
-        boxShadow: "0 8px 18px rgba(0,0,0,0.35)",
-      }}
-    >
-      <div className="flex flex-wrap gap-3 items-center justify-between">
-        <div className="flex gap-3 items-center">
-          <span className="p2" style={{ color: "#c7d0e5", fontWeight: 700 }}>Timer: {elapsed}</span>
-          <span className="p2" style={{ color: "#c7d0e5" }}>Room: {visitorSession?.currentRoom || "--"}</span>
+  if(screen === "leaderboard") {
+    return (
+      <PageContainer isLoading={isLoading} headerText="Leaderboard">
+        <div className="flex-col gap-4">
+          <LeaderboardPanel leaderboard={leaderboard} />
         </div>
-        <div className="flex gap-2">
-          <button
-            className="btn btn-outline"
-            style={{ borderColor: "#2f3c58" }}
-            onClick={() => setShowInventory(true)}
-            disabled={!hasStarted}
-          >
-            Inventory
-          </button>
-          <button
-            className="btn btn-outline"
-            style={{ borderColor: "#2f3c58" }}
-            onClick={exitGame}
-            disabled={isLoading}
-          >
-            Exit
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
+      </PageContainer>
+    );
+  }
   // Pre-start view
   if (!hasStarted) {
     return (
@@ -238,7 +320,20 @@ export const Home = () => {
   return (
     <PageContainer isLoading={isLoading} headerText="Escape Room">
       <div className="flex flex-col w-full items-start gap-4">
-        <StatusBar />
+        <StatusBar  
+          elapsed={elapsed}
+          currentRoom={visitorSession?.currentRoom}
+          onOpenInventory={() => setShowInventory(true)}
+          onExit={exitGame}
+          isLoading={isLoading}
+          hasStarted={hasStarted}
+        />
+        {showInventory && (
+          <InventoryPanel
+            onClose={() => setShowInventory(false)}
+            visitorData={visitorSession}
+          />
+        )}
 
         {screen === "exit" && (
           <ExitGameCard onExit={exitGame} isLoading={isLoading} />
@@ -250,14 +345,14 @@ export const Home = () => {
 
         {screen === "puzzle1" && (
           visitorData?.puzzlesCompleted?.[1] ? (
-            <InfoCard title="Puzzle Already Complete" message="You’ve already restored the power console." />
+            <InfoCard title="Puzzle Complete" message="You have restored the power console." />
           ) : (
             <RoomAPuzzle1 refreshGameState={refreshGameState} isCompleted={visitorData?.puzzlesCompleted?.[1]} />
           )
         )}
         {screen === "puzzle2" &&
           (visitorData?.puzzlesCompleted?.[2] ? (
-            <InfoCard title="Puzzle Already Complete" message="You have already restored the reactor switch sequence." />
+            <InfoCard title="Puzzle Complete" message="You have restored the reactor switch sequence." />
           ) : (
             <RoomAPuzzle2 refreshGameState={refreshGameState} />
           ))}
@@ -271,16 +366,19 @@ export const Home = () => {
         )}
 
         {screen === "puzzle5" && (visitorData?.puzzlesCompleted?.[5] ? (
-            <InfoCard title="Puzzle Already Complete" message="You have already restored the reactor switch sequence." />
+            <InfoCard title="Puzzle Complete" message="You have restored the reactor switch sequence." />
           ) : (
             <RoomCPuzzle1 refreshGameState={refreshGameState} />
           ))}
 
         {screen === "puzzle6" && (visitorData?.puzzlesCompleted?.[5] ? (
-            <InfoCard title="Puzzle Already Complete" message="You have already restored the reactor switch sequence." />
+            <InfoCard title="Puzzle Complete" message="You have restored the reactor switch sequence." />
           ) : (
             <RoomCPuzzle2 refreshGameState={refreshGameState} />
           ))}
+        {screen === "puzzle7" && (
+          <InfoCard title="Final Puzzle" message="This puzzle screen will be built next." />
+        )}
 
         {screen === null && (
           <InfoCard

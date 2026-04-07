@@ -1,7 +1,12 @@
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getDroppedAsset, getVisitor, World } from "@utils/index.js";
+import { errorHandler, getCredentials, getDroppedAsset, getVisitor, World, DroppedAsset } from "@utils/index.js";
 import { VisitorData, WorldDataObject } from "../../shared/types/VisitorData.js";
 import { checkSessionExpiration } from "@utils/checkSessionExpiration.js";
+import {
+  getBadges,
+  getVisitorBadges,
+  getLeaderboard,
+} from "@utils/index.js";
 //visitorgamedata
 //check what this is
 
@@ -31,7 +36,6 @@ const getDefaultVisitorData = (): VisitorData => {
         },
 
         completionTime: null,
-        badges: [],
       };
     };
 
@@ -54,10 +58,36 @@ export const handleGetGameState = async (req: Request, res: Response) => {
       console.log("No world config found");
     }
 
+    const sceneConfig = worldData?.[sceneDropId];
+    const keyAssetId = sceneConfig?.keyAssetId;
+
+    let leaderboard: ReturnType<typeof getLeaderboard> = [];
+
+    if (keyAssetId) {
+      const keyAsset = await DroppedAsset.create(keyAssetId, urlSlug, {
+        credentials: { ...credentials, assetId: keyAssetId },
+      });
+
+      await keyAsset.fetchDataObject();
+
+      const keyAssetDataObject = keyAsset.dataObject as {
+        leaderboard?: Record<string, string>;
+      } | null;
+
+      leaderboard = getLeaderboard(keyAssetDataObject?.leaderboard);
+    }
+
+    
     // Get visitor data to check if the user is an admin; this will allow us to conditionally return admin-only data in the response if needed
     const { visitor } = (await getVisitor(credentials, true));
 
     let visitorDataObject = (await visitor.fetchDataObject()) as Record<string, VisitorData> | null;
+
+    const forceRefreshInventory = req.query.forceRefreshInventory === "true";
+
+    await visitor.fetchInventoryItems();
+    const visitorInventory = getVisitorBadges(visitor.inventoryItems);
+    const badges = await getBadges(credentials, forceRefreshInventory);
 
     if (!visitorDataObject) {
       visitorDataObject = {
@@ -88,6 +118,10 @@ export const handleGetGameState = async (req: Request, res: Response) => {
       visitorData: visitorDataObject?.[sessionKey] || {},  // Defaults if missing
       worldConfig: worldData?.[sceneDropId]?.config || {},
       uniqueName: droppedAsset?.uniqueName || null,
+      badges,
+      visitorInventory,
+      leaderboard,
+      remainingMs,
     });
   } catch (error) {
     return errorHandler({

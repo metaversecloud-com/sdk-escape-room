@@ -23,6 +23,5 @@ export const getDefaultVisitorData = (): VisitorData => {
       accessCard: null,
     },
     completionTime: null,
-    badges: [],
   };
 };
