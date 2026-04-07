@@ -111,7 +111,15 @@ export const RoomAPuzzle1 = ({ refreshGameState, isCompleted }: RoomAPuzzle1Prop
       });
 
       setGameState(dispatch, response.data);
-      setSuccessMessage("Power console restored. Fuse awarded.");
+      const badges = response.data?.badgesAwarded as string[] | undefined;
+      const owned = response.data?.badgesOwned as string[] | undefined;
+      const failed = response.data?.badgesFailed as string[] | undefined;
+      const awardText = badges && badges.length ? ` Badge awarded: ${badges.join(", ")}.` : "";
+      const ownedText = (!badges || !badges.length) && owned && owned.length
+        ? ` Badge already earned: ${owned.join(", ")}.`
+        : "";
+      const failedText = failed && failed.length ? ` Badge could not be awarded (missing in inventory): ${failed.join(", ")}.` : "";
+      setSuccessMessage(`Power console restored. Fuse awarded.${awardText}${ownedText}${failedText}`);
       setCompleted(true);
       setShowCongrats(true);
       setTimeout(() => setShowCongrats(false), 3000);
@@ -226,7 +234,7 @@ export const RoomAPuzzle1 = ({ refreshGameState, isCompleted }: RoomAPuzzle1Prop
               >
                 <h4 className="h4" style={{ color: "#8cf0af", letterSpacing: "0.04em" }}>Correct Sequence</h4>
                 <p className="p2 mt-2" style={{ color: "#c7d0e5" }}>
-                  Fuse awarded. Securing console…
+                  {successMessage || "Fuse awarded. Securing console…"}
                 </p>
               </div>
             ) : (
@@ -240,7 +248,7 @@ export const RoomAPuzzle1 = ({ refreshGameState, isCompleted }: RoomAPuzzle1Prop
               >
                 <h4 className="h4" style={{ color: "#8cf0af", letterSpacing: "0.04em" }}>Puzzle Complete</h4>
                 <p className="p2 mt-2" style={{ color: "#c7d0e5" }}>
-                  Power console restored. Fuse added to your inventory.
+                  {successMessage || "Power console restored. Fuse added to your inventory."}
                 </p>
               </div>
             )}

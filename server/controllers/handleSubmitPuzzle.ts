@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getVisitor, World, getDroppedAsset, DroppedAsset } from "@utils/index.js";
+import { errorHandler, getCredentials, getVisitor, World, getDroppedAsset, DroppedAsset, awardBadge, getVisitorBadges } from "@utils/index.js";
+import { checkEscapeBadges } from "@utils/checkEscapeBadges.js";
 import { VisitorData, WorldConfig } from "../../shared/types/VisitorData.js";
 import { teleportPlayer } from "./index.js";
 import { checkSessionExpiration } from "@utils/checkSessionExpiration.js";
@@ -83,6 +84,9 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
 
     await visitor.fetchInventoryItems();
     const visitorInventory = getVisitorBadges(visitor.inventoryItems);
+    const badgesAwarded: string[] = [];
+    const badgesOwned: string[] = [];
+    const badgesFailed: string[] = [];
     if (
       game.currentRoom === "A" &&
       game.puzzlesCompleted[1] &&
@@ -90,12 +94,17 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     ) {
       game.currentRoom = "B";
 
-      await awardBadge({
+      const { awarded, alreadyOwned, failed } = await checkEscapeBadges({
         credentials,
         visitor,
         visitorInventory,
-        badgeName: "Power Restored",
+        game,
+        puzzleNumber,
+        badgeKey: "POWER_RESTORED",
       });
+      badgesAwarded.push(...awarded);
+      badgesOwned.push(...alreadyOwned);
+      badgesFailed.push(...failed);
 
       await teleportPlayer(
         urlSlug,
@@ -113,12 +122,17 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     ) {
       game.currentRoom = "C";
 
-      await awardBadge({
+      const { awarded, alreadyOwned, failed } = await checkEscapeBadges({
         credentials,
         visitor,
         visitorInventory,
-        badgeName: "Signal Recovered",
+        game,
+        puzzleNumber,
+        badgeKey: "SIGNAL_RECOVERED",
       });
+      badgesAwarded.push(...awarded);
+      badgesOwned.push(...alreadyOwned);
+      badgesFailed.push(...failed);
 
       await teleportPlayer(
         urlSlug,
@@ -128,12 +142,17 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       );
     }
     if(puzzleNumber === 6) {
-      await awardBadge({
+      const { awarded, alreadyOwned, failed } = await checkEscapeBadges({
         credentials,
         visitor,
         visitorInventory,
-        badgeName: "Airlock Engineer",
+        game,
+        puzzleNumber,
+        badgeKey: "AIRLOCK_ENGINEER",
       });
+      badgesAwarded.push(...awarded);
+      badgesOwned.push(...alreadyOwned);
+      badgesFailed.push(...failed);
     }
 
     if(puzzleNumber === 7) {
@@ -147,12 +166,17 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         game.completionTime = Math.floor((end - start) / 1000);
       }
 
-      await awardBadge({
+      const { awarded, alreadyOwned, failed } = await checkEscapeBadges({
         credentials,
         visitor,
         visitorInventory,
-        badgeName: "Station Survivor",
+        game,
+        puzzleNumber,
+        badgeKey: "STATION_SURVIVOR",
       });
+      badgesAwarded.push(...awarded);
+      badgesOwned.push(...alreadyOwned);
+      badgesFailed.push(...failed);
 
       // leaderboard write
       if (!keyAssetDataObject) {
@@ -200,6 +224,9 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       success: true,
       visitorData: game,
       worldConfig: worldConfig,
+      badgesAwarded,
+      badgesOwned,
+      badgesFailed,
     });
   } catch (error) {
     return errorHandler({

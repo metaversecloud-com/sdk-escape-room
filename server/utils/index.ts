@@ -12,4 +12,4 @@ export * from "./inventoryCache.js";
 export * from "./checkSessionExpiration.js";
 export * from "./getBadges.js";
 export * from "./getVisitorBadges.js"
-
+export * from "./checkEscapeBadges.js";
