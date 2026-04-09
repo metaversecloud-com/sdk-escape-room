@@ -428,14 +428,17 @@ export const Home = () => {
           )
         )}
 
-        {screen === "puzzle6" && (visitorData?.puzzlesCompleted?.[5] ? (
-            <InfoCard title="Puzzle Complete" message="You have restored the reactor switch sequence." />
+        {screen === "puzzle6" && (visitorData?.puzzlesCompleted?.[6] ? (
+            <InfoCard title="Puzzle Already Complete" message="You have already restored the reactor switch sequence." />
+          ) : (
+            <RoomCPuzzle1 refreshGameState={refreshGameState} />
+          ))}
+
+        {screen === "puzzle7" && (visitorData?.puzzlesCompleted?.[7] ? (
+            <InfoCard title="Puzzle Already Complete" message="You have already restored the reactor switch sequence." />
           ) : (
             <RoomCPuzzle2 refreshGameState={refreshGameState} />
           ))}
-        {screen === "puzzle7" && (
-          <InfoCard title="Final Puzzle" message="This puzzle screen will be built next." />
-        )}
 
         {screen === "null" && (
           <InfoCard

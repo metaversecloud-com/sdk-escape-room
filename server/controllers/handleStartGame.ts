@@ -26,10 +26,10 @@ export const handleStartGame = async (req: Request, res: Response) => {
     const mergedSceneConfig: WorldConfig = {
       keyAssetId: existingSceneConfig?.keyAssetId || assetId || "",
       config: {
-        startSpawnId: existingSceneConfig?.config?.startSpawnId || "escape_room_start_pad",
-        roomASpawnId: existingSceneConfig?.config?.roomASpawnId || "escape_room_A_pad",
-        roomBSpawnId: existingSceneConfig?.config?.roomBSpawnId || "escape_room_B_pad",
-        roomCSpawnId: existingSceneConfig?.config?.roomCSpawnId || "escape_room_C_pad",
+        startSpawnId: existingSceneConfig?.config?.startSpawnId || "EscapeRoom_start_teleport",
+        roomASpawnId: existingSceneConfig?.config?.roomASpawnId || "EscapeRoom_room1_teleport",
+        roomBSpawnId: existingSceneConfig?.config?.roomBSpawnId || "EscapeRoom_room2_teleport",
+        roomCSpawnId: existingSceneConfig?.config?.roomCSpawnId || "EscapeRoom_room3_teleport",
         maxSessionMinutes: existingSceneConfig?.config?.maxSessionMinutes ?? 30,
       },
     };
@@ -89,7 +89,7 @@ export const handleStartGame = async (req: Request, res: Response) => {
       urlSlug,
       visitorId,
       credentials,
-      "escape_room_A_pad"
+      "EscapeRoom_room1_teleport"
     );
     
     console.log("gameStarts", { visitorId, urlSlug, timestamp: now });

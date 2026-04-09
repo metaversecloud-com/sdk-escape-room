@@ -4,7 +4,6 @@ import { checkEscapeBadges } from "@utils/checkEscapeBadges.js";
 import { VisitorData, WorldConfig } from "../../shared/types/VisitorData.js";
 import { teleportPlayer } from "./index.js";
 import { checkSessionExpiration } from "@utils/checkSessionExpiration.js";
-import { awardBadge, getVisitorBadges } from "@utils/index.js";
 
 export const handleSubmitPuzzle = async (req: Request, res: Response) => {
   try {
@@ -110,7 +109,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         urlSlug,
         credentials.visitorId,
         credentials,
-        "escape_room_B_pad"
+        "EscapeRoom_room2_teleport"
       );
     }
 
@@ -138,7 +137,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         urlSlug,
         credentials.visitorId,
         credentials,
-        "escape_room_C_pad"
+        "EscapeRoom_room3_teleport"
       );
     }
     if(puzzleNumber === 6) {
@@ -200,7 +199,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         urlSlug,
         credentials.visitorId,
         credentials,
-        "escape_room_start_pad"
+        "EscapeRoom_start_teleport"
       );
 
     }
