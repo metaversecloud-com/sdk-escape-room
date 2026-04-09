@@ -95,6 +95,18 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
         puzzleNumber: 2,
       });
       setGameState(dispatch, response.data);
+      const badges = response.data?.badgesAwarded as string[] | undefined;
+      const owned = response.data?.badgesOwned as string[] | undefined;
+      const failed = response.data?.badgesFailed as string[] | undefined;
+      if (badges && badges.length) {
+        setSuccessMessage(`Reactor primed. Badge awarded: ${badges.join(", ")}.`);
+      } else if (owned && owned.length) {
+        setSuccessMessage(`Reactor primed. Badge already earned: ${owned.join(", ")}.`);
+      } else if (failed && failed.length) {
+        setSuccessMessage(`Reactor primed. Badge could not be awarded (missing in inventory): ${failed.join(", ")}.`);
+      } else {
+        setSuccessMessage("Reactor primed.");
+      }
       await refreshGameState();
     } catch (error) {
       setErrorMessage(dispatch, error as ErrorType);

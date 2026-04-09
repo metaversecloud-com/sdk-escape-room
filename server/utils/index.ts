@@ -6,5 +6,10 @@ export * from "./getVersion.js";
 export * from "./getVisitor.js";
 export * from "./standardizeError.js";
 export * from "./topiaInit.js";
-
-
+export * from "./awardBadge.js";
+export * from "./getLeaderboard.js";
+export * from "./inventoryCache.js";
+export * from "./checkSessionExpiration.js";
+export * from "./getBadges.js";
+export * from "./getVisitorBadges.js"
+export * from "./checkEscapeBadges.js";

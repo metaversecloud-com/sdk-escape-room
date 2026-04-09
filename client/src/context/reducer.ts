@@ -1,4 +1,4 @@
-import { ActionType, InitialState, SET_ERROR, SET_GAME_STATE, SET_HAS_INTERACTIVE_PARAMS, SET_ACTIVE_PUZZLE } from "./types";
+import { ActionType, InitialState, SET_ERROR, SET_GAME_STATE, SET_HAS_INTERACTIVE_PARAMS } from "./types";
 
 const globalReducer = (state: InitialState, action: ActionType) => {
   const { type, payload } = action;
@@ -19,11 +19,8 @@ const globalReducer = (state: InitialState, action: ActionType) => {
         sessionKey: payload.sessionKey,
         uniqueName: payload.uniqueName,
         error: "",
-      };
-    case SET_ACTIVE_PUZZLE:
-      return {
-        ...state,
-        activePuzzle: payload.activePuzzle || null,
+        badges: payload.badges,
+        visitorInventory: payload.visitorInventory,
       };
     case SET_ERROR:
       return {

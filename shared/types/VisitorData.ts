@@ -33,7 +33,6 @@ export interface VisitorData {
   
   // Completion
   completionTime: number | null;
-  badges: string[];
 }
 
 export interface WorldConfig {

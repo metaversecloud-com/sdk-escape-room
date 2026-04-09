@@ -13,6 +13,8 @@ export const getCredentials = (query: any): Credentials => {
       throw new Error("Provided public key does not match INTERACTIVE_KEY");
     }
 
+    const sceneDropId = (query.sceneDropId as string) || "default";
+
     return {
       assetId: query.assetId as string,
       displayName: query.displayName as string,
@@ -20,7 +22,7 @@ export const getCredentials = (query: any): Credentials => {
       interactiveNonce: query.interactiveNonce as string,
       interactivePublicKey: query.interactivePublicKey as string,
       profileId: query.profileId as string,
-      sceneDropId: query.sceneDropId as string,
+      sceneDropId,
       uniqueName: query.uniqueName as string,
       urlSlug: query.urlSlug as string,
       username: query.username as string,
