@@ -24,13 +24,13 @@ export const RoomBPuzzle1: React.FC<RoomBPuzzle1Props> = ({
   const [showHints, setShowHints] = useState(false);
 
   const MIN_VALUE = 0;
-  const MAX_VALUE = 5;
+  const MAX_VALUE = 10;
   
   // Correct values
   const CORRECT_VALUES = {
-    alpha: 4,
-    beta: 2,
-    gamma: 5
+    alpha: 7,
+    beta: 7,
+    gamma: 6 //named as omega station in the art
   };
 
   // Helper function to validate and update values
@@ -229,32 +229,32 @@ export const RoomBPuzzle1: React.FC<RoomBPuzzle1Props> = ({
     return '★'.repeat(safeValue) + '☆'.repeat(MAX_VALUE - safeValue);
   };
 
-  if (success) {
-    return (
-      <div className="satellite-success">
-        <div className="success-animation">
-          <div className="satellite-icon">🛰️</div>
-          <h2>Communication Signal Aligned!</h2>
-          <p>The satellites are now in perfect alignment. Communication restored!</p>
-          <div className="signal-bars">
-            <div className="signal-bar active"></div>
-            <div className="signal-bar active"></div>
-            <div className="signal-bar active"></div>
-            <div className="signal-bar active"></div>
-            <div className="signal-bar active"></div>
-          </div>
-          <button 
-            className="next-clue-button"
-            onClick={() => {
-              if (onSuccess) onSuccess();
-            }}
-          >
-            View Next Clue →
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // if (success) {
+  //   return (
+  //     <div className="satellite-success">
+  //       <div className="success-animation">
+  //         <div className="satellite-icon">🛰️</div>
+  //         <h2>Communication Signal Aligned!</h2>
+  //         <p>The satellites are now in perfect alignment. Communication restored!</p>
+  //         <div className="signal-bars">
+  //           <div className="signal-bar active"></div>
+  //           <div className="signal-bar active"></div>
+  //           <div className="signal-bar active"></div>
+  //           <div className="signal-bar active"></div>
+  //           <div className="signal-bar active"></div>
+  //         </div>
+  //         <button 
+  //           className="next-clue-button"
+  //           onClick={() => {
+  //             if (onSuccess) onSuccess();
+  //           }}
+  //         >
+  //           View Next Clue →
+  //         </button>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="satellite-alignment">
@@ -372,10 +372,10 @@ export const RoomBPuzzle1: React.FC<RoomBPuzzle1Props> = ({
           )}
         </div>
 
-        {/* Gamma Satellite Control */}
+        {/* Gamma Satellite Control (using omega title in game to match art)*/}
         <div className="control-group">
           <label>
-            <span className="satellite-name">Gamma Satellite</span>
+            <span className="satellite-name">Omega Satellite</span> 
             <span className="satellite-value">{gamma}</span>
           </label>
           <div className="slider-container">

@@ -1,4 +1,3 @@
-// client/src/utils/backendAPI.ts
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from "axios";
 import { InteractiveParams } from "../context/types";
 
@@ -31,46 +30,6 @@ const setupBackendAPI = async (interactiveParams: InteractiveParams) => {
       return config;
     });
   }
-};
-
-// Helper function to make API calls
-const api = {
-  post: async (url: string, data?: any) => {
-    const response = await backendAPI.post(url, data);
-    return response;
-  },
-  get: async (url: string) => {
-    const response = await backendAPI.get(url);
-    return response;
-  },
-};
-
-// Add these new methods
-export const gameAPI = {
-  startGame: async (worldId: string) => {
-    const response = await api.post('/start-game', { worldId });
-    return response.data;
-  },
-  
-  checkSession: async () => {
-    const response = await api.get('/check-session');
-    return response.data;
-  },
-  
-  exitGame: async () => {
-    const response = await api.post('/exit-game');
-    return response.data;
-  },
-  
-  updateProgress: async (puzzleId: number, solution: any) => {
-    const response = await api.post('/update-progress', { puzzleId, solution });
-    return response.data;
-  },
-  
-  getGameState: async () => {
-    const response = await api.get('/game-state');
-    return response.data;
-  },
 };
 
 export { backendAPI, setupBackendAPI };

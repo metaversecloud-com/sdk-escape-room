@@ -1,6 +1,6 @@
 // client/src/pages/Home.tsx
 import { useContext, useEffect, useMemo, useState } from "react";
-import { PageContainer, LockedState, RoomAPuzzle1, RoomAPuzzle2, RoomCPuzzle1, RoomCPuzzle2, RoomBPuzzle1 } from "@/components";
+import { PageContainer, LockedState, RoomAPuzzle1, RoomAPuzzle2, RoomCPuzzle1, RoomCPuzzle2, RoomBPuzzle1, RoomBPuzzle2, RoomBPuzzle3 } from "@/components";
 import { GlobalDispatchContext, GlobalStateContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
 import { backendAPI, setErrorMessage, setGameState} from "@/utils";
@@ -260,21 +260,70 @@ export const Home = () => {
               message="You must restore power in Room A before accessing the Comms Deck." 
             />
           ) : visitorData?.puzzlesCompleted?.[3] ? (
-            <InfoCard title="Puzzle Already Complete" message="Satellites are already aligned. Communications restored!" />
+            <InfoCard title="Puzzle Already Complete" message="Satellites are aligned. Communications restored!" />
           ) : (
             <RoomBPuzzle1 refreshGameState={refreshGameState} />
           )
         )}
 
         {screen === "puzzle4" && (
-          <InfoCard title="Room B Puzzle 2" message="This puzzle screen will be built next." />
+          (!visitorData?.puzzlesCompleted?.[1] || !visitorData?.puzzlesCompleted?.[2]) ? (
+            <LockedState 
+              title="Room B Locked" 
+              message="You must restore power in Room A before accessing the Comms Deck." 
+            />
+            ) : visitorData?.puzzlesCompleted?.[4] ? (
+              <div className="transmission-reconstruct-success">
+                <div className="success-animation">
+                  <h2>Transmission Reconstructed!</h2>
+                  <div className="reconstructed-message">
+                    <h3>The torn fragments reveal a scrambled transmission:</h3>
+                    <div className="scrambled-output">
+                      <div className="scrambled-line">EVLAV</div>
+                      <div className="scrambled-line">KLCO</div>
+                      <div className="scrambled-line">EURSSRPE</div>
+                    </div>
+                    <p className="next-clue">These scrambled words hold the key to the next puzzle...</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <RoomBPuzzle2 refreshGameState={refreshGameState} />
+            )
         )}
 
         {screen === "puzzle5" && (
-          visitorData?.puzzlesCompleted?.[5] ? (
-            <InfoCard title="Puzzle Already Complete" message="You have already completed this puzzle." />
+          // Check if Room B Puzzle 2 is complete (puzzle 4)
+          (!visitorData?.puzzlesCompleted?.[4]) ? (
+            <LockedState 
+              title="Puzzle Locked" 
+              message="You must reconstruct the transmission first before decoding it." 
+            />
+          ) : visitorData?.puzzlesCompleted?.[5] ? (
+            <div className="valve-decode-success">
+              <div className="success-animation">
+                <div className="success-icon">🔓</div>
+                <h2>Communications Stabilized!</h2>
+                <div className="access-card-message">
+                  <h3>🎫 ACCESS CARD ACQUIRED! 🎫</h3>
+                  <p>Access card added to your inventory!</p>
+                  <div className="partial-code">
+                    <p>Partial Airlock Code Revealed:</p>
+                    <div className="code-display">7 _ 3 _</div>
+                  </div>
+                </div>
+                <p className="clue-text">Check your inventory to see the Access Card. Proceed to Room C!</p>
+                <div className="signal-bars">
+                  <div className="signal-bar active"></div>
+                  <div className="signal-bar active"></div>
+                  <div className="signal-bar active"></div>
+                  <div className="signal-bar active"></div>
+                  <div className="signal-bar active"></div>
+                </div>
+              </div>
+            </div>
           ) : (
-            <RoomCPuzzle1 refreshGameState={refreshGameState} />
+            <RoomBPuzzle3 refreshGameState={refreshGameState} />
           )
         )}
 
