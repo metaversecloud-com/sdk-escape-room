@@ -432,17 +432,36 @@ export const Home = () => {
           )
         )}
 
-        {screen === "puzzle6" && (visitorData?.puzzlesCompleted?.[6] ? (
+        {screen === "puzzle6" && (
+          (!visitorData?.puzzlesCompleted?.[3] || !visitorData?.puzzlesCompleted?.[4] || !visitorData?.puzzlesCompleted?.[5]) ? (
+            <LockedState 
+              title="Room C Locked" 
+              message="You must complete Room B before accessing the reactor control room." 
+            />
+          ) : visitorData?.puzzlesCompleted?.[6] ? (
             <InfoCard title="Puzzle Already Complete" message="You have already restored the reactor switch sequence." />
           ) : (
             <RoomCPuzzle1 refreshGameState={refreshGameState} />
-          ))}
+          )
+        )}
 
-        {screen === "puzzle7" && (visitorData?.puzzlesCompleted?.[7] ? (
+        {screen === "puzzle7" && (
+          (!visitorData?.puzzlesCompleted?.[3] || !visitorData?.puzzlesCompleted?.[4] || !visitorData?.puzzlesCompleted?.[5]) ? (
+            <LockedState 
+              title="Room C Locked" 
+              message="You must complete Room B before accessing the final airlock sequence." 
+            />
+          ) : !visitorData?.puzzlesCompleted?.[6] ? (
+            <LockedState 
+              title="Final Puzzle Locked" 
+              message="Complete Puzzle 6 before attempting the final escape sequence." 
+            />
+          ) : visitorData?.puzzlesCompleted?.[7] ? (
             <InfoCard title="Puzzle Already Complete" message="You have already restored the reactor switch sequence." />
           ) : (
             <RoomCPuzzle2 refreshGameState={refreshGameState} />
-          ))}
+          )
+        )}
 
         {screen === "null" && (
           <InfoCard

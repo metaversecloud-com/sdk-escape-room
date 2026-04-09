@@ -112,7 +112,7 @@ export const RoomCPuzzle1 = ({ refreshGameState, isCompleted }: RoomCPuzzle1Prop
 
       try {
         const response = await backendAPI.post("/submit-puzzle", {
-          puzzleNumber: 1,
+          puzzleNumber: 6,
         });
 
         setGameState(dispatch, response.data);
