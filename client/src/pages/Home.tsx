@@ -28,6 +28,10 @@ const getScreenFromSearch = (): ScreenType => {
       return "puzzle5";
     case "puzzle6":
       return "puzzle6";
+    case "puzzle7":
+      return "puzzle7";
+    case "leaderboard":
+      return "leaderboard";
     default:
       return "null";
   }
@@ -443,7 +447,7 @@ export const Home = () => {
         {screen === "null" && (
           <InfoCard
             title="No Screen Selected"
-            message="This asset is missing a screen query parameter. Use ?screen=start, ?screen=exit, or ?screen=puzzle1 through ?screen=puzzle6."
+            message="This asset is missing a screen query parameter. Use ?screen=start, ?screen=exit, or ?screen=puzzle1 through ?screen=puzzle7."
           />
         )}
       </div>
