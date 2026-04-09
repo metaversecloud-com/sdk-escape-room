@@ -30,7 +30,7 @@ export const handleExitGame = async (req: Request, res: Response) => {
       urlSlug,
       visitorId,
       credentials,
-      "escape_room_start_pad"
+      "EscapeRoom_start_teleport"
     );
     return res.json({ success: true, visitorData: existingState, message: "Game exited. You can start a new game anytime." });
   } catch (error) {

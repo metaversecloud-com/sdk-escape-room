@@ -28,6 +28,10 @@ const getScreenFromSearch = (): ScreenType => {
       return "puzzle5";
     case "puzzle6":
       return "puzzle6";
+    case "puzzle7":
+      return "puzzle7";
+    case "leaderboard":
+      return "leaderboard";
     default:
       return "null";
   }
@@ -428,19 +432,22 @@ export const Home = () => {
           )
         )}
 
-        {screen === "puzzle6" && (visitorData?.puzzlesCompleted?.[5] ? (
-            <InfoCard title="Puzzle Complete" message="You have restored the reactor switch sequence." />
+        {screen === "puzzle6" && (visitorData?.puzzlesCompleted?.[6] ? (
+            <InfoCard title="Puzzle Already Complete" message="You have already restored the reactor switch sequence." />
+          ) : (
+            <RoomCPuzzle1 refreshGameState={refreshGameState} />
+          ))}
+
+        {screen === "puzzle7" && (visitorData?.puzzlesCompleted?.[7] ? (
+            <InfoCard title="Puzzle Already Complete" message="You have already restored the reactor switch sequence." />
           ) : (
             <RoomCPuzzle2 refreshGameState={refreshGameState} />
           ))}
-        {screen === "puzzle7" && (
-          <InfoCard title="Final Puzzle" message="This puzzle screen will be built next." />
-        )}
 
         {screen === "null" && (
           <InfoCard
             title="No Screen Selected"
-            message="This asset is missing a screen query parameter. Use ?screen=start, ?screen=exit, or ?screen=puzzle1 through ?screen=puzzle6."
+            message="This asset is missing a screen query parameter. Use ?screen=start, ?screen=exit, or ?screen=puzzle1 through ?screen=puzzle7."
           />
         )}
       </div>
