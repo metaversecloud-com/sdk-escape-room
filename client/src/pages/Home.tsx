@@ -1,10 +1,11 @@
+// client/src/pages/Home.tsx
 import { useContext, useEffect, useMemo, useState } from "react";
-import { PageContainer, LockedState, RoomAPuzzle1, RoomAPuzzle2, RoomCPuzzle1, RoomCPuzzle2 } from "@/components";
+import { PageContainer, LockedState, RoomAPuzzle1, RoomAPuzzle2, RoomCPuzzle1, RoomCPuzzle2, RoomBPuzzle1, RoomBPuzzle2, RoomBPuzzle3 } from "@/components";
 import { GlobalDispatchContext, GlobalStateContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
 import { backendAPI, setErrorMessage, setGameState} from "@/utils";
 
-type ScreenType = "start" | "exit" | "leaderboard" | "puzzle1" | "puzzle2" | "puzzle3" | "puzzle4" | "puzzle5" | "puzzle6" | "puzzle7" | "null";
+type ScreenType = "start" | "exit" | "leaderboard" | "puzzle1" | "puzzle2" | "puzzle3" | "puzzle4" | "puzzle5" | "puzzle6" | "null";
 
 const getScreenFromSearch = (): ScreenType => {
   const params = new URLSearchParams(window.location.search);
@@ -27,8 +28,6 @@ const getScreenFromSearch = (): ScreenType => {
       return "puzzle5";
     case "puzzle6":
       return "puzzle6";
-    case "puzzle7":
-      return "puzzle7";
     default:
       return "null";
   }
@@ -80,13 +79,7 @@ const StartGameCard = ({
   </div>
 );
 
-const ExitGameCard = ({ 
-  onExit, 
-  isLoading,
-}: { 
-  onExit: () => Promise<void>;
-  isLoading: boolean;
-}) => (
+const ExitGameCard = ({ onExit, isLoading }: { onExit: () => Promise<void>; isLoading: boolean }) => (
   <div className="card w-full">
     <div className="card-details">
       <h3 className="card-title">Exit Escape Room</h3>
@@ -305,7 +298,6 @@ export const Home = () => {
           {screen === "exit" && (
             <InfoCard title="No Active Session" message="Start the game first before using the exit terminal." />
           )}
-
           {screen !== "start" && screen !== "exit" && (
             <LockedState
               title="Game Not Started"
@@ -343,6 +335,7 @@ export const Home = () => {
           <InfoCard title="Game In Session" message="Your session is already running. Continue to the puzzle terminals." />
         )}
 
+        {/* Room A Puzzles */}
         {screen === "puzzle1" && (
           visitorData?.puzzlesCompleted?.[1] ? (
             <InfoCard title="Puzzle Complete" message="You have restored the power console." />
@@ -350,26 +343,90 @@ export const Home = () => {
             <RoomAPuzzle1 refreshGameState={refreshGameState} isCompleted={visitorData?.puzzlesCompleted?.[1]} />
           )
         )}
-        {screen === "puzzle2" &&
-          (visitorData?.puzzlesCompleted?.[2] ? (
-            <InfoCard title="Puzzle Complete" message="You have restored the reactor switch sequence." />
+        
+        {screen === "puzzle2" && (
+          visitorData?.puzzlesCompleted?.[2] ? (
+            <InfoCard title="Puzzle Already Complete" message="You have already restored the reactor switch sequence." />
           ) : (
             <RoomAPuzzle2 refreshGameState={refreshGameState} />
-          ))}
+          )
+        )}
 
+        {/* Room B Puzzle 1 - Your Satellite Alignment Puzzle */}
         {screen === "puzzle3" && (
-          <InfoCard title="Room B Puzzle 1" message="This puzzle screen will be built next." />
+          // Check if Room A is complete (puzzles 1 and 2)
+          (!visitorData?.puzzlesCompleted?.[1] || !visitorData?.puzzlesCompleted?.[2]) ? (
+            <LockedState 
+              title="Room B Locked" 
+              message="You must restore power in Room A before accessing the Comms Deck." 
+            />
+          ) : visitorData?.puzzlesCompleted?.[3] ? (
+            <InfoCard title="Puzzle Already Complete" message="Satellites are aligned. Communications restored!" />
+          ) : (
+            <RoomBPuzzle1 refreshGameState={refreshGameState} />
+          )
         )}
 
         {screen === "puzzle4" && (
-          <InfoCard title="Room B Puzzle 2" message="This puzzle screen will be built next." />
+          (!visitorData?.puzzlesCompleted?.[1] || !visitorData?.puzzlesCompleted?.[2]) ? (
+            <LockedState 
+              title="Room B Locked" 
+              message="You must restore power in Room A before accessing the Comms Deck." 
+            />
+            ) : visitorData?.puzzlesCompleted?.[4] ? (
+              <div className="transmission-reconstruct-success">
+                <div className="success-animation">
+                  <h2>Transmission Reconstructed!</h2>
+                  <div className="reconstructed-message">
+                    <h3>The torn fragments reveal a scrambled transmission:</h3>
+                    <div className="scrambled-output">
+                      <div className="scrambled-line">EVLAV</div>
+                      <div className="scrambled-line">KLCO</div>
+                      <div className="scrambled-line">EURSSRPE</div>
+                    </div>
+                    <p className="next-clue">These scrambled words hold the key to the next puzzle...</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <RoomBPuzzle2 refreshGameState={refreshGameState} />
+            )
         )}
 
-        {screen === "puzzle5" && (visitorData?.puzzlesCompleted?.[5] ? (
-            <InfoCard title="Puzzle Complete" message="You have restored the reactor switch sequence." />
+        {screen === "puzzle5" && (
+          // Check if Room B Puzzle 2 is complete (puzzle 4)
+          (!visitorData?.puzzlesCompleted?.[4]) ? (
+            <LockedState 
+              title="Puzzle Locked" 
+              message="You must reconstruct the transmission first before decoding it." 
+            />
+          ) : visitorData?.puzzlesCompleted?.[5] ? (
+            <div className="valve-decode-success">
+              <div className="success-animation">
+                <div className="success-icon">🔓</div>
+                <h2>Communications Stabilized!</h2>
+                <div className="access-card-message">
+                  <h3>🎫 ACCESS CARD ACQUIRED! 🎫</h3>
+                  <p>Access card added to your inventory!</p>
+                  <div className="partial-code">
+                    <p>Partial Airlock Code Revealed:</p>
+                    <div className="code-display">7 _ 3 _</div>
+                  </div>
+                </div>
+                <p className="clue-text">Check your inventory to see the Access Card. Proceed to Room C!</p>
+                <div className="signal-bars">
+                  <div className="signal-bar active"></div>
+                  <div className="signal-bar active"></div>
+                  <div className="signal-bar active"></div>
+                  <div className="signal-bar active"></div>
+                  <div className="signal-bar active"></div>
+                </div>
+              </div>
+            </div>
           ) : (
-            <RoomCPuzzle1 refreshGameState={refreshGameState} />
-          ))}
+            <RoomBPuzzle3 refreshGameState={refreshGameState} />
+          )
+        )}
 
         {screen === "puzzle6" && (visitorData?.puzzlesCompleted?.[5] ? (
             <InfoCard title="Puzzle Complete" message="You have restored the reactor switch sequence." />
@@ -380,7 +437,7 @@ export const Home = () => {
           <InfoCard title="Final Puzzle" message="This puzzle screen will be built next." />
         )}
 
-        {screen === null && (
+        {screen === "null" && (
           <InfoCard
             title="No Screen Selected"
             message="This asset is missing a screen query parameter. Use ?screen=start, ?screen=exit, or ?screen=puzzle1 through ?screen=puzzle6."

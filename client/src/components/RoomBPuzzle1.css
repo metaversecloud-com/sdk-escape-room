@@ -1,0 +1,344 @@
+/* PuzzleSatelliteAlignment.css */
+.satellite-alignment {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+  border-radius: 20px;
+  color: white;
+  font-family: 'Arial', sans-serif;
+}
+
+.puzzle-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.puzzle-header h2 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  color: #ffd700;
+}
+
+.hint-toggle {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: all 0.3s;
+}
+
+.hint-toggle:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+.constellation-reference {
+  background: rgba(0,0,0,0.5);
+  border-radius: 15px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  border: 1px solid rgba(255,215,0,0.3);
+}
+
+.constellation-reference h3 {
+  text-align: center;
+  color: #ffd700;
+  margin-bottom: 1.5rem;
+}
+
+.constellation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.constellation-card {
+  background: rgba(255,255,255,0.05);
+  padding: 1rem;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.constellation-card h4 {
+  color: #ffd700;
+  margin-bottom: 1rem;
+}
+
+.star-pattern {
+  font-size: 1.5rem;
+}
+
+.stars {
+  font-size: 1.8rem;
+  letter-spacing: 5px;
+}
+
+.constellation-name {
+  font-size: 0.9rem;
+  color: #aaa;
+  margin: 0.5rem 0;
+}
+
+.star-count {
+  font-size: 0.9rem;
+  color: #ffd700;
+}
+
+.satellite-controls {
+  margin: 2rem 0;
+}
+
+.control-group {
+  background: rgba(255,255,255,0.05);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.control-group label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.satellite-name {
+  color: #ffd700;
+}
+
+.satellite-value {
+  color: #4caf50;
+  font-size: 1.5rem;
+}
+
+.slider-container {
+  margin-bottom: 1rem;
+}
+
+.slider {
+  width: 100%;
+  height: 8px;
+  border-radius: 5px;
+  background: #3a3f5e;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffd700;
+  cursor: pointer;
+}
+
+.star-display {
+  text-align: center;
+  margin-top: 0.5rem;
+  font-size: 1.2rem;
+  letter-spacing: 2px;
+}
+
+.numeric-controls {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.numeric-controls button {
+  background: #2a2f4e;
+  border: 1px solid #ffd700;
+  color: white;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: all 0.2s;
+}
+
+.numeric-controls button:hover:not(:disabled) {
+  background: #ffd700;
+  color: #0a0e27;
+}
+
+.number-input {
+  background: #2a2f4e;
+  border: 1px solid #ffd700;
+  color: white;
+  width: 60px;
+  text-align: center;
+  border-radius: 8px;
+  font-size: 1rem;
+  padding: 0.5rem;
+}
+
+.error-message {
+  background: rgba(244, 67, 54, 0.2);
+  border: 1px solid #f44336;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+  text-align: center;
+  color: #ff6b6b;
+}
+
+.puzzle-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.reset-button, .submit-button {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.reset-button {
+  background: #4a4f6e;
+  color: white;
+}
+
+.reset-button:hover:not(:disabled) {
+  background: #5a5f7e;
+}
+
+.submit-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.submit-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.submit-button:disabled, .reset-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Success Animation Styles */
+.satellite-success {
+  text-align: center;
+  padding: 3rem;
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+  border-radius: 20px;
+  animation: pulse 0.5s ease-in-out;
+}
+
+.success-animation {
+  animation: slideUp 0.5s ease-out;
+}
+
+.satellite-icon {
+  font-size: 4rem;
+  animation: bounce 1s infinite;
+}
+
+.signal-bars {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin: 2rem 0;
+}
+
+.signal-bar {
+  width: 10px;
+  height: 30px;
+  background: #333;
+  border-radius: 3px;
+  animation: signalRise 0.5s ease-out forwards;
+}
+
+.signal-bar.active {
+  background: #4caf50;
+}
+
+.signal-bar:nth-child(1) { animation-delay: 0.1s; }
+.signal-bar:nth-child(2) { animation-delay: 0.2s; }
+.signal-bar:nth-child(3) { animation-delay: 0.3s; }
+.signal-bar:nth-child(4) { animation-delay: 0.4s; }
+.signal-bar:nth-child(5) { animation-delay: 0.5s; }
+
+.next-clue-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  margin-top: 2rem;
+  transition: transform 0.3s;
+}
+
+.next-clue-button:hover {
+  transform: translateY(-2px);
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes signalRise {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: 30px;
+    opacity: 1;
+  }
+}
+
+/* Add to your existing CSS file */
+.input-error-message {
+  color: #ff6b6b;
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  text-align: center;
+  background: rgba(244, 67, 54, 0.1);
+  padding: 0.25rem;
+  border-radius: 4px;
+}
+
+.numeric-controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #1a1f3a;
+}
+
+.numeric-controls button:disabled:hover {
+  transform: none;
+  background: #1a1f3a;
+}

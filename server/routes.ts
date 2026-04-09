@@ -7,7 +7,6 @@ import {
   handleTeleportPlayer,
   handleSubmitPuzzle,
 } from "./controllers/index.js";
-import { getVersion } from "@utils/getVersion.js";
 
 const router = express.Router();
 const SERVER_START_DATE = new Date();
@@ -38,3 +37,4 @@ router.post("/session/check", handleCheckSession);
 router.post("/exit", handleExitGame);
 
 export default router;
+
