@@ -169,13 +169,13 @@ export const RoomBPuzzle2: React.FC<RoomBPuzzle2Props> = ({
     setIsSubmitting(false);
   };
 
-  // Auto-solve hint (for testing/accessibility)
-  const handleAutoSolve = () => {
-    const solvedPieces = [...pieces].sort((a, b) => a.correctPosition - b.correctPosition);
-    setPieces(solvedPieces);
-    setSelectedPiece(null);
-    setMessage("✅ The transmission is fully reconstructed! Click 'Submit' to decode the message.");
-  };
+  // // Auto-solve hint (for testing/accessibility)
+  // const handleAutoSolve = () => {
+  //   const solvedPieces = [...pieces].sort((a, b) => a.correctPosition - b.correctPosition);
+  //   setPieces(solvedPieces);
+  //   setSelectedPiece(null);
+  //   setMessage("✅ The transmission is fully reconstructed! Click 'Submit' to decode the message.");
+  // };
 
   // if (success && showReconstructedMessage) {
   //   return (
@@ -209,13 +209,13 @@ export const RoomBPuzzle2: React.FC<RoomBPuzzle2Props> = ({
       <div className="puzzle-header">
         <h2>📄 Reconstruct the Transmission 📄</h2>
         <p>Piece together the torn fragments to reveal the hidden message.</p>
-        <button 
+        {/* <button 
           className="hint-button"
           onClick={handleAutoSolve}
           disabled={isSubmitting}
         >
           🔧 Auto-Solve (Test)
-        </button>
+        </button> */}
       </div>
 
       <div className="puzzle-instructions">

@@ -261,15 +261,15 @@ export const RoomBPuzzle1: React.FC<RoomBPuzzle1Props> = ({
       <div className="puzzle-header">
         <h2>Satellite Alignment System</h2>
         <p>Align the communication satellites to restore the signal.</p>
-        <button 
+        {/* <button 
           className="hint-toggle"
           onClick={() => setShowHints(!showHints)}
         >
           {showHints ? 'Hide' : 'Show'} Constellation Reference
-        </button>
+        </button> */}
       </div>
 
-      {showHints && (
+      {/* {showHints && (
         <div className="constellation-reference">
           <h3>Constellation References</h3>
           <div className="constellation-grid">
@@ -299,7 +299,7 @@ export const RoomBPuzzle1: React.FC<RoomBPuzzle1Props> = ({
             </div>
           </div>
         </div>
-      )}
+      )} */}
 
       <div className="satellite-controls">
         {/* Alpha Satellite Control */}
