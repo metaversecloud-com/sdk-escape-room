@@ -984,19 +984,36 @@ export const Home = () => {
           )
         )}
 
-        {screen === "puzzle6" && (visitorData?.puzzlesCompleted?.[6] ? (
+        {screen === "puzzle6" && (
+          (!visitorData?.puzzlesCompleted?.[3] || !visitorData?.puzzlesCompleted?.[4] || !visitorData?.puzzlesCompleted?.[5]) ? (
+            <LockedState 
+              title="Room C Locked" 
+              message="You must complete Room B before accessing the reactor control room." 
+            />
+          ) : visitorData?.puzzlesCompleted?.[6] ? (
             <Puzzle6CompleteCard />
           ) : (
             <RoomCPuzzle1 refreshGameState={refreshGameState} />
-          ))}
+          )
+        )}
 
-        {screen === "puzzle7" && (visitorData?.puzzlesCompleted?.[7] ? (
+        {screen === "puzzle7" && (
+          (!visitorData?.puzzlesCompleted?.[3] || !visitorData?.puzzlesCompleted?.[4] || !visitorData?.puzzlesCompleted?.[5]) ? (
+            <LockedState 
+              title="Room C Locked" 
+              message="You must complete Room B before accessing the final airlock sequence." 
+            />
+          ) : !visitorData?.puzzlesCompleted?.[6] ? (
+            <LockedState 
+              title="Final Puzzle Locked" 
+              message="Complete Puzzle 6 before attempting the final escape sequence." 
+            />
+          ) : visitorData?.puzzlesCompleted?.[7] ? (
             <ExitCongratsCard completionTime={visitorSession?.completionTime} leaderboard={leaderboard} />
-          ) : visitorData?.puzzlesCompleted?.[6] ? (
+          ) :  (
             <RoomCPuzzle2 refreshGameState={refreshGameState} />
-          ) : (
-            <LockedState title="Puzzle Locked" message="Restore the airlock circuit first (Puzzle 6) before attempting the override code." />
-          ))}
+          )
+        )}
 
         {screen === "null" && (
           <InfoCard
