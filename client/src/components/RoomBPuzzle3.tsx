@@ -286,7 +286,7 @@ export const RoomBPuzzle3: React.FC<RoomBPuzzle3Props> = ({
       {/* System Stabilization Order - Only shown after words are unscrambled */}
       {wordsUnscrambled && (
         <>
-          {/* <div className="stabilization-order">
+          {<div className="stabilization-order">
             <h3>📋 System Stabilization Order</h3>
             <div className="order-letters">
               {SYSTEM_ORDER.map((item) => (
@@ -296,7 +296,7 @@ export const RoomBPuzzle3: React.FC<RoomBPuzzle3Props> = ({
                 </div>
               ))}
             </div>
-          </div> */}
+          </div> }
 
           {/* Valve Panel */}
           <div className="valves-section">
