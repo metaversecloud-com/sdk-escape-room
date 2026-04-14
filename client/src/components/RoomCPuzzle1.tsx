@@ -55,6 +55,7 @@ export const RoomCPuzzle1 = ({ refreshGameState, isCompleted }: RoomCPuzzle1Prop
     }, [isCompleted]);
 
   const handleNodeClick = (nodeId: string) => {
+    if (completed) return;
     if (!selectedNode) {
       setSelectedNode(nodeId);
     } else if (selectedNode === nodeId) {
@@ -86,6 +87,7 @@ export const RoomCPuzzle1 = ({ refreshGameState, isCompleted }: RoomCPuzzle1Prop
   };
 
   const handleSubmit = async () => {
+    if (completed) return;
       const normalizeAndSort = (conns: Connection[]) =>
       conns
         .map(normalizeConnection)
@@ -112,7 +114,7 @@ export const RoomCPuzzle1 = ({ refreshGameState, isCompleted }: RoomCPuzzle1Prop
 
       try {
         const response = await backendAPI.post("/submit-puzzle", {
-          puzzleNumber: 1,
+          puzzleNumber: 6,
         });
 
         setGameState(dispatch, response.data);
@@ -128,92 +130,106 @@ export const RoomCPuzzle1 = ({ refreshGameState, isCompleted }: RoomCPuzzle1Prop
   return (
     <div className="w-full h-full flex items-center justify-center bg-black">
       <div className="w-[600px] max-w-full p-4 bg-zinc-900 border-4 border-zinc-700 rounded-xl shadow-2xl">
-        
-        <h2 className="text-xl font-bold text-white text-center"
-        style={{ textShadow: "0 0 8px rgba(34,197,94,0.7)" }}>
-          Restore Circuit
-        </h2>
-        <p className="text-white text-sm text-center mb-4">
-          Connect all nodes correctly
-        </p>
+        {completed ? (
+          <div className="text-center text-white space-y-2">
+            <h2 className="text-2xl font-bold" style={{ textShadow: "0 0 8px rgba(34,197,94,0.7)" }}>
+              Circuit Restored
+            </h2>
+            <p className="text-sm">Proceed to the final override.</p>
+          </div>
+        ) : (
+          <>
+            <h2 className="text-xl font-bold text-white text-center"
+            style={{ textShadow: "0 0 8px rgba(34,197,94,0.7)" }}>
+              Restore Circuit
+            </h2>
+            <p className="text-white text-sm text-center mb-4">
+              Connect all nodes correctly
+            </p>
+          </>
+        )}
 
         {/* PANEL */}
-        <div className="relative w-full h-[400px] bg-zinc-800 rounded-lg border border-zinc-700 overflow-hidden">
-          
-          {/* NODES */}
-          {nodes.map(node => (
-            <div
-              key={node.id}
-              onClick={() => handleNodeClick(node.id)}
-              className={`absolute w-16 h-16 rounded-full flex items-center justify-center text-xs font-semibold text-center cursor-pointer transition-all
-                ${selectedNode === node.id 
-                  ? "bg-yellow-400 text-black scale-110 shadow-lg" 
-                  : "bg-zinc-600 hover:bg-zinc-500 text-white"}
-              `}
-              style={{
-                  left: `${node.x + OFFSET_X}%`,
-                  top: `${node.y}%`,
-                  transform: "translate(-50%, -50%)"
-                }}
-            >
-              {node.label}
-            </div>
-          ))}
-
-          {/* WIRES */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none">
-            {connections.map((conn, index) => {
-              const fromNode = nodes.find(n => n.id === conn.from)!;
-              const toNode = nodes.find(n => n.id === conn.to)!;
-
-              return (
-                <line
-                  key={index}
-                  x1={`${fromNode.x}%`}
-                  y1={`${fromNode.y}%`}
-                  x2={`${toNode.x}%`}
-                  y2={`${toNode.y}%`}
-                  stroke="#22c55e"
-                  strokeWidth="4"
-                  strokeLinecap="round"
+        {!completed && (
+          <>
+            <div className="relative w-full h-[400px] bg-zinc-800 rounded-lg border border-zinc-700 overflow-hidden">
+              
+              {/* NODES */}
+              {nodes.map(node => (
+                <div
+                  key={node.id}
+                  onClick={() => handleNodeClick(node.id)}
+                  className={`absolute w-16 h-16 rounded-full flex items-center justify-center text-xs font-semibold text-center cursor-pointer transition-all
+                    ${selectedNode === node.id 
+                      ? "bg-yellow-400 text-black scale-110 shadow-lg" 
+                      : "bg-zinc-600 hover:bg-zinc-500 text-white"}
+                  `}
                   style={{
-                    filter: "drop-shadow(0 0 6px #22c55e)"
-                  }}
-                />
-              );
-            })}
-          </svg>
-        </div>
+                      left: `${node.x + OFFSET_X}%`,
+                      top: `${node.y}%`,
+                      transform: "translate(-50%, -50%)"
+                    }}
+                >
+                  {node.label}
+                </div>
+              ))}
 
-        {/* BUTTON */}
-        <div className="flex justify-center mt-4">
-          <button
-            onClick={handleSubmit}
-            disabled={(connections.length === 0)}
-            className={`px-6 py-2 rounded-lg font-semibold transition-all
-              ${connections.length === 0
-                ? "bg-gray-600 cursor-not-allowed"
-                : "bg-green-500 hover:bg-green-400 text-black"}
-              ${showFailure ? "animate-pulse bg-red-500" : ""}
-            `}
-          >
-            Power On
-          </button>
-        </div>
+              {/* WIRES */}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                {connections.map((conn, index) => {
+                  const fromNode = nodes.find(n => n.id === conn.from)!;
+                  const toNode = nodes.find(n => n.id === conn.to)!;
 
-        {/* STATUS */}
-        <div className="text-center mt-3 text-sm">
-          {isCorrect === false && (
-            <p className="text-white animate-pulse">
-              Incorrect... resetting
-            </p>
-          )}
-          {isCorrect === true && (
-            <p className="text-white">
-              System Online ✔
-            </p>
-          )}
-        </div>
+                  return (
+                    <line
+                      key={index}
+                      x1={`${fromNode.x}%`}
+                      y1={`${fromNode.y}%`}
+                      x2={`${toNode.x}%`}
+                      y2={`${toNode.y}%`}
+                      stroke="#22c55e"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                      style={{
+                        filter: "drop-shadow(0 0 6px #22c55e)"
+                      }}
+                    />
+                  );
+                })}
+              </svg>
+            </div>
+
+            {/* BUTTON */}
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={handleSubmit}
+                disabled={(connections.length === 0)}
+                className={`px-6 py-2 rounded-lg font-semibold transition-all
+                  ${connections.length === 0
+                    ? "bg-gray-600 cursor-not-allowed"
+                    : "bg-green-500 hover:bg-green-400 text-black"}
+                  ${showFailure ? "animate-pulse bg-red-500" : ""}
+                `}
+              >
+                Power On
+              </button>
+            </div>
+
+            {/* STATUS */}
+            <div className="text-center mt-3 text-sm">
+              {isCorrect === false && (
+                <p className="text-white animate-pulse">
+                  Incorrect... resetting
+                </p>
+              )}
+              {isCorrect === true && (
+                <p className="text-white">
+                  System Online ✔
+                </p>
+              )}
+            </div>
+          </>
+        )}
 
       </div>
     </div>

@@ -54,6 +54,7 @@ export type BadgeType = {
 
 export type VisitorInventoryType = {
   badges: { [name: string]: BadgeType };
+  items?: InventoryItemSummary[];
 };
 
 export type LeaderboardRowType = {
@@ -61,4 +62,14 @@ export type LeaderboardRowType = {
   name: string;
   completionTime: number;
   escaped: boolean;
+};
+
+export type InventoryItemSummary = {
+  id: string;
+  name?: string;
+  type?: string;
+  imageUrl?: string | null;
+  description?: string;
+  metadata?: Record<string, any>;
+  status?: string;
 };

@@ -1,4 +1,18 @@
-import { InventoryItemId, InventoryItem } from "@shared/types/VisitorData";
+import { VisitorData} from "@shared/types/VisitorData";
+
+var inventory: VisitorData["inventory"] = {
+  fuse: null,
+  wrench: null,
+  accessCard: null,
+};
+
+export interface InventoryItem {
+  id: string;
+  serial?: string;
+  partialCode?: string;
+}
+
+export type InventoryItemId = "fuse" | "wrench" | "accessCard";
 
 type Props = {
   items?: Record<string, InventoryItem>;

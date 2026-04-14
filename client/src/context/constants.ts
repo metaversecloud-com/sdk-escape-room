@@ -8,7 +8,7 @@ export const initialState = {
   worldConfig: undefined,
   leaderboard: [],
   badges: {},
-  visitorInventory: { badges: {} },
+  visitorInventory: { badges: {}, items: [] },
   sessionKey: "",
   uniqueName: "",
 };

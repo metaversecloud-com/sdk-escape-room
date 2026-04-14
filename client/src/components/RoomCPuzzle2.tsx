@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import { PageContainer } from "@/components";
 import { GlobalDispatchContext, GlobalStateContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
@@ -18,6 +18,14 @@ export const RoomCPuzzle2 = ({ refreshGameState, isCompleted }: RoomCPuzzle2Prop
   const [feedback, setFeedback] = useState("");
   const [isSolved, setIsSolved] = useState(isCompleted ?? false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // keep local solved state in sync when coming in already completed
+  useEffect(() => {
+    if (isCompleted) {
+      setIsSolved(true);
+      setFeedback("Code already entered. Airlock open.");
+    }
+  }, [isCompleted]);
 
   const handleSubmit = async () => {
     if (isSolved) {
@@ -39,7 +47,7 @@ export const RoomCPuzzle2 = ({ refreshGameState, isCompleted }: RoomCPuzzle2Prop
     setIsSubmitting(true);
     try {
       const response = await backendAPI.post("/submit-puzzle", {
-        puzzleNumber: 5,
+        puzzleNumber: 7,
       });
 
       setGameState(dispatch, response.data);

@@ -87,6 +87,15 @@ export const handleGetGameState = async (req: Request, res: Response) => {
 
     await visitor.fetchInventoryItems();
     const visitorInventory = getVisitorBadges(visitor.inventoryItems);
+    const inventoryItems = (visitor.inventoryItems || []).map((item: any) => ({
+      id: item.id,
+      name: item.name,
+      type: item.type,
+      imageUrl: item.image_url || item.image_path || null,
+      description: item.description,
+      metadata: item.metadata || {},
+      status: item.status,
+    }));
     const badges = await getBadges(credentials, forceRefreshInventory);
 
     if (!visitorDataObject) {
@@ -120,6 +129,7 @@ export const handleGetGameState = async (req: Request, res: Response) => {
       uniqueName: droppedAsset?.uniqueName || null,
       badges,
       visitorInventory,
+      inventoryItems,
       leaderboard,
       remainingMs,
     });

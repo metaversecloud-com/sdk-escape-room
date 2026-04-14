@@ -119,10 +119,10 @@ export const RoomAPuzzle1 = ({ refreshGameState, isCompleted }: RoomAPuzzle1Prop
         ? ` Badge already earned: ${owned.join(", ")}.`
         : "";
       const failedText = failed && failed.length ? ` Badge could not be awarded (missing in inventory): ${failed.join(", ")}.` : "";
-      setSuccessMessage(`Power console restored. Fuse awarded.${awardText}${ownedText}${failedText}`);
+      setSuccessMessage(`Electrical cabinet unlocked. Fuse (74A1) secured in your inventory.${awardText}${ownedText}${failedText}`);
       setCompleted(true);
       setShowCongrats(true);
-      setTimeout(() => setShowCongrats(false), 3000);
+      setTimeout(() => setShowCongrats(false), 2000);
       await refreshGameState();
     } catch (error) {
       setErrorMessage(dispatch, error as ErrorType);
@@ -144,7 +144,6 @@ export const RoomAPuzzle1 = ({ refreshGameState, isCompleted }: RoomAPuzzle1Prop
                 Set the three dials to the correct color sequence. Use the crew and reference panels to determine the correct sequence.
               </p>
             </div>
-            <span className="tag">Preview</span>
           </div>
           <div
             className="mt-4 p-4 rounded-2xl"
@@ -220,43 +219,69 @@ export const RoomAPuzzle1 = ({ refreshGameState, isCompleted }: RoomAPuzzle1Prop
                   </p>
                 </div>
 
-                {localError && <p className="p2 mt-2 text-red-500">{localError}</p>}
-                {successMessage && <p className="p2 mt-2 text-green-500">{successMessage}</p>}
-              </>
-            ) : showCongrats ? (
-              <div
-                className="rounded-2xl p-6 mt-4 text-center"
-                style={{
-                  background: "linear-gradient(135deg, #123224 0%, #0d241a 100%)",
-                  border: "1px solid #65d08c",
-                  boxShadow: "0 12px 26px rgba(101,208,140,0.25)",
-                }}
-              >
-                <h4 className="h4" style={{ color: "#8cf0af", letterSpacing: "0.04em" }}>Correct Sequence</h4>
-                <p className="p2 mt-2" style={{ color: "#c7d0e5" }}>
-                  {successMessage || "Fuse awarded. Securing console…"}
+            {localError && <p className="p2 mt-2 text-red-500">{localError}</p>}
+            {successMessage && <p className="p2 mt-2 text-green-500">{successMessage}</p>}
+          </>
+        ) : (
+          <div
+            className="rounded-2xl p-6 mt-4"
+            style={{
+              background: "linear-gradient(135deg, #0f1f34 0%, #0c182b 100%)",
+              border: "1px solid rgba(99, 211, 146, 0.65)",
+              boxShadow: showCongrats
+                ? "0 0 28px rgba(99,211,146,0.35), 0 16px 38px rgba(0,0,0,0.45)"
+                : "0 12px 26px rgba(99,211,146,0.22)",
+            }}
+          >
+            <div className="flex flex-col md:flex-row items-center gap-4">
+              <div className="flex-1">
+                <p className="p2 uppercase" style={{ color: "#8cf0af", letterSpacing: "0.08em", marginBottom: 6 }}>
+                  Power Bay Secure
                 </p>
-              </div>
-            ) : (
-              <div
-                className="rounded-2xl p-6 mt-4 text-center"
-                style={{
-                  background: "linear-gradient(135deg, #123224 0%, #0d241a 100%)",
-                  border: "1px solid #65d08c",
-                  boxShadow: "0 12px 26px rgba(101,208,140,0.25)",
-                }}
-              >
-                <h4 className="h4" style={{ color: "#8cf0af", letterSpacing: "0.04em" }}>Puzzle Complete</h4>
-                <p className="p2 mt-2" style={{ color: "#c7d0e5" }}>
-                  {successMessage || "Power console restored. Fuse added to your inventory."}
+                <h4 className="h4" style={{ color: "#f6b300", letterSpacing: "0.04em" }}>
+                  Electrical cabinet unlocked
+                </h4>
+                <p className="p2 mt-2" style={{ color: "#dbe8ff" }}>
+                  Congratulations. Fuse (74A1) added to your inventory. Proceed to the next objective.
                 </p>
+                {successMessage && (
+                  <p className="p2 mt-1" style={{ color: "#8cf0af" }}>
+                    {successMessage}
+                  </p>
+                )}
               </div>
-            )}
+              <div style={{ minWidth: 180 }} className="flex justify-center">
+                <FuseDisplay />
+              </div>
+            </div>
+          </div>
+        )}
           </div>
         </div>
       </div>
     </div>
   );
 };
+
+const FuseDisplay = () => (
+  <div
+    className="rounded-xl p-4 border"
+    style={{
+      background: "radial-gradient(circle at 40% 30%, rgba(108, 210, 255, 0.12), transparent 50%), rgba(14,24,44,0.9)",
+      borderColor: "rgba(108, 240, 190, 0.45)",
+      boxShadow: "0 10px 22px rgba(108, 240, 190, 0.18)",
+    }}
+  >
+    <svg width="160" height="120" viewBox="0 0 160 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="20" y="50" width="120" height="20" rx="6" fill="#c7d0e5" stroke="#8fa0bc" strokeWidth="3" />
+      <rect x="40" y="42" width="80" height="36" rx="10" fill="#e7edf7" stroke="#9bb2d1" strokeWidth="3" />
+      <rect x="55" y="46" width="50" height="28" rx="6" fill="#f8fbff" stroke="#c2d2e8" strokeWidth="2" />
+      <path d="M60 60h8l8-8 8 16 8-8h8" stroke="#7c8aa8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="15" y="42" width="20" height="36" rx="8" fill="#d5deed" stroke="#9fb3ce" strokeWidth="3" />
+      <rect x="125" y="42" width="20" height="36" rx="8" fill="#d5deed" stroke="#9fb3ce" strokeWidth="3" />
+      <text x="80" y="105" textAnchor="middle" fontFamily="Inter, system-ui, sans-serif" fontSize="16" fontWeight="800" fill="#f6b300">74A1</text>
+    </svg>
+  </div>
+);
 
 export default RoomAPuzzle1;

@@ -4,6 +4,7 @@ import { checkEscapeBadges } from "@utils/checkEscapeBadges.js";
 import { VisitorData, WorldConfig } from "../../shared/types/VisitorData.js";
 import { teleportPlayer } from "./index.js";
 import { checkSessionExpiration } from "@utils/checkSessionExpiration.js";
+import { getCachedInventoryItems } from "@utils/inventoryCache.js";
 
 export const handleSubmitPuzzle = async (req: Request, res: Response) => {
   try {
@@ -37,10 +38,9 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
 
     await keyAsset.fetchDataObject();
 
-    let keyAssetDataObject = keyAsset.dataObject as {
+    const keyAssetDataObject = keyAsset.dataObject as {
       leaderboard?: Record<string, string>;
     } | null;
-
     
     const expirationResult = await checkSessionExpiration({
       credentials,
@@ -60,18 +60,31 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
 
     game.puzzlesCompleted[puzzleNumber] = true;
 
+    const grantItemIfAvailable = async (itemName: string) => {
+      const inventoryItems = await getCachedInventoryItems({ credentials });
+      const match = inventoryItems.find(
+        (item) => item.name?.toLowerCase() === itemName.toLowerCase() && item.type === "ITEM"
+      );
+      if (match) {
+        await visitor.grantInventoryItem(match, 1);
+      }
+      return match;
+    };
+
     if (puzzleNumber === 1 && !game.inventory.fuse) {
       game.inventory.fuse = {
         id: "fuse",
-        serial: "74",
+        serial: "74A1",
       };
+      await grantItemIfAvailable("Fuse");
     }
 
     if (puzzleNumber === 2 && !game.inventory.wrench) {
       game.inventory.wrench = {
         id: "wrench",
-        serial: "36",
+        serial: "26B5",
       };
+      await grantItemIfAvailable("Wrench");
     }
 
     if (puzzleNumber === 5 && !game.inventory.accessCard) {
@@ -79,6 +92,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         id: "accessCard",
         partialCode: "7 _ 3 _",
       };
+      await grantItemIfAvailable("Access Card");
     }
 
     await visitor.fetchInventoryItems();
@@ -141,6 +155,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       );
     }
     if(puzzleNumber === 6) {
+      game.puzzlesCompleted[6] = true;
       const { awarded, alreadyOwned, failed } = await checkEscapeBadges({
         credentials,
         visitor,
@@ -155,6 +170,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     }
 
     if(puzzleNumber === 7) {
+      game.puzzlesCompleted[7] = true;
       game.escaped = true;
       game.sessionActive = false;
       game.endTime = new Date().toISOString();
@@ -177,23 +193,19 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       badgesOwned.push(...alreadyOwned);
       badgesFailed.push(...failed);
 
-      // leaderboard write
-      if (!keyAssetDataObject) {
-        keyAssetDataObject = {};
-      }
-
-      if (!keyAssetDataObject.leaderboard) {
-        keyAssetDataObject.leaderboard = {};
-      }
-
-      keyAssetDataObject.leaderboard[profileId] =
-        `${displayName}|${game.completionTime ?? 0}|${game.escaped}`;
+      // leaderboard write (per-player lock, append unique entry)
+      const existingLeaderboard = keyAssetDataObject?.leaderboard || {};
+      const entryKey = `${profileId}-${Date.now()}`;
+      const playerEntry = `${displayName}|${game.completionTime ?? 0}`;
+      const updatedLeaderboard = {
+        ...existingLeaderboard,
+        [entryKey]: playerEntry,
+      };
 
       await keyAsset.updateDataObject(
-        { leaderboard: keyAssetDataObject.leaderboard },
-        {
-          lock: { lockId: `${sessionKey}-${Date.now()}-leaderboard`, releaseLock: true },
-        },);
+        { leaderboard: updatedLeaderboard },
+        { lock: { lockId: `leaderboard-${profileId}`, releaseLock: true } },
+      );
 
       await teleportPlayer(
         urlSlug,

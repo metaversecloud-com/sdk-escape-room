@@ -91,7 +91,7 @@ export const checkSessionExpiration = async ({
     urlSlug,
     visitorId,
     credentials,
-    "escape_room_start_pad",
+    "EscapeRoom_start_teleport",
   );
 
   return {

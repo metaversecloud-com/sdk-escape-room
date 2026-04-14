@@ -128,10 +128,7 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
                 Reactor Switch Array
               </h3>
               <p className="p2" style={{ color: "#9babc7" }}>
-                Reactor priming follows crew priority order. After all crew inputs, run the system check.
-              </p>
-              <p className="p2" style={{ color: "#9babc7" }}>
-                Flip the breaker switches in the correct sequence before the system lockout.
+                Reactor priming follows crew priority order. Translate crew priority to channel numbers, then run the remaining switch for the system check. Flip the breaker switches in the correct sequence before the system lockout.
               </p>
             </div>
             {timeLeft !== null && (

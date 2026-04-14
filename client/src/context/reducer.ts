@@ -20,7 +20,10 @@ const globalReducer = (state: InitialState, action: ActionType) => {
         uniqueName: payload.uniqueName,
         error: "",
         badges: payload.badges,
-        visitorInventory: payload.visitorInventory,
+        visitorInventory: {
+          badges: payload.visitorInventory?.badges || {},
+          items: (payload as any).inventoryItems || payload.visitorInventory?.items || [],
+        },
       };
     case SET_ERROR:
       return {

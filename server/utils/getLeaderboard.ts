@@ -14,13 +14,14 @@ export const getLeaderboard = (
 
   for (const profileId in leaderboardData) {
     const value = leaderboardData[profileId];
-    const [name, completionTime, escaped] = value.split("|");
+    const [name, completionTime] = value.split("|");
+    const baseProfileId = profileId.split("-")[0];
 
     entries.push({
-      profileId,
+      profileId: baseProfileId,
       name,
       completionTime: parseInt(completionTime || "0", 10) || 0,
-      escaped: escaped === "true",
+      escaped: true,
     });
   }
 
