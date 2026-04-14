@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { errorHandler, getCredentials, getVisitor, World } from "@utils/index.js";
 import { VisitorData } from "@shared/types/VisitorData.js";
-import { teleportPlayer } from "./handleTeleportPlayer";
+import { teleportPlayer } from "./handleTeleportPlayer.js";
 
 export const handleExitGame = async (req: Request, res: Response) => {
   try {

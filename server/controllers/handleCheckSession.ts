@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { errorHandler, getCredentials, getVisitor, World } from "@utils/index.js";
 import { VisitorData, WorldConfig } from "@shared/types/VisitorData.js";
-import { teleportPlayer } from "./handleTeleportPlayer";
-import { checkSessionExpiration } from "@utils/checkSessionExpiration";
+import { teleportPlayer } from "./handleTeleportPlayer.js";
+import { checkSessionExpiration } from "@utils/checkSessionExpiration.js";
 
 export const handleCheckSession = async (req: Request, res: Response) => {
   try {
