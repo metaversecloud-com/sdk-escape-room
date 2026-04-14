@@ -904,7 +904,20 @@ export const Home = () => {
               message="You must restore power in Room A before accessing the Comms Deck." 
             />
           ) : visitorData?.puzzlesCompleted?.[3] ? (
-            <InfoCard title="Puzzle Already Complete" message="Satellites are aligned. Communications restored!" />
+            <div className="satellite-success">
+            <div className="success-animation">
+              <div className="satellite-icon">🛰️</div>
+              <h2>Communication Signal Aligned!</h2>
+              <p>The satellites are now in perfect alignment. Communication restored!</p>
+              <div className="signal-bars">
+                <div className="signal-bar active"></div>
+                <div className="signal-bar active"></div>
+                <div className="signal-bar active"></div>
+                <div className="signal-bar active"></div>
+                <div className="signal-bar active"></div>
+              </div>
+            </div>
+            </div>
           ) : (
             <RoomBPuzzle1 refreshGameState={refreshGameState} />
           )
