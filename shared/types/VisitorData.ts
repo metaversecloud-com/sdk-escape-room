@@ -53,3 +53,5 @@ export interface LeaderboardEntry {
 export type WorldDataObject = Record<string, WorldConfig>;
 
 export type VisitorDataObject = Record<string, VisitorData>;
+
+export type InventoryItemId = "fuse" | "wrench" | "accessCard";

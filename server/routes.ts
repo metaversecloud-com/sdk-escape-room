@@ -1,4 +1,5 @@
 import express from "express";
+import { getVersion } from "./utils/getVersion.js";
 import {
   handleCheckSession,
   handleExitGame,
