@@ -5,7 +5,7 @@ import { GlobalDispatchContext, GlobalStateContext } from "@/context/GlobalConte
 import { ErrorType } from "@/context/types";
 import { backendAPI, setErrorMessage, setGameState} from "@/utils";
 
-type ScreenType = "start" | "exit" | "leaderboard" | "reference" | "puzzle1" | "puzzle2" | "puzzle3" | "puzzle4" | "puzzle5" | "puzzle6" | "puzzle7" | "null";
+type ScreenType = "start" | "exit" | "leaderboard" | "puzzle1" | "puzzle2" | "puzzle3" | "puzzle4" | "puzzle5" | "puzzle6" | "puzzle7" | "null";
 
 const getScreenFromSearch = (): ScreenType => {
   const params = new URLSearchParams(window.location.search);
@@ -32,8 +32,6 @@ const getScreenFromSearch = (): ScreenType => {
       return "puzzle7";
     case "leaderboard":
       return "leaderboard";
-    case "reference":
-      return "reference";
     default:
       return "null";
   }
@@ -631,70 +629,6 @@ const ExitCongratsCard = ({
   );
 };
 
-const ReferencePanelsCard = () => (
-  <div
-    className="card w-full relative overflow-hidden"
-    style={{
-      background: "radial-gradient(120% 120% at 25% 10%, rgba(27,224,242,0.14), transparent 45%), radial-gradient(120% 120% at 80% 0%, rgba(111,33,255,0.12), transparent 45%), linear-gradient(140deg, #060c1a 0%, #0d162a 55%, #0a1022 100%)",
-      borderColor: "rgba(27,224,242,0.35)",
-      boxShadow: "0 0 26px rgba(0, 194, 255, 0.14), 0 20px 48px rgba(0,0,0,0.45)",
-    }}
-  >
-    <div
-      aria-hidden
-      style={{
-        position: "absolute",
-        inset: -50,
-        background: "radial-gradient(circle at 85% 15%, rgba(255,215,64,0.14) 0, transparent 40%), radial-gradient(circle at 10% 90%, rgba(27,224,242,0.12) 0, transparent 50%)",
-        filter: "blur(18px)",
-        pointerEvents: "none",
-      }}
-    />
-    <div className="card-details flex flex-col gap-4 relative">
-      <h3 className="card-title" style={{ color: "#f6b300", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-        Reference Panels
-      </h3>
-      <p className="p2" style={{ color: "#dbe8ff" }}>
-        “Crew, keep these translations handy while you restore power.”
-      </p>
-
-      <div className="grid gap-4">
-        <div
-          className="rounded-xl p-4 border"
-          style={{
-            background: "rgba(17,27,47,0.85)",
-            borderColor: "rgba(63,94,166,0.65)",
-            boxShadow: "inset 0 0 0 1px rgba(27,224,242,0.12)",
-          }}
-        >
-          <h4 className="h4" style={{ color: "#9b7bff", letterSpacing: "0.04em" }}>Panel A: Symbol → Channel</h4>
-          <div className="mt-2 grid gap-2">
-            <RefRow left="Triangle" center="3" right="" />
-            <RefRow left="Circle" center="1" right="" />
-            <RefRow left="Square" center="4" right="" />
-          </div>
-        </div>
-
-        <div
-          className="rounded-xl p-4 border"
-          style={{
-            background: "rgba(17,27,47,0.85)",
-            borderColor: "rgba(63,94,166,0.65)",
-            boxShadow: "inset 0 0 0 1px rgba(27,224,242,0.12)",
-          }}
-        >
-          <h4 className="h4" style={{ color: "#1be0f2", letterSpacing: "0.04em" }}>Panel B: Channel → Dial Color</h4>
-          <div className="mt-2 grid gap-2">
-            <RefRow left="1" center="Red" right="" />
-            <RefRow left="3" center="Blue" right="" />
-            <RefRow left="4" center="Green" right="" />
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
 const RefRow = ({ left, center, right }: { left: string; center: string; right: string }) => (
   <div
     className="flex justify-between items-center rounded-md px-3 py-2"
@@ -872,10 +806,6 @@ export const Home = () => {
 
         {screen === "start" && (
           hasStarted ? <SessionRunningCard /> : <StartGameCard onStart={startGame} isLoading={isLoading || !hasInteractiveParams} />
-        )}
-
-        {screen === "reference" && (
-          <ReferencePanelsCard />
         )}
 
         {/* Room A Puzzles */}
