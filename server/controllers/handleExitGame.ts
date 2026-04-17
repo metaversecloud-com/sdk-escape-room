@@ -6,7 +6,7 @@ import { teleportPlayer } from "./handleTeleportPlayer.js";
 export const handleExitGame = async (req: Request, res: Response) => {
   try {
     const credentials = getCredentials(req.query);
-    const { sceneDropId, urlSlug, visitorId } = credentials;
+    const { sceneDropId, urlSlug, visitorId, profileId } = credentials;
 
     const sessionKey = `${urlSlug}-${sceneDropId}`;
     const world = World.create(urlSlug, { credentials });
@@ -24,8 +24,18 @@ export const handleExitGame = async (req: Request, res: Response) => {
 
     visitorDataObject[sessionKey] = existingState;
     
-    await visitor.updateDataObject(visitorDataObject, { lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true } });
-
+   await visitor.updateDataObject(visitorDataObject, {
+      analytics: [
+        {
+          analyticName: "manualGameExits",
+          profileId,
+          urlSlug,
+          uniqueKey: `${profileId}-${sessionKey}`,
+          incrementBy: 1,
+        },
+      ],
+      lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true },
+    });
     await teleportPlayer(
       urlSlug,
       visitorId,

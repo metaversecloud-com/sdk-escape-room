@@ -76,12 +76,14 @@ export const handleStartGame = async (req: Request, res: Response) => {
           profileId,
           urlSlug,
           uniqueKey: `${profileId}-${sessionKey}-start`,
+          incrementBy: 1,
         },
         {
           analyticName: "roomAEntries",
           profileId,
           urlSlug,
-          uniqueKey: `${profileId}-${sessionKey}-roomA`,
+          uniqueKey: `${profileId}-${sessionKey}-start`,
+          incrementBy: 1,
         },
       ], }  );
 

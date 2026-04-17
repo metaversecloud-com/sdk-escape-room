@@ -83,6 +83,7 @@ export const checkSessionExpiration = async ({
         profileId,
         urlSlug,
         uniqueKey: `${profileId}-${sessionKey}-timeout`,
+        incrementBy: 1,
       },
     ],
   });

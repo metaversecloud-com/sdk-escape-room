@@ -19,6 +19,14 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     const world = World.create(urlSlug, { credentials });
     const { visitor } = await getVisitor(credentials, true);
     const droppedAsset = await getDroppedAsset(credentials);
+    
+    let visitorDataObject = (await visitor.fetchDataObject()) as Record<string, VisitorData> | null;
+
+    if (!visitorDataObject || !visitorDataObject[sessionKey]) {
+      return res.json({ success: true, message: "No existing visitor data, nothing to update" });
+    }
+    const existingState = visitorDataObject[sessionKey];
+    visitorDataObject[sessionKey] = existingState;
 
     const worldDataObject = (await world.fetchDataObject()) as Record<string, WorldConfig> | null;
     const sceneConfig = worldDataObject?.[sceneDropId];
@@ -107,6 +115,19 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     ) {
       game.currentRoom = "B";
 
+      await visitor.updateDataObject(visitorDataObject, {
+      analytics: [
+        {
+          analyticName: "roomBEntries",
+          profileId,
+          urlSlug,
+          uniqueKey: `${profileId}-${sessionKey}`,
+          incrementBy: 1,
+        },
+      ],
+      lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true },
+    });
+
       const { awarded, alreadyOwned, failed } = await checkEscapeBadges({
         credentials,
         visitor,
@@ -134,6 +155,19 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       game.puzzlesCompleted[5]
     ) {
       game.currentRoom = "C";
+
+      await visitor.updateDataObject(visitorDataObject, {
+      analytics: [
+        {
+          analyticName: "roomCEntries",
+          profileId,
+          urlSlug,
+          uniqueKey: `${profileId}-${sessionKey}`,
+          incrementBy: 1,
+        },
+      ],
+      lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true },
+    });
 
       const { awarded, alreadyOwned, failed } = await checkEscapeBadges({
         credentials,
@@ -212,6 +246,22 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         credentials.visitorId,
         credentials,
         "EscapeRoom_start_teleport"
+      );
+
+      await visitor.updateDataObject(
+        { [sessionKey]: game },
+        {
+          lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true },
+          analytics: [
+            {
+              analyticName: `gameCompleted`,
+              profileId,
+              urlSlug,
+              uniqueKey: `${profileId}-${sessionKey}-puzzle-${puzzleNumber}`,
+              incrementBy: 1,
+            },
+          ],
+        },
       );
 
     }
