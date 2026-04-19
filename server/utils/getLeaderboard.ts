@@ -3,6 +3,7 @@ export type ParsedLeaderboardEntry = {
   name: string;
   completionTime: number;
   escaped: boolean;
+  attempts: number;
 };
 
 export const getLeaderboard = (
@@ -10,25 +11,42 @@ export const getLeaderboard = (
 ): ParsedLeaderboardEntry[] => {
   if (!leaderboardData) return [];
 
-  const entries: ParsedLeaderboardEntry[] = [];
+  const byProfile: Record<string, ParsedLeaderboardEntry> = {};
 
-  for (const profileId in leaderboardData) {
-    const value = leaderboardData[profileId];
-    const [name, completionTime] = value.split("|");
-    const baseProfileId = profileId.split("-")[0];
+  for (const profileKey in leaderboardData) {
+    const value = leaderboardData[profileKey];
+    const [name, completionTimeText] = value.split("|");
+    const completionTime = parseInt(completionTimeText || "0", 10) || 0;
+    const [profileId, attemptText] = profileKey.split("-");
+    const attemptNumber = parseInt(attemptText || "", 10) || 1;
 
-    entries.push({
-      profileId: baseProfileId,
-      name,
-      completionTime: parseInt(completionTime || "0", 10) || 0,
-      escaped: true,
-    });
+    const existing = byProfile[profileId];
+    if (!existing) {
+      byProfile[profileId] = {
+        profileId,
+        name,
+        completionTime,
+        escaped: true,
+        attempts: attemptNumber,
+      };
+      continue;
+    }
+
+    if (
+      completionTime > 0 &&
+      (existing.completionTime === 0 || completionTime < existing.completionTime)
+    ) {
+      existing.completionTime = completionTime;
+      existing.name = name;
+      existing.attempts = attemptNumber;
+    }
   }
+
+  const entries = Object.values(byProfile);
 
   entries.sort((a, b) => {
     if (a.escaped !== b.escaped) return a.escaped ? -1 : 1;
-    if (a.escaped && b.escaped) return a.completionTime - b.completionTime;
-    return 0;
+    return a.completionTime - b.completionTime;
   });
 
   return entries;

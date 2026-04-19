@@ -62,6 +62,7 @@ export type LeaderboardRowType = {
   name: string;
   completionTime: number;
   escaped: boolean;
+  attempts: number;
 };
 
 export type InventoryItemSummary = {

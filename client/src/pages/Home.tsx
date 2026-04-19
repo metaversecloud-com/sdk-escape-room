@@ -285,7 +285,7 @@ const InventoryPanel = ({
 const LeaderboardPanel = ({
   leaderboard,
 }: {
-  leaderboard: | {profileId: string; name: string; completionTime: number; escaped: boolean}[] | undefined;
+  leaderboard: | {profileId: string; name: string; completionTime: number; escaped: boolean; attempts: number}[] | undefined;
 }) => (
   <div className="card w-full">
     <div className="card-details">
@@ -300,6 +300,7 @@ const LeaderboardPanel = ({
               <th></th>
               <th className="h5">Name</th>
               <th className="h5">Time</th>
+              <th className="h5">Attempts</th>
               <th className="h5">Escaped</th>
             </tr>
           </thead>
@@ -309,6 +310,7 @@ const LeaderboardPanel = ({
                 <td className="p2">{index + 1}</td>
                 <td className="p2">{entry.name}</td>
                 <td className="p2">{entry.completionTime}s</td>
+                <td className="p2">{entry.attempts}</td>
                 <td className="p2">{entry.escaped ? "Yes" : "No"}</td>
               </tr>
             ))}
@@ -547,7 +549,7 @@ const ExitCongratsCard = ({
   leaderboard,
 }: {
   completionTime?: number | null;
-  leaderboard?: { profileId: string; name: string; completionTime: number; escaped: boolean }[];
+  leaderboard?: { profileId: string; name: string; completionTime: number; escaped: boolean; attempts: number }[];
 }) => {
   const timeText = formatTime(completionTime ?? undefined);
   const placement = completionTime != null && leaderboard && leaderboard.length
@@ -609,6 +611,7 @@ const ExitCongratsCard = ({
                     <th className="p2">Rank</th>
                     <th className="p2">Crew</th>
                     <th className="p2">Time</th>
+                    <th className="p2">Attempts</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -617,6 +620,7 @@ const ExitCongratsCard = ({
                       <td className="p2">#{idx + 1}</td>
                       <td className="p2">{row.name}</td>
                       <td className="p2">{formatTime(row.completionTime)}</td>
+                      <td className="p2">{row.attempts}</td>
                     </tr>
                   ))}
                 </tbody>
