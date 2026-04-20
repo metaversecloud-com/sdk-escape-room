@@ -4,6 +4,7 @@ import { PageContainer, LockedState, RoomAPuzzle1, RoomAPuzzle2, RoomCPuzzle1, R
 import { GlobalDispatchContext, GlobalStateContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
 import { backendAPI, setErrorMessage, setGameState} from "@/utils";
+import { ConfirmationModal } from "@/components/ConfirmationModal";
 
 type ScreenType = "start" | "exit" | "leaderboard" | "reference" | "puzzle1" | "puzzle2" | "puzzle3" | "puzzle4" | "puzzle5" | "puzzle6" | "puzzle7" | "null";
 
@@ -138,7 +139,7 @@ const StartGameCard = ({
   </div>
 );
 
-const ExitGameCard = ({ onExit, isLoading }: { onExit: () => Promise<void>; isLoading: boolean }) => (
+const ExitGameCard = ({ onExit, isLoading }: { onExit: () => void; isLoading: boolean }) => (
   <div className="card w-full">
     <div className="card-details">
       <h3 className="card-title">Exit Escape Room</h3>
@@ -172,7 +173,7 @@ const StatusBar = ({
   elapsed: string;
   currentRoom?: string | null;
   onOpenInventory: () => void;
-  onExit: () => Promise<void>;
+  onExit: () => void;
   isLoading: boolean;
   hasStarted: boolean;
 }) => (
@@ -719,6 +720,7 @@ export const Home = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [elapsed, setElapsed] = useState("--:--");
   const [showInventory, setShowInventory] = useState(false);
+  const [showExitConfirmation, setShowExitConfirmation] = useState(false);
   const [showRoomBIntro, setShowRoomBIntro] = useState(false);
 
   const hasStarted = visitorSession?.sessionActive === true;
@@ -758,6 +760,7 @@ export const Home = () => {
     setIsLoading(false);
   };
 
+  const openExitConfirmation = () => setShowExitConfirmation(true);
   const exitGame = async () => {
     setIsLoading(true);
     try {
@@ -853,7 +856,7 @@ export const Home = () => {
             elapsed={elapsed}
             currentRoom={visitorSession?.currentRoom}
             onOpenInventory={() => setShowInventory(true)}
-            onExit={exitGame}
+            onExit={openExitConfirmation}
             isLoading={isLoading}
             hasStarted={hasStarted}
           />
@@ -867,7 +870,16 @@ export const Home = () => {
         )}
 
         {screen === "exit" && (
-          <ExitGameCard onExit={exitGame} isLoading={isLoading} />
+          <ExitGameCard onExit={openExitConfirmation} isLoading={isLoading} />
+        )}
+        
+        {showExitConfirmation && (
+          <ConfirmationModal
+            title="Exit Game"
+            message="Are you sure you want to exit the game? Your progress will NOT be saved."
+            handleOnConfirm={exitGame}
+            handleToggleShowConfirmationModal={() => setShowExitConfirmation(false)}
+          />
         )}
 
         {screen === "start" && (
