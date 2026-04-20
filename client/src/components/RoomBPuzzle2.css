@@ -1,8 +1,10 @@
 /* RoomBPuzzle2.css - Matching RoomBPuzzle1 colors */
 .transmission-reconstruct-puzzle {
-  max-width: 900px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
   padding: 2rem;
+  box-sizing: border-box;
   background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
   border-radius: 20px;
   color: white;
@@ -186,6 +188,7 @@
   gap: 1rem;
   justify-content: center;
   margin-top: 2rem;
+  flex-wrap: wrap;
 }
 
 .reset-button, .submit-button {
