@@ -496,9 +496,9 @@ const RoomBIntroCard = () => (
         “Crew, welcome to the Comms Deck. Align the satellites, rebuild the transmission, and decode the valve order to stabilize the signal.”
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <StatusPill label="Sat Alignment" detail="Count the stars" color="#1be0f2" />
-        <StatusPill label="Reconstruct" detail="Assemble the message" color="#f6b300" />
-        <StatusPill label="Valve Decode" detail="Blue → Red → Yellow" color="#9b7bff" />
+        <StatusPill label="Satellite Alignment" detail="Count the stars" color="#1be0f2" />
+        <StatusPill label="Retrieve the Transmission" detail="Assemble the message" color="#f6b300" />
+        <StatusPill label="Decode the Transmission" detail="Figure out what the message is and determine the correct valve order" color="#9b7bff" />
       </div>
     </div>
   </div>
