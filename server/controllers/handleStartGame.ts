@@ -43,6 +43,7 @@ export const handleStartGame = async (req: Request, res: Response) => {
     const { visitor } = await getVisitor(credentials, true);
 
     const now = new Date().toISOString();
+    // all the session related data is stored in the visitor data object under a key that combines the urlSlug and sceneDropId to ensure uniqueness across different scenes and drops within the same world, allowing for multiple concurrent sessions if needed.
     const newSession: VisitorData = {
       escaped: false,
       completionTime: null,

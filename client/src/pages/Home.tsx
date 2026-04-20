@@ -4,6 +4,7 @@ import { PageContainer, LockedState, RoomAPuzzle1, RoomAPuzzle2, RoomCPuzzle1, R
 import { GlobalDispatchContext, GlobalStateContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
 import { backendAPI, setErrorMessage, setGameState} from "@/utils";
+import { ConfirmationModal } from "@/components/ConfirmationModal";
 
 type ScreenType = "start" | "exit" | "leaderboard" | "puzzle1" | "puzzle2" | "puzzle3" | "puzzle4" | "puzzle5" | "puzzle6" | "puzzle7" | "null";
 
@@ -136,7 +137,7 @@ const StartGameCard = ({
   </div>
 );
 
-const ExitGameCard = ({ onExit, isLoading }: { onExit: () => Promise<void>; isLoading: boolean }) => (
+const ExitGameCard = ({ onExit, isLoading }: { onExit: () => void; isLoading: boolean }) => (
   <div className="card w-full">
     <div className="card-details">
       <h3 className="card-title">Exit Escape Room</h3>
@@ -170,7 +171,7 @@ const StatusBar = ({
   elapsed: string;
   currentRoom?: string | null;
   onOpenInventory: () => void;
-  onExit: () => Promise<void>;
+  onExit: () => void;
   isLoading: boolean;
   hasStarted: boolean;
 }) => (
@@ -496,9 +497,9 @@ const RoomBIntroCard = () => (
         “Crew, welcome to the Comms Deck. Align the satellites, rebuild the transmission, and decode the valve order to stabilize the signal.”
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <StatusPill label="Sat Alignment" detail="Count the stars" color="#1be0f2" />
-        <StatusPill label="Reconstruct" detail="Assemble the message" color="#f6b300" />
-        <StatusPill label="Valve Decode" detail="Blue → Red → Yellow" color="#9b7bff" />
+        <StatusPill label="Satellite Alignment" detail="Count the stars" color="#1be0f2" />
+        <StatusPill label="Retrieve the Transmission" detail="Assemble the message" color="#f6b300" />
+        <StatusPill label="Decode the Transmission" detail="Figure out what the message is and determine the correct valve order" color="#9b7bff" />
       </div>
     </div>
   </div>
@@ -657,6 +658,7 @@ export const Home = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [elapsed, setElapsed] = useState("--:--");
   const [showInventory, setShowInventory] = useState(false);
+  const [showExitConfirmation, setShowExitConfirmation] = useState(false);
   const [showRoomBIntro, setShowRoomBIntro] = useState(false);
 
   const hasStarted = visitorSession?.sessionActive === true;
@@ -696,6 +698,7 @@ export const Home = () => {
     setIsLoading(false);
   };
 
+  const openExitConfirmation = () => setShowExitConfirmation(true);
   const exitGame = async () => {
     setIsLoading(true);
     try {
@@ -791,7 +794,7 @@ export const Home = () => {
             elapsed={elapsed}
             currentRoom={visitorSession?.currentRoom}
             onOpenInventory={() => setShowInventory(true)}
-            onExit={exitGame}
+            onExit={openExitConfirmation}
             isLoading={isLoading}
             hasStarted={hasStarted}
           />
@@ -805,7 +808,16 @@ export const Home = () => {
         )}
 
         {screen === "exit" && (
-          <ExitGameCard onExit={exitGame} isLoading={isLoading} />
+          <ExitGameCard onExit={openExitConfirmation} isLoading={isLoading} />
+        )}
+        
+        {showExitConfirmation && (
+          <ConfirmationModal
+            title="Exit Game"
+            message="Are you sure you want to exit the game? Your progress will NOT be saved."
+            handleOnConfirm={exitGame}
+            handleToggleShowConfirmationModal={() => setShowExitConfirmation(false)}
+          />
         )}
 
         {screen === "start" && (

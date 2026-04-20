@@ -80,8 +80,8 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
 
       const isCorrect = CORRECT_ORDER.every((v, i) => v === updated[i]);
       if (isCorrect) {
-        setSuccessMessage("Correct sequence entered. Reactor primed.");
-        void handleAutoSubmit();
+        setSuccessMessage("Correct sequence entered. Submit to prime the reactor.");
+        //void handleAutoSubmit();
       } else {
         resetPuzzle("Incorrect sequence. Switches have been reset.");
       }
@@ -223,6 +223,23 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
           <div className="card-actions mt-5 flex-col sm:flex-row gap-3">
             <button className="btn btn-outline w-full sm:w-auto" onClick={() => resetPuzzle()} disabled={isSubmitting}>
               Reset
+            </button>
+            <button
+              className="btn w-full sm:w-auto"
+              onClick={handleAutoSubmit}
+              disabled={
+                isSubmitting ||
+                selectedOrder.length !== CORRECT_ORDER.length ||
+                !CORRECT_ORDER.every((v, i) => v === selectedOrder[i])
+              }
+              style={{
+                background: isSubmitting
+                  ? "linear-gradient(135deg, #3a3f4a 0%, #2e3340 100%)"
+                  : "#1f5ad7 50%",
+                borderColor: isSubmitting ? "#4a5060" : "#1f5ad7",
+              }}
+            >
+              {isSubmitting ? "Submitting..." : "Submit"}
             </button>
           </div>
         </div>

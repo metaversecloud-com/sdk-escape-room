@@ -1,8 +1,10 @@
 /* RoomBPuzzle3.css - Matching RoomBPuzzle1 colors */
 .valve-decode-puzzle {
-  max-width: 900px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
   padding: 2rem;
+  box-sizing: border-box;
   background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
   border-radius: 20px;
   color: white;
@@ -120,15 +122,18 @@
   background: rgba(23, 33, 52, 0.75);
   padding: 0.75rem;
   border-radius: 8px;
+  flex-wrap: wrap;
 }
 
 .input-group label {
   min-width: 60px;
   font-weight: bold;
   color: #ffd700;
+  flex-shrink: 0;
 }
 
 .unscramble-input {
+  min-width: 120px;
   flex: 1;
   background: #1a2340;
   border: 1px solid #2f3c58;
