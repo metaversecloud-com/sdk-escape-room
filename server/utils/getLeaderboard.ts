@@ -12,13 +12,15 @@ export const getLeaderboard = (
   if (!leaderboardData) return [];
 
   const byProfile: Record<string, ParsedLeaderboardEntry> = {};
+  const attemptCounts: Record<string, number> = {};
 
   for (const profileKey in leaderboardData) {
     const value = leaderboardData[profileKey];
     const [name, completionTimeText] = value.split("|");
     const completionTime = parseInt(completionTimeText || "0", 10) || 0;
-    const [profileId, attemptText] = profileKey.split("-");
-    const attemptNumber = parseInt(attemptText || "", 10) || 1;
+    const profileId = profileKey.split("-")[0];
+
+    attemptCounts[profileId] = (attemptCounts[profileId] || 0) + 1;
 
     const existing = byProfile[profileId];
     if (!existing) {
@@ -27,7 +29,7 @@ export const getLeaderboard = (
         name,
         completionTime,
         escaped: true,
-        attempts: attemptNumber,
+        attempts: attemptCounts[profileId],
       };
       continue;
     }
@@ -38,8 +40,9 @@ export const getLeaderboard = (
     ) {
       existing.completionTime = completionTime;
       existing.name = name;
-      existing.attempts = attemptNumber;
     }
+
+    existing.attempts = attemptCounts[profileId];
   }
 
   const entries = Object.values(byProfile);
