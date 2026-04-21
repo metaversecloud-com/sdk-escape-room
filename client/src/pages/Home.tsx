@@ -203,85 +203,181 @@ const InventoryPanel = ({
   onClose: () => void;
   visitorData: any;
   inventoryItems?: { id: string; name?: string; imageUrl?: string | null; description?: string; metadata?: any }[];
-}) => (
-  <div className="card w-full">
-    <div className="card-details">
-      <div className="card-actions">
-        <button className="btn btn-text" onClick={onClose}>
-          Close
-        </button>
-      </div>
+}) => {
+  const [selectedItem, setSelectedItem] = useState<{
+    id: string;
+    name?: string;
+    imageUrl?: string | null;
+    description?: string;
+    metadata?: any;
+  } | null>(null);
 
-      <h3 className="card-title">Inventory</h3>
+  return (
+    <>
+      <div className="card w-full">
+        <div className="card-details">
+          <div className="card-actions">
+            <button className="btn btn-text" onClick={onClose}>
+              Close
+            </button>
+          </div>
 
-      <div className="grid gap-4">
-        <div className="card">
-          <div className="card-details">
-            <h4 className="h4">Mission Items</h4>
-            {(() => {
-              const hasFuse = !!visitorData?.inventory?.fuse;
-              const hasWrench = !!visitorData?.inventory?.wrench;
-              const hasCard = !!visitorData?.inventory?.accessCard;
+          <h3 className="card-title">Inventory</h3>
 
-              const filtered =
-                inventoryItems?.filter((item) => {
-                  const name = (item.name || item.id || "").toLowerCase();
-                  if (name.includes("fuse")) return hasFuse;
-                  if (name.includes("wrench")) return hasWrench;
-                  if (name.includes("access")) return hasCard;
-                  return false;
-                }) || [];
+          <div className="grid gap-4">
+            <div className="card">
+              <div className="card-details">
+                <h4 className="h4">Mission Items</h4>
+                {(() => {
+                  const hasFuse = !!visitorData?.inventory?.fuse;
+                  const hasWrench = !!visitorData?.inventory?.wrench;
+                  const hasCard = !!visitorData?.inventory?.accessCard;
 
-            const showInventoryItems = filtered.length > 0;
+                  
+                  const filtered =
+                    inventoryItems?.filter((item) => {
+                      const name = (item.name || item.id || "").toLowerCase();
+                      if (name.includes("fuse")) return hasFuse;
+                      if (name.includes("wrench")) return hasWrench;
+                      if (name.includes("access")) return hasCard;
+                      return false;
+                    }) || [];
 
-            return showInventoryItems ? (
-            <div className="grid gap-3">
-                {filtered.map((item) => {
-                  const localSerial =
-                    item.id === "fuse"
-                      ? visitorData?.inventory?.fuse?.serial
-                      : item.id === "wrench"
-                        ? visitorData?.inventory?.wrench?.serial
-                        : item.id === "accessCard"
-                          ? visitorData?.inventory?.accessCard?.partialCode
-                          : undefined;
-                  const detail =
-                    item.metadata?.serial ||
-                    localSerial ||
-                    item.description ||
-                    "Item collected";
+                  const showInventoryItems = filtered.length > 0;
 
-                  return (
-                    <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg" style={{ background: "rgba(17,27,47,0.08)" }}>
-                      {item.imageUrl ? (
-                        <img
-                          src={item.imageUrl}
-                          alt={item.name || item.id}
-                          style={{ width: 56, height: 56, objectFit: "contain", borderRadius: 12, background: "#0b1323", padding: 6 }}
-                        />
-                      ) : (
-                        <div style={{ width: 56, height: 56, borderRadius: 12, background: "#0b1323" }} />
-                      )}
-                      <div className="flex flex-col">
-                        <p className="p2" style={{ fontWeight: 700 }}>{item.name || item.id}</p>
-                        <p className="p3" style={{ color: "#9babc7" }}>
-                          {detail}
-                        </p>
-                      </div>
+                  return showInventoryItems ? (
+                    <div className="grid gap-3">
+                      {filtered.map((item) => {
+                        const localSerial =
+                          item.id === "fuse"
+                            ? visitorData?.inventory?.fuse?.serial
+                            : item.id === "wrench"
+                              ? visitorData?.inventory?.wrench?.serial
+                              : item.id === "accessCard"
+                                ? visitorData?.inventory?.accessCard?.partialCode
+                                : undefined;
+                        const detail =
+                          item.metadata?.serial ||
+                          localSerial ||
+                          item.description ||
+                          "Item collected";
+
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            className="flex items-center gap-3 p-3 rounded-lg text-left"
+                            style={{
+                              background: "rgba(17,27,47,0.08)",
+                              border: "1px solid rgba(63,94,166,0.18)",
+                              cursor: "pointer",
+                            }}
+                            onClick={() => setSelectedItem(item)}
+                          >
+                            {item.imageUrl ? (
+                              <img
+                                src={item.imageUrl}
+                                alt={item.name || item.id}
+                                style={{ width: 135, height: 135, objectFit: "contain", borderRadius: 12, background: "#0b1323", padding: 6 }}
+                              />
+                            ) : (
+                              <div
+                                className="flex items-center justify-center"
+                                style={{ width: 135, height: 135, borderRadius: 12, background: "#0b1323", color: "#c7d0e5", padding: 12 }}
+                              >
+                                <span className="p3">No preview</span>
+                              </div>
+                            )}
+                            <div className="flex flex-col">
+                              <p className="p2" style={{ fontWeight: 700 }}>{item.name || item.id}</p>
+                              <p className="p3" style={{ color: "#9babc7" }}>
+                                {detail}
+                              </p>
+                              <p className="p3" style={{ color: "#f6b300", marginTop: 8 }}>
+                                Click to enlarge
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
+                  ) : (
+                    <p className="p2" style={{ color: "#c7d0e5" }}>Nothing in your inventory yet. Solve puzzles to collect mission items.</p>
                   );
-                })}
+                })()}
               </div>
-              ) : (
-                <p className="p2" style={{ color: "#c7d0e5" }}>Nothing in your inventory yet. Solve puzzles to collect mission items.</p>
-              );
-            })()}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
-);
+
+      {selectedItem && (
+        <div
+          onClick={() => setSelectedItem(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(3, 8, 19, 0.84)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "1.5rem",
+            zIndex: 50,
+          }}
+        >
+          <div
+            className="card"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(92vw, 720px)",
+              maxHeight: "90vh",
+              overflow: "auto",
+              background: "linear-gradient(145deg, #091223 0%, #0d1a33 100%)",
+              border: "1px solid rgba(27,224,242,0.25)",
+              boxShadow: "0 24px 70px rgba(0,0,0,0.55)",
+            }}
+          >
+            <div className="card-details">
+              <div className="card-actions">
+                <button className="btn btn-text" onClick={() => setSelectedItem(null)}>
+                  Close
+                </button>
+              </div>
+
+              <h3 className="card-title">{selectedItem.name || selectedItem.id}</h3>
+
+              {selectedItem.imageUrl ? (
+                <img
+                  src={selectedItem.imageUrl}
+                  alt={selectedItem.name || selectedItem.id}
+                  style={{
+                    width: "100%",
+                    maxHeight: "70vh",
+                    objectFit: "contain",
+                    borderRadius: 16,
+                    background: "#050b18",
+                    padding: 16,
+                  }}
+                />
+              ) : (
+                <div
+                  className="flex items-center justify-center rounded-xl"
+                  style={{
+                    minHeight: 320,
+                    background: "#050b18",
+                    color: "#c7d0e5",
+                  }}
+                >
+                  <p className="p2">No larger image available for this item.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
 
 const LeaderboardPanel = ({
   leaderboard,
