@@ -59,27 +59,22 @@ export const handleGetGameState = async (req: Request, res: Response) => {
     }
 
     const sceneConfig = worldData?.[sceneDropId];
-    const keyAssetId = sceneConfig?.keyAssetId || assetId;
+    const keyAssetId = sceneConfig?.keyAssetId;
 
     let leaderboard: ReturnType<typeof getLeaderboard> = [];
 
     if (keyAssetId) {
-      try {
-        const keyAsset = await DroppedAsset.create(keyAssetId, urlSlug, {
-          credentials: { ...credentials, assetId: keyAssetId },
-        });
+      const keyAsset = await DroppedAsset.create(keyAssetId, urlSlug, {
+        credentials: { ...credentials, assetId: keyAssetId },
+      });
 
-        await keyAsset.fetchDataObject();
+      await keyAsset.fetchDataObject();
 
-        const keyAssetDataObject = keyAsset.dataObject as {
-          leaderboard?: Record<string, string>;
-        } | null;
+      const keyAssetDataObject = keyAsset.dataObject as {
+        leaderboard?: Record<string, string>;
+      } | null;
 
-        leaderboard = getLeaderboard(keyAssetDataObject?.leaderboard);
-      } catch (error) {
-        console.error("Error fetching leaderboard from key asset:", error);
-        // Continue without leaderboard if fetch fails
-      }
+      leaderboard = getLeaderboard(keyAssetDataObject?.leaderboard);
     }
 
     
