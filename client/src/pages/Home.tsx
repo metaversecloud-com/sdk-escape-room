@@ -742,6 +742,12 @@ export const Home = () => {
     };
   }, [screen, visitorData?.puzzlesCompleted?.[1], visitorData?.puzzlesCompleted?.[2]]);
 
+  useEffect(() => {
+    if (screen === "leaderboard" && hasInteractiveParams) {
+      refreshGameState();
+    }
+  }, [screen, hasInteractiveParams]);
+
   if(screen === "leaderboard") {
     return (
       <PageContainer isLoading={isLoading} headerText="Leaderboard">
