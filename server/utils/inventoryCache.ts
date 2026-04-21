@@ -33,9 +33,22 @@ export const getCachedInventoryItems = async ({
     await ecosystem.fetchInventoryItems();
 
     inventoryCache = {
-      items: (ecosystem.inventoryItems as InventoryItemInterface[]) || [],
-      timestamp: now,
-    };
+     items: (ecosystem.inventoryItems as InventoryItemInterface[])
+       .map((item) => ({
+         ...item,
+         metadata: {
+           ...(item.metadata || {}),
+           sortOrder: typeof (item.metadata as any)?.sortOrder === "number" ? (item.metadata as any).sortOrder : 0,
+         },
+       }))
+       .sort((a, b) => {
+         const aOrder = a.metadata?.sortOrder ?? 0;
+         const bOrder = b.metadata?.sortOrder ?? 0;
+         return aOrder - bOrder;
+       }),
+     timestamp: now,
+   };
+
 
     return inventoryCache.items;
   } catch (error) {
