@@ -11,6 +11,7 @@ interface RoomCPuzzle2Props {
 
 const PARTIAL_CODE = "7 _ 3 _";
 const EXPECTED_CODE = "7436";
+const HINT_TEXT = "Check your inventory items. Each item holds a few digits - use the digit from the same place value in both items to fill the blanks.";
 
 export const RoomCPuzzle2 = ({ refreshGameState, isCompleted }: RoomCPuzzle2Props) => {
   const dispatch = useContext(GlobalDispatchContext);
@@ -18,6 +19,7 @@ export const RoomCPuzzle2 = ({ refreshGameState, isCompleted }: RoomCPuzzle2Prop
   const [feedback, setFeedback] = useState("");
   const [isSolved, setIsSolved] = useState(isCompleted ?? false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showHint, setShowHint] = useState(false);
 
   // keep local solved state in sync when coming in already completed
   useEffect(() => {
@@ -111,6 +113,22 @@ export const RoomCPuzzle2 = ({ refreshGameState, isCompleted }: RoomCPuzzle2Prop
               {feedback}
             </p>
           )}
+
+          {/* Hint Section */}
+          <div className="mt-4">
+            <button 
+              className="btn btn-text" 
+              onClick={() => setShowHint(!showHint)}
+            >
+              {showHint ? "▼ Hide Hint" : "▶ Show Hint"}
+            </button>
+            
+            {showHint && (
+              <div className="mt-3 p-3 bg-zinc-800 rounded-lg border border-zinc-600">
+                <p className="p2" style={{color:'lightgrey'}}>{HINT_TEXT}</p>
+              </div>
+            )}
+          </div>
 
         </div>
         <div className="mt-6 grid grid-cols-3 gap-3 mx-auto">
