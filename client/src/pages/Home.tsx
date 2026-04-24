@@ -518,11 +518,21 @@ const Puzzle1CompleteCard = () => (
           Puzzle Complete
         </h3>
         <p className="p2 mt-2" style={{ color: "#dbe8ff", lineHeight: 1.6 }}>
-          Electrical cabinet unlocked. Fuse (74A1) added to your inventory. Commander Vega: “Nice work, crew. Keep momentum!”
+          Electrical cabinet unlocked.
+        </p>
+        <p className="p2 mt-2" style={{ color: "#dbe8ff", lineHeight: 1.6 }}>
+           <strong>Commander Vega</strong>: “Nice work, crew. Keep momentum!”
         </p>
       </div>
-      <div style={{ minWidth: 180 }}>
-        <FuseDisplay />
+    </div>
+    <div className="card-details flex flex-col md:flex-row items-center gap-5 relative">
+      <div className="flex-1">
+        <p className="p2 uppercase" style={{ color: "#8cf0af", letterSpacing: "0.08em", marginBottom: 6 }}>
+          You obtained a <strong>Fuse</strong>! (Serial: 74A1)
+        </p>
+        <p className="p2 mt-2" style={{ color: "#dbe8ff", lineHeight: 1.6 }}>
+          Check your inventory to view details about this item and how it might be used in upcoming puzzles.
+        </p>
       </div>
     </div>
   </div>
