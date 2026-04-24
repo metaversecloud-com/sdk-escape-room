@@ -375,3 +375,140 @@
     padding: 12px;
   }
 }
+
+/* Locked piece styling - uses pattern + icon instead of just color */
+.paper-cell.locked {
+  border: 3px solid #ffd700;
+  border-style: solid;
+  background: linear-gradient(135deg, #2a2a4a 0%, #1a1a3a 100%);
+  cursor: not-allowed;
+  opacity: 0.85;
+  position: relative;
+}
+
+/* Diagonal stripe pattern for locked pieces (colorblind-friendly) */
+.paper-cell.locked::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(255, 215, 0, 0.1),
+    rgba(255, 215, 0, 0.1) 10px,
+    rgba(255, 215, 0, 0.2) 10px,
+    rgba(255, 215, 0, 0.2) 20px
+  );
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+.paper-cell.locked:hover {
+  transform: none;
+  cursor: not-allowed;
+}
+
+.paper-piece {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: linear-gradient(135deg, #f5e6c8 0%, #e8d5b7 100%);
+  border-radius: 6px;
+}
+
+/* Locked piece paper style */
+.paper-cell.locked .paper-piece {
+  background: linear-gradient(135deg, #c4c4c4 0%, #a8a8a8 100%);
+  filter: grayscale(0.2);
+}
+
+/* Locked icon styling */
+.locked-icon {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 0.8rem;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+/* Selected piece styling - using blue instead of green for better contrast */
+.paper-cell.selected {
+  border-color: #2196f3;
+  box-shadow: 0 0 15px rgba(33, 150, 243, 0.5);
+  transform: scale(1.02);
+}
+
+/* Remove the green correct-position class and replace with locked */
+.paper-cell.correct-position {
+  /* This class is no longer used - replaced by locked */
+  display: none;
+}
+
+/* Progress bar - use gold instead of green */
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ffd700, #ffaa00);
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+
+/* Selected indicator styling */
+.selected-indicator {
+  color: #2196f3;
+  margin-top: 0.5rem;
+  font-weight: bold;
+}
+
+/* Info message styling */
+.info-message {
+  background: rgba(33, 150, 243, 0.2);
+  border: 1px solid #2196f3;
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-top: 0.5rem;
+  color: #64b5f6;
+}
+
+/* Hover effect for non-locked pieces */
+.paper-cell:not(.locked):hover {
+  transform: scale(1.02);
+  border-color: #ffd700;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+  cursor: pointer;
+}
+
+/* Disabled cursor for locked pieces */
+.paper-cell.locked {
+  cursor: not-allowed;
+}
+
+/* Additional colorblind-friendly indicators */
+.puzzle-instructions {
+  background: rgba(23, 33, 52, 0.75);
+  padding: 1rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  border: 1px solid #2f3c58;
+}
+
+.puzzle-instructions p {
+  margin: 0.25rem 0;
+}
+
+.puzzle-instructions p:first-child {
+  margin-bottom: 0.5rem;
+}
