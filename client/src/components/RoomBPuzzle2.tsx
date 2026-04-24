@@ -13,6 +13,7 @@ interface PuzzlePiece {
   correctPosition: number;
   currentPosition: number;
   pieceText: string;
+  isLocked: boolean;
 }
 
 export const RoomBPuzzle2: React.FC<RoomBPuzzle2Props> = ({ 
@@ -36,17 +37,16 @@ export const RoomBPuzzle2: React.FC<RoomBPuzzle2Props> = ({
   };
 
   // Define the 9 pieces (3x3 grid) - each piece contains part of the message
-  // When arranged correctly, they reveal the scrambled words
   const INITIAL_PIECES: PuzzlePiece[] = [
-    { id: 0, correctPosition: 0, currentPosition: 0, pieceText: "EV" },
-    { id: 1, correctPosition: 1, currentPosition: 1, pieceText: "LA" },
-    { id: 2, correctPosition: 2, currentPosition: 2, pieceText: "V" },
-    { id: 3, correctPosition: 3, currentPosition: 3, pieceText: "KL" },
-    { id: 4, correctPosition: 4, currentPosition: 4, pieceText: "C" },
-    { id: 5, correctPosition: 5, currentPosition: 5, pieceText: "O" },
-    { id: 6, correctPosition: 6, currentPosition: 6, pieceText: "EUR" },
-    { id: 7, correctPosition: 7, currentPosition: 7, pieceText: "SSR" },
-    { id: 8, correctPosition: 8, currentPosition: 8, pieceText: "PE" }
+    { id: 0, correctPosition: 0, currentPosition: 0, pieceText: "EV", isLocked: false },
+    { id: 1, correctPosition: 1, currentPosition: 1, pieceText: "LA", isLocked: false },
+    { id: 2, correctPosition: 2, currentPosition: 2, pieceText: "V", isLocked: false },
+    { id: 3, correctPosition: 3, currentPosition: 3, pieceText: "KL", isLocked: false },
+    { id: 4, correctPosition: 4, currentPosition: 4, pieceText: "C", isLocked: false },
+    { id: 5, correctPosition: 5, currentPosition: 5, pieceText: "O", isLocked: false },
+    { id: 6, correctPosition: 6, currentPosition: 6, pieceText: "EUR", isLocked: false },
+    { id: 7, correctPosition: 7, currentPosition: 7, pieceText: "SSR", isLocked: false },
+    { id: 8, correctPosition: 8, currentPosition: 8, pieceText: "PE", isLocked: false }
   ];
 
   // Shuffle the pieces on initialization
@@ -56,10 +56,19 @@ export const RoomBPuzzle2: React.FC<RoomBPuzzle2Props> = ({
       const j = Math.floor(Math.random() * (i + 1));
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-    // Update current positions based on shuffled order
+    // Update current positions and reset locked status
     return shuffled.map((piece, index) => ({
       ...piece,
-      currentPosition: index
+      currentPosition: index,
+      isLocked: false
+    }));
+  };
+
+  // Check and update locked status for all pieces
+  const updateLockedStatus = (currentPieces: PuzzlePiece[]) => {
+    return currentPieces.map(piece => ({
+      ...piece,
+      isLocked: piece.currentPosition === piece.correctPosition
     }));
   };
 
@@ -81,17 +90,27 @@ export const RoomBPuzzle2: React.FC<RoomBPuzzle2Props> = ({
     checkPuzzleCompletion();
     
     // Initialize the puzzle with shuffled pieces
-    setPieces(shufflePieces(INITIAL_PIECES));
+    const shuffled = shufflePieces(INITIAL_PIECES);
+    setPieces(updateLockedStatus(shuffled));
   }, []);
 
   // Check if the puzzle is solved
   const isPuzzleSolved = () => {
-    return pieces.every(piece => piece.currentPosition === piece.correctPosition);
+    return pieces.every(piece => piece.isLocked === true);
   };
 
   // Handle piece click
   const handlePieceClick = (clickedPosition: number) => {
     if (success || isSubmitting) return;
+
+    const clickedPiece = pieces.find(p => p.currentPosition === clickedPosition);
+    
+    // If the clicked piece is locked, cannot interact with it
+    if (clickedPiece?.isLocked) {
+      //setMessage("🔒 This fragment is already in its correct position and cannot be moved!");
+      setSelectedPiece(null);
+      return;
+    }
 
     if (selectedPiece === null) {
       // Select the piece
@@ -101,6 +120,14 @@ export const RoomBPuzzle2: React.FC<RoomBPuzzle2Props> = ({
       // Deselect the same piece
       setSelectedPiece(null);
     } else {
+      // Check if the target piece is locked
+      const targetPiece = pieces.find(p => p.currentPosition === clickedPosition);
+      if (targetPiece?.isLocked) {
+        setMessage("🔒 Cannot swap with a locked fragment!");
+        setSelectedPiece(null);
+        return;
+      }
+
       // Swap the selected piece with the clicked piece
       const newPieces = [...pieces];
       const piece1Index = newPieces.findIndex(p => p.currentPosition === selectedPiece);
@@ -110,12 +137,14 @@ export const RoomBPuzzle2: React.FC<RoomBPuzzle2Props> = ({
       newPieces[piece1Index].currentPosition = clickedPosition;
       newPieces[piece2Index].currentPosition = selectedPiece;
       
-      setPieces(newPieces);
+      // Update locked status based on new positions
+      const updatedPieces = updateLockedStatus(newPieces);
+      setPieces(updatedPieces);
       setSelectedPiece(null);
       
       // Check if puzzle is solved after swap
-      if (newPieces.every(piece => piece.currentPosition === piece.correctPosition)) {
-        setMessage("✅ The transmission is fully reconstructed! Click 'Submit' to decode the message.");
+      if (updatedPieces.every(piece => piece.isLocked === true)) {
+        setMessage("✅ All fragments are in their correct positions! Click 'Submit' to decode the message.");
       }
     }
   };
@@ -127,7 +156,8 @@ export const RoomBPuzzle2: React.FC<RoomBPuzzle2Props> = ({
 
   // Reset the puzzle
   const handleReset = () => {
-    setPieces(shufflePieces(INITIAL_PIECES));
+    const shuffled = shufflePieces(INITIAL_PIECES);
+    setPieces(updateLockedStatus(shuffled));
     setSelectedPiece(null);
     setError(null);
     setMessage(null);
@@ -136,7 +166,7 @@ export const RoomBPuzzle2: React.FC<RoomBPuzzle2Props> = ({
   // Submit the solved puzzle
   const handleSubmit = async () => {
     if (!isPuzzleSolved()) {
-      setError("The transmission pieces are not in the correct order. Keep rearranging until the message forms correctly!");
+      setError("Not all fragments are in their correct positions! Keep rearranging until all fragments lock into place.");
       return;
     }
 
@@ -169,60 +199,43 @@ export const RoomBPuzzle2: React.FC<RoomBPuzzle2Props> = ({
     setIsSubmitting(false);
   };
 
-  // // Auto-solve hint (for testing/accessibility)
-  // const handleAutoSolve = () => {
-  //   const solvedPieces = [...pieces].sort((a, b) => a.correctPosition - b.correctPosition);
-  //   setPieces(solvedPieces);
-  //   setSelectedPiece(null);
-  //   setMessage("✅ The transmission is fully reconstructed! Click 'Submit' to decode the message.");
-  // };
-
-  // if (success && showReconstructedMessage) {
-  //   return (
-  //     <div className="transmission-reconstruct-success">
-  //       <div className="success-animation">
-  //         <h2>Transmission Reconstructed!</h2>
-  //         <div className="reconstructed-message">
-  //           <h3>The torn fragments reveal a scrambled transmission:</h3>
-  //           <div className="scrambled-output">
-  //             <div className="scrambled-line">{SCRAMBLED_WORDS.word1}</div>
-  //             <div className="scrambled-line">{SCRAMBLED_WORDS.word2}</div>
-  //             <div className="scrambled-line">{SCRAMBLED_WORDS.word3}</div>
-  //           </div>
-  //           <p className="next-clue">These scrambled words hold the key to the next puzzle...</p>
-  //         </div>
-  //         <button 
-  //           className="continue-button"
-  //           onClick={() => {
-  //             if (refreshGameState) refreshGameState();
-  //           }}
-  //         >
-  //           Continue to Next Challenge →
-  //         </button>
-  //       </div>
-  //     </div>
-  //   );
-  // }
+  if (success && showReconstructedMessage) {
+    return (
+      <div className="transmission-reconstruct-success">
+        <div className="success-animation">
+          <h2>Transmission Reconstructed!</h2>
+          <div className="reconstructed-message">
+            <h3>The torn fragments reveal a scrambled transmission:</h3>
+            <div className="scrambled-output">
+              <div className="scrambled-line">{SCRAMBLED_WORDS.word1}</div>
+              <div className="scrambled-line">{SCRAMBLED_WORDS.word2}</div>
+              <div className="scrambled-line">{SCRAMBLED_WORDS.word3}</div>
+            </div>
+            <p className="next-clue">These scrambled words hold the key to the next puzzle...</p>
+          </div>
+          <button 
+            className="continue-button"
+            onClick={() => {
+              if (refreshGameState) refreshGameState();
+            }}
+          >
+            Continue to Next Challenge →
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="transmission-reconstruct-puzzle">
       <div className="puzzle-header">
         <h2>📄 Reconstruct the Transmission 📄</h2>
         <p>Piece together the torn fragments to reveal the hidden message.</p>
-        {/* <button 
-          className="hint-button"
-          onClick={handleAutoSolve}
-          disabled={isSubmitting}
-        >
-          🔧 Auto-Solve (Test)
-        </button> */}
       </div>
 
       <div className="puzzle-instructions">
-        <p>🎯 <strong>How to Play:</strong> Click a paper fragment to select it, then click another fragment to swap their positions.</p>
-        {selectedPiece !== null && (
-          <p className="selected-indicator">📌 Selected fragment at position {selectedPiece + 1}</p>
-        )}
+        <p>🎯 <strong>How to Play:</strong> Click a fragment to select it, then click another fragment to swap their positions.</p>
+        <p> Correctly placed fragments will show a 🔒 icon and cannot be moved further.</p>
         {message && (
           <div className="info-message">{message}</div>
         )}
@@ -232,15 +245,20 @@ export const RoomBPuzzle2: React.FC<RoomBPuzzle2Props> = ({
         <div className="grid-3x3 paper-grid">
           {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((position) => {
             const piece = getPieceAtPosition(position);
+            const isLocked = piece?.isLocked || false;
+            
             return (
               <div
                 key={position}
-                className={`paper-cell ${selectedPiece === position ? 'selected' : ''} ${piece?.currentPosition === piece?.correctPosition ? 'correct-position' : ''}`}
+                className={`paper-cell ${selectedPiece === position ? 'selected' : ''} ${isLocked ? 'locked' : ''}`}
                 onClick={() => handlePieceClick(position)}
               >
                 {piece && (
                   <div className="paper-piece">
                     <div className="paper-text">{piece.pieceText}</div>
+                    {isLocked && (
+                      <div className="locked-icon">🔒</div>
+                    )}
                     <div className="paper-crease"></div>
                   </div>
                 )}
@@ -251,11 +269,11 @@ export const RoomBPuzzle2: React.FC<RoomBPuzzle2Props> = ({
       </div>
 
       <div className="progress-indicator">
-        <p>Progress: {pieces.filter(p => p.currentPosition === p.correctPosition).length}/9 fragments in correct position</p>
+        <p>Progress: {pieces.filter(p => p.isLocked).length}/9 fragments correctly placed</p>
         <div className="progress-bar">
           <div 
             className="progress-fill" 
-            style={{ width: `${(pieces.filter(p => p.currentPosition === p.correctPosition).length / 9) * 100}%` }}
+            style={{ width: `${(pieces.filter(p => p.isLocked).length / 9) * 100}%` }}
           />
         </div>
       </div>
