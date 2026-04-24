@@ -382,7 +382,7 @@ const InventoryPanel = ({
 const LeaderboardPanel = ({
   leaderboard,
 }: {
-  leaderboard: | {profileId: string; name: string; completionTime: number; escaped: boolean; attempts: number}[] | undefined;
+  leaderboard?: {profileId: string; name: string; completionTime: number; escaped: boolean; attempts: number}[];
 }) => (
   <div className="card w-full">
     <div className="card-details">
