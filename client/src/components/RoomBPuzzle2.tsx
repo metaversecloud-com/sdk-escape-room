@@ -199,32 +199,32 @@ export const RoomBPuzzle2: React.FC<RoomBPuzzle2Props> = ({
     setIsSubmitting(false);
   };
 
-  if (success && showReconstructedMessage) {
-    return (
-      <div className="transmission-reconstruct-success">
-        <div className="success-animation">
-          <h2>Transmission Reconstructed!</h2>
-          <div className="reconstructed-message">
-            <h3>The torn fragments reveal a scrambled transmission:</h3>
-            <div className="scrambled-output">
-              <div className="scrambled-line">{SCRAMBLED_WORDS.word1}</div>
-              <div className="scrambled-line">{SCRAMBLED_WORDS.word2}</div>
-              <div className="scrambled-line">{SCRAMBLED_WORDS.word3}</div>
-            </div>
-            <p className="next-clue">These scrambled words hold the key to the next puzzle...</p>
-          </div>
-          <button 
-            className="continue-button"
-            onClick={() => {
-              if (refreshGameState) refreshGameState();
-            }}
-          >
-            Continue to Next Challenge →
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // if (success && showReconstructedMessage) {
+  //   return (
+  //     <div className="transmission-reconstruct-success">
+  //       <div className="success-animation">
+  //         <h2>Transmission Reconstructed!</h2>
+  //         <div className="reconstructed-message">
+  //           <h3>The torn fragments reveal a scrambled transmission:</h3>
+  //           <div className="scrambled-output">
+  //             <div className="scrambled-line">{SCRAMBLED_WORDS.word1}</div>
+  //             <div className="scrambled-line">{SCRAMBLED_WORDS.word2}</div>
+  //             <div className="scrambled-line">{SCRAMBLED_WORDS.word3}</div>
+  //           </div>
+  //           <p className="next-clue">These scrambled words hold the key to the next puzzle...</p>
+  //         </div>
+  //         <button 
+  //           className="continue-button"
+  //           onClick={() => {
+  //             if (refreshGameState) refreshGameState();
+  //           }}
+  //         >
+  //           Continue to Next Challenge →
+  //         </button>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="transmission-reconstruct-puzzle">
