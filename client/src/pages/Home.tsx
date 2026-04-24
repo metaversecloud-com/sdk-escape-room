@@ -949,8 +949,8 @@ export const Home = () => {
             <div className="satellite-success">
             <div className="success-animation">
               <div className="satellite-icon">🛰️</div>
-              <h2>Communication Signal Aligned!</h2>
-              <p>The satellites are now in perfect alignment. Communication restored!</p>
+              <h2 style={{ color: "white"}} >Communication Signal Aligned!</h2>
+              <p style={{ color: "gray" }}> The satellites are now in perfect alignment. Communication restored!</p>
               <div className="signal-bars">
                 <div className="signal-bar active"></div>
                 <div className="signal-bar active"></div>
