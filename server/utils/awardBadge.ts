@@ -1,4 +1,4 @@
-import { Credentials } from "types";
+import { Credentials } from "../types/index.js";
 import { standardizeError } from "@utils/index.js";
 import { getCachedInventoryItems } from "./inventoryCache.js";
 

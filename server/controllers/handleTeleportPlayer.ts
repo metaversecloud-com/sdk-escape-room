@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { errorHandler, getCredentials, Visitor, World } from "@utils/index.js";
 import { DroppedAssetInterface } from "@rtsdk/topia";
-import { Credentials } from "types";
+import { Credentials } from "../types/index.js";
 
 const DEFAULT_KEY_ASSET_NAME = "keyAsset";
 

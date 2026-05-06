@@ -10,6 +10,11 @@ interface RoomAPuzzle2Props {
 const CORRECT_ORDER = [3, 1, 4, 2];
 const TIME_LIMIT_SECONDS = 8;
 
+const SWITCH_BASE_BG = "linear-gradient(180deg, #151f33 0%, #0f1726 100%)";
+const SWITCH_SELECTED_BG = "linear-gradient(180deg, #1f5ad7 0%, #1a4ebc 100%)";
+const TOGGLE_OFF_BG = "linear-gradient(180deg, #a0a7b7 0%, #7c8498 100%)";
+const TOGGLE_ON_BG = "linear-gradient(180deg, #65d08c 0%, #3ca766 100%)";
+
 export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
   const dispatch = useContext(GlobalDispatchContext);
 
@@ -21,29 +26,29 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
 
   const timerRef = useRef<number | null>(null);
 
-  const resetPuzzle = (message = "") => {
-    setSelectedOrder([]);
-    setTimeLeft(null);
-    setLocalError(message);
-    setSuccessMessage("");
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) window.clearInterval(timerRef.current);
+    };
+  }, []);
 
+  const stopTimer = () => {
     if (timerRef.current) {
       window.clearInterval(timerRef.current);
       timerRef.current = null;
     }
   };
 
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        window.clearInterval(timerRef.current);
-      }
-    };
-  }, []);
+  const resetPuzzle = (message = "") => {
+    setSelectedOrder([]);
+    setTimeLeft(null);
+    setLocalError(message);
+    setSuccessMessage("");
+    stopTimer();
+  };
 
   const startTimer = () => {
     setTimeLeft(TIME_LIMIT_SECONDS);
-
     timerRef.current = window.setInterval(() => {
       setTimeLeft((prev) => {
         if (prev === null) return null;
@@ -60,53 +65,38 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
     setLocalError("");
     setSuccessMessage("");
 
-    if (selectedOrder.length === 0 && timeLeft === null) {
-      startTimer();
-    }
-
-    if (selectedOrder.includes(switchNumber)) {
-      return;
-    }
+    if (selectedOrder.length === 0 && timeLeft === null) startTimer();
+    if (selectedOrder.includes(switchNumber)) return;
 
     const updated = [...selectedOrder, switchNumber];
     setSelectedOrder(updated);
 
     if (updated.length === CORRECT_ORDER.length) {
-      if (timerRef.current) {
-        window.clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
+      stopTimer();
       setTimeLeft(null);
 
       const isCorrect = CORRECT_ORDER.every((v, i) => v === updated[i]);
       if (isCorrect) {
         setSuccessMessage("Correct sequence entered. Submit to prime the reactor.");
-        //void handleAutoSubmit();
       } else {
         resetPuzzle("Incorrect sequence. Switches have been reset.");
       }
     }
   };
 
-  const handleAutoSubmit = async () => {
+  const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      const response = await backendAPI.post("/submit-puzzle", {
-        puzzleNumber: 2,
-      });
+      const response = await backendAPI.post("/submit-puzzle", { puzzleNumber: 2 });
       setGameState(dispatch, response.data);
       const badges = response.data?.badgesAwarded as string[] | undefined;
       const owned = response.data?.badgesOwned as string[] | undefined;
       const failed = response.data?.badgesFailed as string[] | undefined;
-      if (badges && badges.length) {
-        setSuccessMessage(`Reactor primed. Badge awarded: ${badges.join(", ")}.`);
-      } else if (owned && owned.length) {
-        setSuccessMessage(`Reactor primed. Badge already earned: ${owned.join(", ")}.`);
-      } else if (failed && failed.length) {
+      if (badges?.length) setSuccessMessage(`Reactor primed. Badge awarded: ${badges.join(", ")}.`);
+      else if (owned?.length) setSuccessMessage(`Reactor primed. Badge already earned: ${owned.join(", ")}.`);
+      else if (failed?.length)
         setSuccessMessage(`Reactor primed. Badge could not be awarded (missing in inventory): ${failed.join(", ")}.`);
-      } else {
-        setSuccessMessage("Reactor primed.");
-      }
+      else setSuccessMessage("Reactor primed.");
       await refreshGameState();
     } catch (error) {
       setErrorMessage(dispatch, error as ErrorType);
@@ -115,33 +105,37 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
     }
   };
 
+  const isOrderCorrect = CORRECT_ORDER.every((v, i) => v === selectedOrder[i]);
+
   return (
     <div className="flex flex-col gap-4 w-full">
-      <div
-        className="card w-full"
-        style={{ background: "linear-gradient(135deg, #0d1629 0%, #0a1120 100%)", borderColor: "#24304a" }}
-      >
+      <div className="card w-full er-card er-card--flat">
         <div className="card-details">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <h3 className="card-title" style={{ color: "#f6b300", letterSpacing: "0.04em" }}>
-                Reactor Switch Array
-              </h3>
-              <p className="p2" style={{ color: "#9babc7" }}>
-                Reactor priming follows crew priority order. Translate crew priority to channel numbers, then run the remaining switch for the system check. Flip the breaker switches in the correct sequence before the system lockout.
+              <h3 className="card-title er-title-gold">Reactor Switch Array</h3>
+              <p className="p2 er-text-dim">
+                Reactor priming follows crew priority order. Translate crew priority to channel numbers, then run the
+                remaining switch for the system check. Flip the breaker switches in the correct sequence before the
+                system lockout.
               </p>
             </div>
             {timeLeft !== null && (
               <div
                 className="px-3 py-2 rounded-lg"
-                style={{ background: "rgba(255,199,95,0.12)", border: "1px solid #f6b300", color: "#f6b300", fontWeight: 700 }}
+                style={{
+                  background: "rgba(255,199,95,0.12)",
+                  border: "1px solid var(--er-gold)",
+                  color: "var(--er-gold)",
+                  fontWeight: 700,
+                }}
               >
                 Time Left: {timeLeft}s
               </div>
             )}
           </div>
 
-          <p className="p2 mt-3" style={{ color: "#c7d0e5" }}>
+          <p className="p2 mt-3 er-text-muted">
             Current Order: {selectedOrder.length ? selectedOrder.join(" → ") : "None"}
           </p>
 
@@ -149,7 +143,7 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
             className="mt-4 rounded-2xl p-4"
             style={{
               background: "radial-gradient(120% 120% at 50% 20%, rgba(246,179,0,0.16), rgba(10,17,32,0.95))",
-              border: "1px solid #2f3c58",
+              border: "1px solid var(--er-border-strong)",
               boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 10px 22px rgba(0,0,0,0.35)",
             }}
           >
@@ -164,11 +158,9 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
                     disabled={isSelected || isSubmitting}
                     className="focus:outline-none"
                     style={{
-                      background: isSelected
-                        ? "linear-gradient(180deg, #1f5ad7 0%, #1a4ebc 100%)"
-                        : "linear-gradient(180deg, #151f33 0%, #0f1726 100%)",
-                      border: `2px solid ${isSelected ? "#4d8dff" : "#2f3c58"}`,
-                      borderRadius: "18px",
+                      background: isSelected ? SWITCH_SELECTED_BG : SWITCH_BASE_BG,
+                      border: `2px solid ${isSelected ? "#4d8dff" : "var(--er-border-strong)"}`,
+                      borderRadius: 18,
                       padding: "18px 12px",
                       color: "#e5edff",
                       boxShadow: isSelected
@@ -179,9 +171,9 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
                     <div className="flex flex-col items-center gap-2">
                       <div
                         style={{
-                          width: "38px",
-                          height: "70px",
-                          borderRadius: "10px",
+                          width: 38,
+                          height: 70,
+                          borderRadius: 10,
                           background: "linear-gradient(180deg, #2d3344 0%, #151c2d 100%)",
                           border: "1px solid #455066",
                           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
@@ -193,13 +185,11 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
                             position: "absolute",
                             left: "50%",
                             transform: "translateX(-50%)",
-                            bottom: isSelected ? "8px" : "32px",
-                            width: "26px",
-                            height: "18px",
-                            borderRadius: "6px",
-                            background: isSelected
-                              ? "linear-gradient(180deg, #65d08c 0%, #3ca766 100%)"
-                              : "linear-gradient(180deg, #a0a7b7 0%, #7c8498 100%)",
+                            bottom: isSelected ? 8 : 32,
+                            width: 26,
+                            height: 18,
+                            borderRadius: 6,
+                            background: isSelected ? TOGGLE_ON_BG : TOGGLE_OFF_BG,
                             boxShadow: isSelected
                               ? "0 0 12px rgba(101,208,140,0.6)"
                               : "0 0 8px rgba(124,132,152,0.4)",
@@ -207,8 +197,8 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
                         />
                       </div>
                       <div className="flex items-center gap-2">
-                        <span style={{ color: "#f6b300", fontWeight: 700 }}>#{switchNumber}</span>
-                        {isSelected && <span style={{ color: "#65d08c", fontWeight: 700 }}>Locked</span>}
+                        <span style={{ color: "var(--er-gold)", fontWeight: 700 }}>#{switchNumber}</span>
+                        {isSelected && <span style={{ color: "var(--er-green)", fontWeight: 700 }}>Locked</span>}
                       </div>
                     </div>
                   </button>
@@ -217,27 +207,25 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
             </div>
           </div>
 
-          {localError && <p className="p2 mt-3" style={{ color: "#ff6b6b" }}>{localError}</p>}
-          {successMessage && <p className="p2 mt-3" style={{ color: "#65d08c" }}>{successMessage}</p>}
+          {localError && (
+            <p className="p2 mt-3" style={{ color: "var(--er-red)" }}>
+              {localError}
+            </p>
+          )}
+          {successMessage && (
+            <p className="p2 mt-3" style={{ color: "var(--er-green)" }}>
+              {successMessage}
+            </p>
+          )}
 
           <div className="card-actions mt-5 flex-col sm:flex-row gap-3">
             <button className="btn btn-outline w-full sm:w-auto" onClick={() => resetPuzzle()} disabled={isSubmitting}>
               Reset
             </button>
             <button
-              className="btn w-full sm:w-auto"
-              onClick={handleAutoSubmit}
-              disabled={
-                isSubmitting ||
-                selectedOrder.length !== CORRECT_ORDER.length ||
-                !CORRECT_ORDER.every((v, i) => v === selectedOrder[i])
-              }
-              style={{
-                background: isSubmitting
-                  ? "linear-gradient(135deg, #3a3f4a 0%, #2e3340 100%)"
-                  : "#1f5ad7 50%",
-                borderColor: isSubmitting ? "#4a5060" : "#1f5ad7",
-              }}
+              className="btn er-btn-primary w-full sm:w-auto"
+              onClick={handleSubmit}
+              disabled={isSubmitting || selectedOrder.length !== CORRECT_ORDER.length || !isOrderCorrect}
             >
               {isSubmitting ? "Submitting..." : "Submit"}
             </button>

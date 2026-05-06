@@ -1,7 +1,5 @@
-// client/src/components/RoomBPuzzle3.tsx
-import React, { useState, useEffect } from 'react';
-import { backendAPI } from '../utils/backendAPI';
-import './RoomBPuzzle3.css';
+import { useEffect, useState } from "react";
+import { backendAPI } from "../utils/backendAPI";
 
 interface RoomBPuzzle3Props {
   onSuccess?: () => void;
@@ -9,331 +7,252 @@ interface RoomBPuzzle3Props {
   refreshGameState?: () => Promise<void>;
 }
 
-export const RoomBPuzzle3: React.FC<RoomBPuzzle3Props> = ({ 
-  onSuccess, 
-  sessionKey,
-  refreshGameState 
-}) => {
+interface Valve {
+  color: "Blue" | "Red" | "Yellow";
+  letter: string;
+  label: string;
+}
+
+const SCRAMBLED_WORDS = { word1: "EVLAV", word2: "KLCO", word3: "EURSSPE" } as const;
+const CORRECT_WORDS = { word1: "VALVE", word2: "LOCK", word3: "PRESSURE" } as const;
+const SYSTEM_ORDER = [
+  { letter: "L", fullName: "Lock System", step: 1 },
+  { letter: "P", fullName: "Pressure System", step: 2 },
+  { letter: "V", fullName: "Vent Valve", step: 3 },
+];
+const VALVES_INITIAL: Valve[] = [
+  { color: "Blue", letter: "L", label: "Lock System" },
+  { color: "Red", letter: "P", label: "Pressure System" },
+  { color: "Yellow", letter: "V", label: "Vent Valve" },
+];
+const CORRECT_VALVE_ORDER = ["Blue", "Red", "Yellow"];
+
+const shuffle = <T,>(array: T[]): T[] => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
+export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBPuzzle3Props) => {
   const [valveOrder, setValveOrder] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [showHint, setShowHint] = useState(false);
-  const [unscrambledWords, setUnscrambledWords] = useState({
-    word1: "",
-    word2: "",
-    word3: ""
-  });
+  const [unscrambledWords, setUnscrambledWords] = useState({ word1: "", word2: "", word3: "" });
   const [wordsUnscrambled, setWordsUnscrambled] = useState(false);
+  const [valves, setValves] = useState<Valve[]>(VALVES_INITIAL);
 
-  // Scrambled words (passed from previous puzzle)
-  const SCRAMBLED_WORDS = {
-    word1: "EVLAV",
-    word2: "KLCO", 
-    word3: "EURSSPE"
-  };
-
-  // Correct unscrambled words
-  const CORRECT_WORDS = {
-    word1: "VALVE",
-    word2: "LOCK",
-    word3: "PRESSURE"
-  };
-
-  // System stabilization order (letters only)
-  const SYSTEM_ORDER = [
-    { letter: "L", fullName: "Lock System", step: 1 },
-    { letter: "P", fullName: "Pressure System", step: 2 },
-    { letter: "V", fullName: "Vent Valve", step: 3 }
-  ];
-
-  // Valve configuration (shuffled initially)
-  const VALVES_INITIAL = [
-    { color: "Blue", letter: "L", label: "Lock System" },
-    { color: "Red", letter: "P", label: "Pressure System" },
-    { color: "Yellow", letter: "V", label: "Vent Valve" }
-  ];
-
-  // Shuffle the valves array
-  const shuffleArray = (array: any[]) => {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  };
-
-  const [valves, setValves] = useState(VALVES_INITIAL);
-
-  // Shuffle valves on component mount
   useEffect(() => {
-    setValves(shuffleArray(VALVES_INITIAL));
+    setValves(shuffle(VALVES_INITIAL));
   }, []);
 
-  // Check if words are unscrambled correctly
-  const areWordsCorrect = () => {
-    return unscrambledWords.word1.toUpperCase() === CORRECT_WORDS.word1 &&
-           unscrambledWords.word2.toUpperCase() === CORRECT_WORDS.word2 &&
-           unscrambledWords.word3.toUpperCase() === CORRECT_WORDS.word3;
-  };
+  const areWordsCorrect = () =>
+    unscrambledWords.word1.toUpperCase() === CORRECT_WORDS.word1 &&
+    unscrambledWords.word2.toUpperCase() === CORRECT_WORDS.word2 &&
+    unscrambledWords.word3.toUpperCase() === CORRECT_WORDS.word3;
 
-  // Monitor word unscrambling
   useEffect(() => {
     if (areWordsCorrect() && !wordsUnscrambled) {
       setWordsUnscrambled(true);
       setError(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unscrambledWords]);
 
-  // Handle unscramble input changes
-  const handleUnscrambleChange = (wordKey: string, value: string) => {
-    setUnscrambledWords(prev => ({
-      ...prev,
-      [wordKey]: value.toUpperCase()
-    }));
+  const handleUnscrambleChange = (wordKey: keyof typeof unscrambledWords, value: string) => {
+    setUnscrambledWords((prev) => ({ ...prev, [wordKey]: value.toUpperCase() }));
     if (error) setError(null);
   };
 
-  // Handle valve click
   const handleValveClick = (valveColor: string) => {
     if (success || isSubmitting || !wordsUnscrambled) return;
-    
     if (!valveOrder.includes(valveColor)) {
-      const newOrder = [...valveOrder, valveColor];
-      setValveOrder(newOrder);
+      setValveOrder([...valveOrder, valveColor]);
       if (error) setError(null);
     }
   };
 
-  // Remove valve from order
   const handleRemoveFromOrder = (index: number) => {
-    const newOrder = [...valveOrder];
-    newOrder.splice(index, 1);
-    setValveOrder(newOrder);
+    setValveOrder((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Reset everything
   const handleReset = () => {
     setValveOrder([]);
     setUnscrambledWords({ word1: "", word2: "", word3: "" });
     setWordsUnscrambled(false);
     setError(null);
     setShowHint(false);
-    setValves(shuffleArray(VALVES_INITIAL));
+    setValves(shuffle(VALVES_INITIAL));
   };
 
-  // Check if valve order is correct
-  const isValveOrderCorrect = () => {
-    const correctOrder = ["Blue", "Red", "Yellow"];
-    return valveOrder.length === 3 && 
-      valveOrder.every((valve, index) => valve === correctOrder[index]);
-  };
+  const isValveOrderCorrect = () =>
+    valveOrder.length === 3 && valveOrder.every((valve, index) => valve === CORRECT_VALVE_ORDER[index]);
 
-  // Submit the puzzle
   const handleSubmit = async () => {
-    // Validate unscrambled words
     if (!areWordsCorrect()) {
       setError("The transmission words are not correctly unscrambled. Decode the scrambled message first!");
       return;
     }
-
-    // Validate valve order
     if (!isValveOrderCorrect()) {
       setError("The valve activation order is incorrect. Follow the system stabilization order!");
       return;
     }
-
     setIsSubmitting(true);
     setError(null);
-
     try {
-      const response = await backendAPI.post('/submit-puzzle', {
-        puzzleNumber: 5,
-        sessionKey
-      });
-
+      const response = await backendAPI.post("/submit-puzzle", { puzzleNumber: 5, sessionKey });
       if (response.data.success) {
         setSuccess(true);
-        if (refreshGameState) {
-          await refreshGameState();
-        }
-        if (onSuccess) {
-          onSuccess();
-        }
+        if (refreshGameState) await refreshGameState();
+        if (onSuccess) onSuccess();
       } else {
-        setError(response.data.message || 'Failed to submit puzzle');
+        setError(response.data.message || "Failed to submit puzzle");
       }
     } catch (err) {
-      setError('Network error. Please try again.');
-      console.error('Puzzle submission error:', err);
+      setError("Network error. Please try again.");
+      console.error("Puzzle submission error:", err);
     }
-
     setIsSubmitting(false);
   };
 
   if (success) {
     return (
-      <div className="valve-decode-success">
-        <div className="success-animation">
-          <div className="success-icon">🔓</div>
-          <h2>Communications Stabilized!</h2>
-          <div className="access-card-message">
-            <h3>🎫 ACCESS CARD ACQUIRED! 🎫</h3>
-            <p>Access card added to your inventory!</p>
-            <div className="partial-code">
-              <p>Partial Airlock Code Revealed:</p>
-              <div className="code-display">7 _ 3 _</div>
-            </div>
+      <div className="er-success-card">
+        <div className="er-success-icon" aria-hidden>
+          🔓
+        </div>
+        <h2 style={{ color: "white" }}>Communications Stabilized!</h2>
+        <div className="er-access-card-message">
+          <h3>🎫 ACCESS CARD ACQUIRED! 🎫</h3>
+          <p>Access card added to your inventory!</p>
+          <div className="mt-3">
+            <p className="er-text-muted" style={{ marginBottom: "0.5rem" }}>
+              Partial Airlock Code Revealed:
+            </p>
+            <div className="er-code-display">7 _ 3 _</div>
           </div>
-          <p className="clue-text">Check your inventory to see the Access Card. Proceed to Room C!</p>
-          <div className="signal-bars">
-            <div className="signal-bar active"></div>
-            <div className="signal-bar active"></div>
-            <div className="signal-bar active"></div>
-            <div className="signal-bar active"></div>
-            <div className="signal-bar active"></div>
-          </div>
+        </div>
+        <p className="er-clue-text">Check your inventory to see the Access Card. Proceed to Room C!</p>
+        <div className="er-signal-bars" aria-hidden>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="er-signal-bar active" />
+          ))}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="valve-decode-puzzle">
-      <div className="puzzle-header">
+    <div className="er-puzzle-frame">
+      <div className="er-puzzle-header">
         <h2>🔐 Transmission Decode & Valve Order 🔐</h2>
         <p>Decode the scrambled transmission to reveal the system stabilization order.</p>
-        <button 
-          className="hint-button"
-          onClick={() => setShowHint(!showHint)}
-          disabled={isSubmitting}
-        >
-          {showHint ? 'Hide Hints' : '💡 Show Hints'}
+        <button className="er-hint-button" onClick={() => setShowHint(!showHint)} disabled={isSubmitting}>
+          {showHint ? "Hide Hints" : "💡 Show Hints"}
         </button>
       </div>
 
       {showHint && !wordsUnscrambled && (
-        <div className="hint-panel">
+        <div className="er-hint-panel">
           <h4>📡 Transmission Decoding Hints:</h4>
           <ul>
-            <li><strong>EVLAV</strong> → Rearrange these letters to form a device that controls flow (5 letters)</li>
-            <li><strong>KLCO</strong> → Rearrange these letters to form something that secures a door (4 letters)</li>
-            <li><strong>EURSSPE</strong> → Rearrange these letters to form something that pushes or exerts force (8 letters)</li>
+            <li>
+              <strong>EVLAV</strong> → Rearrange these letters to form a device that controls flow (5 letters)
+            </li>
+            <li>
+              <strong>KLCO</strong> → Rearrange these letters to form something that secures a door (4 letters)
+            </li>
+            <li>
+              <strong>EURSSPE</strong> → Rearrange these letters to form something that pushes or exerts force (8
+              letters)
+            </li>
           </ul>
         </div>
       )}
 
-      {/* Scrambled Transmission Section */}
-      <div className="transmission-section">
+      <div className="er-transmission-section">
         <h3>📻 Scrambled Transmission</h3>
-        <div className="scrambled-words">
-          <div className="scrambled-word">{SCRAMBLED_WORDS.word1}</div>
-          <div className="scrambled-word">{SCRAMBLED_WORDS.word2}</div>
-          <div className="scrambled-word">{SCRAMBLED_WORDS.word3}</div>
+        <div className="er-scrambled-words">
+          <div className="er-scrambled-word">{SCRAMBLED_WORDS.word1}</div>
+          <div className="er-scrambled-word">{SCRAMBLED_WORDS.word2}</div>
+          <div className="er-scrambled-word">{SCRAMBLED_WORDS.word3}</div>
         </div>
       </div>
 
-      {/* Unscramble Section */}
-      <div className="unscramble-section">
+      <div className="er-puzzle-section er-unscramble-section">
         <h3>🔍 Decoded Transmission</h3>
-        <div className="unscramble-inputs">
-          <div className="input-group">
-            <label>Word 1:</label>
-            <input
-              type="text"
-              value={unscrambledWords.word1}
-              onChange={(e) => handleUnscrambleChange('word1', e.target.value)}
-              placeholder="Enter decoded word"
-              className="unscramble-input"
-              maxLength={6}
-            />
-            {unscrambledWords.word1 === CORRECT_WORDS.word1 && (
-              <span className="correct-check">✓</span>
-            )}
-          </div>
-          <div className="input-group">
-            <label>Word 2:</label>
-            <input
-              type="text"
-              value={unscrambledWords.word2}
-              onChange={(e) => handleUnscrambleChange('word2', e.target.value)}
-              placeholder="Enter decoded word"
-              className="unscramble-input"
-              maxLength={5}
-            />
-            {unscrambledWords.word2 === CORRECT_WORDS.word2 && (
-              <span className="correct-check">✓</span>
-            )}
-          </div>
-          <div className="input-group">
-            <label>Word 3:</label>
-            <input
-              type="text"
-              value={unscrambledWords.word3}
-              onChange={(e) => handleUnscrambleChange('word3', e.target.value)}
-              placeholder="Enter decoded word"
-              className="unscramble-input"
-              maxLength={9}
-            />
-            {unscrambledWords.word3 === CORRECT_WORDS.word3 && (
-              <span className="correct-check">✓</span>
-            )}
-          </div>
+        <div className="er-unscramble-inputs">
+          {(["word1", "word2", "word3"] as const).map((wordKey, idx) => {
+            const maxLen = idx === 0 ? 6 : idx === 1 ? 5 : 9;
+            return (
+              <div className="er-input-group" key={wordKey}>
+                <label>Word {idx + 1}:</label>
+                <input
+                  type="text"
+                  value={unscrambledWords[wordKey]}
+                  onChange={(e) => handleUnscrambleChange(wordKey, e.target.value)}
+                  placeholder="Enter decoded word"
+                  className="er-unscramble-input"
+                  maxLength={maxLen}
+                />
+                {unscrambledWords[wordKey] === CORRECT_WORDS[wordKey] && <span className="er-correct-check">✓</span>}
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* System Stabilization Order - Only shown after words are unscrambled */}
       {wordsUnscrambled && (
         <>
-          {<div className="stabilization-order">
+          <div className="er-puzzle-section er-stabilization-order">
             <h3>📋 System Stabilization Order</h3>
-            <div className="order-letters">
+            <div className="er-order-letters">
               {SYSTEM_ORDER.map((item) => (
-                <div key={item.step} className="order-letter-item">
-                  <span className="order-step">{item.step}.</span>
-                  <span className="order-letter">{item.letter}</span>
+                <div key={item.step} className="er-order-letter-item">
+                  <span className="er-order-step">{item.step}.</span>
+                  <span className="er-order-letter">{item.letter}</span>
                 </div>
               ))}
             </div>
-          </div> }
+          </div>
 
-          {/* Valve Panel */}
-          <div className="valves-section">
+          <div className="er-puzzle-section er-valves-section">
             <h3>🎛️ Valve Control Panel</h3>
-            <p className="valve-instruction">Click valves in the correct order according to the system stabilization order above.</p>
-            <div className="valves-grid">
+            <p className="er-valve-instruction">
+              Click valves in the correct order according to the system stabilization order above.
+            </p>
+            <div className="er-valves-grid">
               {valves.map((valve) => (
                 <button
                   key={valve.color}
-                  className={`valve-button ${valve.color.toLowerCase()} ${valveOrder.includes(valve.color) ? 'activated' : ''}`}
+                  className={`er-valve-button ${valve.color.toLowerCase()} ${valveOrder.includes(valve.color) ? "activated" : ""}`}
                   onClick={() => handleValveClick(valve.color)}
                   disabled={valveOrder.includes(valve.color) || isSubmitting}
                 >
-                  <div className="valve-color" style={{ backgroundColor: valve.color.toLowerCase() }}></div>
-                  <div className="valve-info">
-                    <span className="valve-label">{valve.label}</span>
+                  <div className="er-valve-color" style={{ backgroundColor: valve.color.toLowerCase() }} />
+                  <div className="er-valve-info">
+                    <span className="er-valve-label">{valve.label}</span>
                   </div>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Current Order Display */}
-          <div className="current-order">
+          <div className="er-puzzle-section er-current-order">
             <h3>🔧 Current Valve Activation Order</h3>
-            <div className="order-buttons">
+            <div className="er-order-buttons">
               {valveOrder.length === 0 ? (
-                <p className="empty-order">No valves activated yet. Click valves in the correct order!</p>
+                <p className="er-empty-order">No valves activated yet. Click valves in the correct order!</p>
               ) : (
                 valveOrder.map((valve, index) => (
-                  <div key={index} className="order-badge">
-                    <span className="order-number">{index + 1}</span>
-                    <span className="order-valve">{valve}</span>
-                    <button 
-                      className="remove-button"
-                      onClick={() => handleRemoveFromOrder(index)}
-                    >
+                  <div key={index} className="er-order-badge">
+                    <span className="er-order-number">{index + 1}</span>
+                    <span>{valve}</span>
+                    <button className="er-remove-button" onClick={() => handleRemoveFromOrder(index)}>
                       ✕
                     </button>
                   </div>
@@ -344,26 +263,14 @@ export const RoomBPuzzle3: React.FC<RoomBPuzzle3Props> = ({
         </>
       )}
 
-      {error && (
-        <div className="error-message">
-          ⚠️ {error}
-        </div>
-      )}
+      {error && <div className="er-puzzle-error">⚠️ {error}</div>}
 
-      <div className="puzzle-actions">
-        <button 
-          className="reset-button"
-          onClick={handleReset}
-          disabled={isSubmitting}
-        >
+      <div className="er-puzzle-actions">
+        <button className="er-puzzle-reset" onClick={handleReset} disabled={isSubmitting}>
           🔄 Reset All
         </button>
-        <button 
-          className="submit-button"
-          onClick={handleSubmit}
-          disabled={isSubmitting || !wordsUnscrambled}
-        >
-          {isSubmitting ? 'Stabilizing...' : '✅ Stabilize Communications'}
+        <button className="er-puzzle-submit" onClick={handleSubmit} disabled={isSubmitting || !wordsUnscrambled}>
+          {isSubmitting ? "Stabilizing..." : "✅ Stabilize Communications"}
         </button>
       </div>
     </div>
