@@ -5,18 +5,17 @@ import {
   handleExitGame,
   handleGetGameState,
   handleStartGame,
-  handleTeleportPlayer,
   handleSubmitPuzzle,
 } from "./controllers/index.js";
 
 const router = express.Router();
 const SERVER_START_DATE = new Date();
 
-router.get("/", (req, res) => {
+router.get("/", (_req, res) => {
   res.json({ message: "Hello from server!" });
 });
 
-router.get("/system/health", (req, res) => {
+router.get("/system/health", (_req, res) => {
   return res.json({
     appVersion: getVersion(),
     status: "OK",
@@ -30,12 +29,10 @@ router.get("/system/health", (req, res) => {
   });
 });
 
-router.post("/start-game", handleStartGame);
 router.get("/game-state", handleGetGameState);
+router.get("/session", handleCheckSession);
+router.post("/start-game", handleStartGame);
 router.post("/submit-puzzle", handleSubmitPuzzle);
-router.post("/teleport", handleTeleportPlayer);
-router.post("/session/check", handleCheckSession);
 router.post("/exit", handleExitGame);
 
 export default router;
-
