@@ -1,5 +1,5 @@
 import { InventoryItemInterface } from "@rtsdk/topia";
-import { Credentials } from "types";
+import { Credentials } from "../types/index.js";
 import { Ecosystem } from "./topiaInit.js";
 import { standardizeError } from "./standardizeError.js";
 

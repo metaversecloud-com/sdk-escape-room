@@ -1,0 +1,1012 @@
+/*
+ * Escape Room shared component classes.
+ * These build on the SDK CSS classes (.card, .btn, .p2, etc.) and the tokens
+ * declared in tokens.css. Use these classes in JSX instead of repeating
+ * inline gradient/glow/border style objects.
+ */
+
+/* Full-viewport app background. background-attachment: fixed keeps the gradient
+   sized to the viewport (not the body's content box) so it renders as a single
+   smooth radial gradient even before React has mounted any content, and stays
+   in place when the page scrolls. */
+html,
+body {
+  min-height: 100vh;
+}
+
+body {
+  margin: 0;
+  background: var(--er-grad-card-violet);
+  background-attachment: fixed;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ─── Themed cards (variants on .card) ─── */
+
+.er-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.er-card--running {
+  background: var(--er-grad-card-running);
+  border-color: var(--er-border-cyan);
+  box-shadow: var(--er-shadow-card-running);
+}
+
+/* The blurred halo overlay rendered behind a card's content */
+.er-card__glow {
+  position: absolute;
+  inset: -50px;
+  background: var(--er-grad-glow-overlay);
+  filter: blur(18px);
+  pointer-events: none;
+}
+
+/* ─── Typography helpers (tinting only — sizes come from SDK .h1-.h4 / .p1-.p4) ─── */
+
+.er-title-gold {
+  color: var(--er-gold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.er-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.875rem;
+}
+
+.er-text {
+  color: var(--er-text);
+}
+
+.er-text-muted {
+  color: var(--er-text-muted);
+}
+
+.er-text-dim {
+  color: var(--er-text-dim);
+}
+
+.er-text--cyan {
+  color: var(--er-cyan);
+}
+
+.er-text--gold {
+  color: var(--er-gold);
+}
+
+.er-text--violet {
+  color: var(--er-violet);
+}
+
+.er-text--green {
+  color: var(--er-green-soft);
+}
+
+.er-text--red {
+  color: var(--er-red);
+}
+
+/* ─── Status pill, ref row, code display ─── */
+
+.er-status-pill {
+  border-radius: var(--er-radius-pill);
+  padding: 0.75rem;
+  background: var(--er-bg-panel);
+}
+
+.er-status-pill__label {
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.er-status-pill__detail {
+  color: var(--er-text-muted);
+  margin-top: 4px;
+}
+
+.er-ref-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  background: var(--er-bg-panel);
+  border: 1px solid var(--er-border-faint);
+}
+
+.er-ref-row__label {
+  color: var(--er-text);
+  min-width: 80px;
+}
+
+.er-ref-row__center {
+  color: var(--er-text-dim);
+  min-width: 60px;
+  text-align: center;
+}
+
+.er-ref-row__value {
+  color: var(--er-gold);
+  min-width: 80px;
+  text-align: right;
+}
+
+.er-code-display {
+  font-size: 3rem;
+  font-family: "Courier New", monospace;
+  font-weight: 700;
+  letter-spacing: 10px;
+  color: var(--er-green);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 0.5rem;
+  border-radius: 8px;
+  display: inline-block;
+}
+
+/* Inset panel within a card (briefing list, etc.) */
+.er-inset-panel {
+  border-radius: 12px;
+  padding: 1rem;
+  background: var(--er-bg-panel-soft);
+  border: 1px solid var(--er-border-soft);
+  box-shadow: inset 0 0 0 1px rgba(27, 224, 242, 0.12);
+}
+
+.er-stat-tile {
+  border-radius: 12px;
+  padding: 1rem;
+  background: var(--er-bg-panel-soft);
+  border: 1px solid var(--er-border-soft);
+}
+
+/* ─── Primary CTA (escape-room flavored) ─── */
+
+.btn {
+  font-size: 1em;
+}
+
+.er-btn-primary {
+  background: var(--er-grad-button-primary);
+  border-color: rgba(0, 194, 255, 0.9);
+  letter-spacing: 0.04em;
+  padding-top: 14px;
+  padding-bottom: 14px;
+  box-shadow: var(--er-shadow-button-primary);
+}
+
+/* ─── Inventory tile (selectable item card) ─── */
+
+.er-inventory-tile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: var(--er-radius-pill);
+  background: rgba(17, 27, 47, 0.08);
+  border: 1px solid rgba(63, 94, 166, 0.18);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.er-inventory-tile__thumb {
+  width: 135px;
+  height: 135px;
+  object-fit: contain;
+  border-radius: 12px;
+  border: 2px solid #0b1323;
+  background: white;
+  flex-shrink: 0;
+}
+
+.er-inventory-tile__placeholder {
+  width: 135px;
+  height: 135px;
+  border-radius: 12px;
+  background: #0b1323;
+  color: var(--er-text-muted);
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.er-inventory-tile__title {
+  font-weight: 700;
+}
+
+.er-inventory-tile__detail {
+  color: var(--er-text-dim);
+}
+
+.er-inventory-tile__hint {
+  color: var(--er-gold);
+  margin-top: 8px;
+}
+
+.er-inventory-fullsize {
+  width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: var(--er-radius-modal);
+  background: var(--er-bg-deep);
+  padding: 16px;
+}
+
+.er-inventory-fullsize-placeholder {
+  min-height: 320px;
+  background: var(--er-bg-deep);
+  color: var(--er-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--er-radius-modal);
+}
+
+/* ─── Inventory reward frames (puzzle-complete cards wrap the granted item's image in these) ─── */
+
+.er-art-frame {
+  border-radius: 12px;
+  padding: 1rem;
+  border: 1px solid;
+}
+
+.er-art-frame--fuse {
+  background: radial-gradient(circle at 40% 30%, rgba(108, 210, 255, 0.12), transparent 50%), rgba(14, 24, 44, 0.9);
+  border-color: rgba(108, 240, 190, 0.45);
+  box-shadow: 0 10px 22px rgba(108, 240, 190, 0.18);
+}
+
+.er-art-frame--wrench {
+  background: radial-gradient(circle at 40% 30%, rgba(255, 200, 120, 0.12), transparent 50%), rgba(14, 24, 44, 0.9);
+  border-color: rgba(255, 200, 120, 0.45);
+  box-shadow: 0 10px 22px rgba(255, 200, 120, 0.18);
+}
+
+/* ─── Locked state ─── */
+
+.er-locked {
+  background: var(--er-bg-panel-soft);
+  border-color: var(--er-border-soft);
+  padding: 1rem;
+}
+
+.er-locked__title {
+  color: var(--er-gold);
+}
+
+.er-locked__message {
+  color: var(--er-text-muted);
+}
+
+/* ─── Puzzle frame (shared by every puzzle component) ─── */
+
+.er-puzzle-instructions {
+  background: var(--er-bg-inner);
+  border-radius: 12px;
+  text-align: center;
+  border: 1px solid var(--er-border-strong);
+}
+
+.er-puzzle-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.er-puzzle-error {
+  background: rgba(244, 67, 54, 0.2);
+  border: 1px solid #f44336;
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+  color: var(--er-red);
+}
+
+.er-puzzle-section {
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 12px;
+  padding: 1.2rem;
+}
+
+.er-hint-button {
+  background: rgba(100, 150, 255, 0.2);
+  border: 1px solid #6496ff;
+  color: #6496ff;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: all 0.3s;
+}
+
+.er-hint-button:hover {
+  background: rgba(100, 150, 255, 0.4);
+  transform: translateY(-2px);
+}
+
+.er-hint-panel {
+  background: rgba(0, 0, 0, 0.5);
+  border-left: 4px solid var(--er-yellow);
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.er-hint-panel h4 {
+  color: var(--er-yellow);
+  margin-bottom: 0.5rem;
+}
+
+.er-hint-panel ul,
+.er-hint-panel ol {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.er-hint-panel li {
+  margin: 0.25rem 0;
+  color: var(--er-text-muted);
+}
+
+.er-puzzle-reset {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: #4a4f6e;
+  color: white;
+}
+
+.er-puzzle-reset:hover:not(:disabled) {
+  background: #5a5f7e;
+  transform: translateY(-2px);
+}
+
+.er-puzzle-submit {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.er-puzzle-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.er-puzzle-submit:disabled,
+.er-puzzle-reset:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ─── Puzzle 1 (Satellite Alignment): controls, sliders, stars ─── */
+
+.er-control-group {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.er-control-group label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+.er-satellite-name {
+  color: var(--er-yellow);
+}
+
+.er-satellite-value {
+  color: var(--er-green);
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+.er-slider {
+  width: 100%;
+  height: 8px;
+  border-radius: 5px;
+  background: #3a3f5e;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.er-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--er-yellow);
+  cursor: pointer;
+}
+
+.er-star-display {
+  text-align: center;
+  margin-top: 0.5rem;
+  font-size: 1.2rem;
+  letter-spacing: 2px;
+  color: white;
+}
+.er-numeric-controls {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.er-numeric-controls button {
+  background: #2a2f4e;
+  border: 1px solid var(--er-yellow);
+  color: white;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: all 0.2s;
+}
+
+.er-numeric-controls button:hover:not(:disabled) {
+  background: var(--er-yellow);
+  color: var(--er-bg-deep);
+}
+
+.er-numeric-controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #1a1f3a;
+}
+
+.er-number-input {
+  background: #2a2f4e;
+  border: 1px solid var(--er-yellow);
+  color: white;
+  width: 60px;
+  text-align: center;
+  border-radius: 8px;
+  font-size: 1rem;
+  padding: 0.5rem;
+}
+
+.er-input-error-message {
+  color: var(--er-red);
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  text-align: center;
+  background: rgba(244, 67, 54, 0.1);
+  padding: 0.25rem;
+  border-radius: 4px;
+}
+
+/* ─── Puzzle 2 (Transmission Reconstruct): grid + paper pieces ─── */
+
+.er-paper-grid-container {
+  display: flex;
+  justify-content: center;
+}
+
+.er-paper-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 20px;
+  border-radius: 16px;
+  width: 100%;
+}
+
+.er-paper-cell {
+  aspect-ratio: 1 / 1;
+  background: linear-gradient(135deg, #f5e6c8 0%, #e8d5b7 100%);
+  border: 2px solid var(--er-border-strong);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.er-paper-cell:not(.locked):hover {
+  transform: scale(1.02);
+  border-color: var(--er-yellow);
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+}
+
+.er-paper-cell.selected {
+  border-color: #2196f3;
+  box-shadow: 0 0 15px rgba(33, 150, 243, 0.5);
+  transform: scale(1.02);
+}
+
+.er-paper-cell.locked {
+  border: 3px solid var(--er-yellow);
+  background: linear-gradient(135deg, #2a2a4a 0%, #1a1a3a 100%);
+  cursor: not-allowed;
+  opacity: 0.85;
+  position: relative;
+}
+
+.er-paper-cell.locked::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(255, 215, 0, 0.1),
+    rgba(255, 215, 0, 0.1) 10px,
+    rgba(255, 215, 0, 0.2) 10px,
+    rgba(255, 215, 0, 0.2) 20px
+  );
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+.er-paper-piece {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: linear-gradient(135deg, #f5e6c8 0%, #e8d5b7 100%);
+  border-radius: 6px;
+}
+
+.er-paper-cell.locked .er-paper-piece {
+  background: linear-gradient(135deg, #c4c4c4 0%, #a8a8a8 100%);
+  filter: grayscale(0.2);
+}
+
+.er-paper-text {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #4a3728;
+  font-family: "Courier New", monospace;
+  letter-spacing: 2px;
+  z-index: 1;
+}
+
+.er-paper-crease {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-top: 15px solid #d4c4a0;
+  border-left: 15px solid transparent;
+  border-radius: 0 6px 0 0;
+}
+
+.er-locked-icon {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 0.8rem;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.er-progress-indicator {
+  text-align: center;
+  color: var(--er-text-muted);
+}
+
+.er-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--er-border-strong);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.er-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--er-yellow), #ffaa00);
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+
+/* ─── Puzzle 3 (Decode + valves): scrambled words, valves, order ─── */
+
+.er-scrambled-words {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.er-scrambled-word {
+  font-family: "Courier New", monospace;
+  font-size: 1.8rem;
+  font-weight: bold;
+  letter-spacing: 4px;
+  color: var(--er-red);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--er-red);
+}
+
+.er-unscramble-section h3 {
+  color: var(--er-green);
+}
+
+.er-unscramble-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.er-input-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: var(--er-bg-inner);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.er-input-group label {
+  min-width: 60px;
+  font-weight: bold;
+  color: var(--er-yellow);
+  flex-shrink: 0;
+}
+
+.er-unscramble-input {
+  min-width: 120px;
+  flex: 1;
+  background: #1a2340;
+  border: 1px solid var(--er-border-strong);
+  color: white;
+  padding: 0.5rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-family: "Courier New", monospace;
+  text-transform: uppercase;
+}
+
+.er-unscramble-input:focus {
+  outline: none;
+  border-color: var(--er-yellow);
+}
+
+.er-correct-check {
+  color: var(--er-green);
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.er-order-letters {
+  display: flex;
+  justify-content: center;
+  gap: 3rem;
+  flex-wrap: wrap;
+}
+
+.er-order-letter-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, var(--er-blue) 0%, var(--er-blue-deep) 100%);
+  padding: 1rem 2rem;
+  border-radius: 12px;
+}
+
+.er-order-step {
+  font-size: 0.9rem;
+  color: var(--er-text-muted);
+}
+
+.er-order-letter {
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--er-yellow);
+  font-family: "Courier New", monospace;
+}
+
+.er-valves-section h3 {
+  color: var(--er-yellow);
+  margin-bottom: 0.5rem;
+}
+
+.er-valves-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.er-valve-button {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #1a2340;
+  border: 2px solid var(--er-border-strong);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: left;
+}
+
+.er-valve-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: var(--er-yellow);
+}
+
+.er-valve-button.activated {
+  opacity: 0.6;
+  border-color: var(--er-green);
+  cursor: not-allowed;
+}
+
+.er-valve-button.blue {
+  border-left: 5px solid #2196f3;
+}
+
+.er-valve-button.red {
+  border-left: 5px solid #f44336;
+}
+
+.er-valve-button.yellow {
+  border-left: 5px solid #ffeb3b;
+}
+
+.er-valve-color {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid white;
+}
+
+.er-valve-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.er-order-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  min-height: 60px;
+}
+
+.er-order-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, var(--er-blue) 0%, var(--er-blue-deep) 100%);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: bold;
+}
+
+.er-order-number {
+  background: rgba(255, 255, 255, 0.3);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 0.8rem;
+}
+
+.er-remove-button {
+  background: rgba(244, 67, 54, 0.5);
+  border: none;
+  color: white;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.er-remove-button:hover {
+  background: #f44336;
+}
+
+.er-button-text {
+  background: transparent;
+  border: none;
+}
+
+/* ─── Success animation states (used by Puzzle3/4/5 complete cards) ─── */
+
+.er-success-card {
+  text-align: center;
+  padding: 1.2rem;
+  background: var(--er-grad-puzzle-bg);
+  border-radius: 20px;
+  animation: erPulse 0.5s ease-in-out;
+  border: 2px solid var(--er-yellow);
+}
+
+.er-success-icon {
+  font-size: 4rem;
+  animation: erBounce 1s infinite;
+}
+
+.er-reconstructed-message {
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid var(--er-yellow);
+  border-radius: 16px;
+}
+
+.er-reconstructed-message h4 {
+  color: var(--er-yellow);
+}
+
+.er-scrambled-output {
+  font-family: "Courier New", monospace;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--er-green);
+}
+
+.er-scrambled-line {
+  letter-spacing: 4px;
+}
+
+.er-next-clue {
+  color: var(--er-text-muted);
+  font-style: italic;
+}
+
+.er-access-card-message {
+  background: linear-gradient(135deg, #1a2340 0%, #0f1528 100%);
+  border: 2px solid var(--er-yellow);
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+}
+
+.er-access-card-message h3 {
+  color: var(--er-yellow);
+  margin-bottom: 0.5rem;
+}
+
+.er-access-card-message p {
+  color: var(--er-text-muted);
+}
+
+.er-clue-text {
+  color: var(--er-text-muted);
+  font-style: italic;
+}
+
+.er-signal-bars {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin: 1.2rem 0;
+}
+
+.er-signal-bar {
+  width: 10px;
+  height: 30px;
+  background: #333;
+  border-radius: 3px;
+  animation: erSignalRise 0.5s ease-out forwards;
+}
+
+.er-signal-bar.active {
+  background: var(--er-green);
+}
+
+.er-signal-bar:nth-child(1) {
+  animation-delay: 0.1s;
+}
+.er-signal-bar:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.er-signal-bar:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.er-signal-bar:nth-child(4) {
+  animation-delay: 0.4s;
+}
+.er-signal-bar:nth-child(5) {
+  animation-delay: 0.5s;
+}
+
+@keyframes erPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes erBounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes erSignalRise {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: 30px;
+    opacity: 1;
+  }
+}
+
+/* ─── Responsive (shared across puzzles) ─── */
+
+@media (max-width: 768px) {
+  .er-puzzle-header h2 {
+    font-size: 1.3rem;
+  }
+  .er-paper-grid {
+    gap: 8px;
+    padding: 12px;
+  }
+  .er-paper-text {
+    font-size: 0.9rem;
+  }
+  .er-scrambled-line {
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+  }
+  .er-scrambled-word {
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+  }
+  .er-valves-grid {
+    grid-template-columns: 1fr;
+  }
+  .er-code-display {
+    font-size: 2rem;
+    letter-spacing: 5px;
+  }
+}

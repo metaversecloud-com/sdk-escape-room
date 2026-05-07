@@ -1,130 +1,80 @@
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getDroppedAsset, getVisitor, World, DroppedAsset } from "@utils/index.js";
-import { VisitorData, WorldDataObject } from "../../shared/types/VisitorData.js";
-import { checkSessionExpiration } from "@utils/checkSessionExpiration.js";
 import {
+  DroppedAsset,
+  World,
+  checkSessionExpiration,
+  errorHandler,
   getBadges,
-  getVisitorBadges,
+  getCredentials,
+  getDroppedAsset,
   getLeaderboard,
+  getVisitor,
 } from "@utils/index.js";
-//visitorgamedata
-//check what this is
-
-const getDefaultVisitorData = (): VisitorData => {
-      return {
-        startTime: null,
-        endTime: null,
-        escaped: false,
-        sessionActive: false,
-        timedOut: false,
-
-        currentRoom: null,
-        puzzlesCompleted: {
-          1: false,
-          2: false,
-          3: false,
-          4: false,
-          5: false,
-          6: false,
-          7: false,
-        },
-
-        inventory: {
-          fuse: null,
-          wrench: null,
-          accessCard: null,
-        },
-
-        completionTime: null,
-      };
-    };
+import { KeyAssetDataObject, WorldDataObject } from "../types/index.js";
 
 export const handleGetGameState = async (req: Request, res: Response) => {
   try {
-    // Get credentials from query parameters
     const credentials = getCredentials(req.query);
-    const { assetId, displayName, interactiveNonce, interactivePublicKey, profileId, urlSlug, visitorId, sceneDropId } = credentials;
+    const { urlSlug, sceneDropId } = credentials;
     const sessionKey = `${urlSlug}-${sceneDropId}`;
+    const forceRefreshInventory = req.query.forceRefreshInventory === "true";
 
     const droppedAsset = await getDroppedAsset(credentials);
 
-    // Create a world instance to trigger particle effects and fire toasts; errors in these actions will be caught and logged but won't prevent the main response from being returned
+    // World config (per-scene). Tolerate missing data — first run of an asset.
     const world = World.create(urlSlug, { credentials });
     let worldData: WorldDataObject | null = null;
     try {
-      const fetchedData = await world.fetchDataObject();
-      worldData = fetchedData as WorldDataObject;
-    } catch (error) {
-      console.log("No world config found");
+      worldData = (await world.fetchDataObject()) as WorldDataObject;
+    } catch {
+      // No world config yet — handleStartGame writes it on first start.
     }
 
-    const sceneConfig = worldData?.[sceneDropId];
-    const keyAssetId = sceneConfig?.keyAssetId;
-
+    // Leaderboard lives on the key asset, which is registered in the world config.
+    const keyAssetId = worldData?.[sceneDropId]?.keyAssetId;
     let leaderboard: ReturnType<typeof getLeaderboard> = [];
-
     if (keyAssetId) {
-      const keyAsset = await DroppedAsset.create(keyAssetId, urlSlug, {
+      const keyAsset = DroppedAsset.create(keyAssetId, urlSlug, {
         credentials: { ...credentials, assetId: keyAssetId },
       });
-
       await keyAsset.fetchDataObject();
-
-      const keyAssetDataObject = keyAsset.dataObject as {
-        leaderboard?: Record<string, string>;
-      } | null;
-
-      leaderboard = getLeaderboard(keyAssetDataObject?.leaderboard);
+      leaderboard = getLeaderboard((keyAsset.dataObject as KeyAssetDataObject | null)?.leaderboard);
     }
 
-    
-    // Get visitor data to check if the user is an admin; this will allow us to conditionally return admin-only data in the response if needed
-    const { visitor } = (await getVisitor(credentials, true));
+    // Visitor (data + inventory). getVisitor guarantees session defaults exist.
+    const { visitor, visitorDataObject, visitorInventory } = await getVisitor(credentials, true);
 
-    let visitorDataObject = (await visitor.fetchDataObject()) as Record<string, VisitorData> | null;
-
-    const forceRefreshInventory = req.query.forceRefreshInventory === "true";
-
-    await visitor.fetchInventoryItems();
-    const visitorInventory = getVisitorBadges(visitor.inventoryItems);
-    const inventoryItems = (visitor.inventoryItems || []).map((item: any) => ({
-      id: item.id,
-      name: item.name,
-      type: item.type,
-      imageUrl: item.image_url || item.image_path || null,
-      description: item.description,
-      metadata: item.metadata || {},
-      status: item.status,
-    }));
-    const badges = await getBadges(credentials, forceRefreshInventory);
-
-    if (!visitorDataObject) {
-      visitorDataObject = {
-        [sessionKey]: getDefaultVisitorData(),
-      };
-      await visitor.updateDataObject(visitorDataObject, { lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true } });
-    }
-
-    if (!visitorDataObject[sessionKey] ) {
-      visitorDataObject[sessionKey] = getDefaultVisitorData();
-      await visitor.updateDataObject(visitorDataObject, { lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true } } );
-    }
-
+    // If the session is active, run an expiration check (may mark it timed-out).
     let session = visitorDataObject[sessionKey];
-    let remainingMs = null; 
-
+    let updatedVisitorDataObject = visitorDataObject;
+    let remainingMs: number | null = null;
     if (session.sessionActive && session.startTime) {
       const checkResult = await checkSessionExpiration({ credentials, visitor, sessionKey });
       session = checkResult.session;
-      visitorDataObject = checkResult.visitorDataObject;
+      updatedVisitorDataObject = checkResult.visitorDataObject;
       remainingMs = checkResult.remainingMs;
     }
+
+    // SDK shape: visitorInventoryItems[i] = { id, status, item: { name, type, image_url, image_path, ... } }
+    const inventoryItems = (visitor.inventoryItems || []).map((visitorItem: any) => {
+      const item = visitorItem?.item || {};
+      return {
+        id: visitorItem.id,
+        name: item.name,
+        type: item.type,
+        imageUrl: item.image_url || item.image_path || null,
+        description: item.description,
+        metadata: item.metadata || {},
+        status: visitorItem.status,
+      };
+    });
+    const badges = await getBadges(credentials, forceRefreshInventory);
 
     return res.json({
       success: true,
       droppedAsset,
-      sessionKey: sessionKey,
-      visitorData: visitorDataObject?.[sessionKey] || {},  // Defaults if missing
+      sessionKey,
+      visitorData: updatedVisitorDataObject?.[sessionKey] || session,
       worldConfig: worldData?.[sceneDropId]?.config || {},
       uniqueName: droppedAsset?.uniqueName || null,
       badges,

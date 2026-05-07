@@ -1,7 +1,6 @@
-import { Request, Response } from "express";
-import { errorHandler, getCredentials, Visitor, World } from "@utils/index.js";
 import { DroppedAssetInterface } from "@rtsdk/topia";
-import { Credentials } from "types";
+import { Visitor, World } from "./topiaInit.js";
+import { Credentials } from "../types/index.js";
 
 const DEFAULT_KEY_ASSET_NAME = "keyAsset";
 
@@ -32,14 +31,14 @@ export const findTeleportPosition = async (
 
 export const teleportPlayer = async (
   urlSlug: string,
-  visitorId: number,  // Changed to number to match SDK Visitor.get
+  visitorId: number,
   credentials: Credentials,
   uniqueName = DEFAULT_KEY_ASSET_NAME,
   options: TeleportPlayerOptions = {},
 ) => {
   const world = World.create(urlSlug, { credentials });
   const target = await findTeleportPosition(world, uniqueName);
-  const visitor = await Visitor.get(visitorId, urlSlug, { credentials });  // No parseInt needed
+  const visitor = await Visitor.get(visitorId, urlSlug, { credentials });
 
   const offsetY = options.offsetY ?? 100;
   await visitor.moveVisitor({
@@ -47,29 +46,4 @@ export const teleportPlayer = async (
     x: target.x,
     y: target.y + offsetY,
   });
-};
-
-export const handleTeleportPlayer = async (req: Request, res: Response) => {
-  try {
-    
-    const credentials = getCredentials(req.query);
-    const { urlSlug, visitorId } = credentials;
-
-    const { uniqueName = DEFAULT_KEY_ASSET_NAME, keyAssetId } = req.body;
-    if (keyAssetId) {
-      credentials.assetId = keyAssetId;
-    }
-
-    await teleportPlayer(urlSlug, visitorId, credentials, uniqueName);
-
-    return res.json({ success: true });
-  } catch (error) {
-    return errorHandler({
-      error,
-      functionName: "handleTeleportPlayer",
-      message: "Error teleporting player",
-      req,
-      res,
-    });
-  }
 };

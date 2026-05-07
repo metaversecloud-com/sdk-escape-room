@@ -1,766 +1,85 @@
-// client/src/pages/Home.tsx
 import { useContext, useEffect, useMemo, useState } from "react";
-import { PageContainer, LockedState, RoomAPuzzle1, RoomAPuzzle2, RoomCPuzzle1, RoomCPuzzle2, RoomBPuzzle1, RoomBPuzzle2, RoomBPuzzle3 } from "@/components";
+
+import {
+  ConfirmationModal,
+  ExitCongratsCard,
+  InfoCard,
+  InventoryPanel,
+  Leaderboard,
+  LockedState,
+  PageContainer,
+  PageFooter,
+  RoomAPuzzle1Complete,
+  RoomAPuzzle2Complete,
+  RoomBPuzzle1Complete,
+  RoomBPuzzle2Complete,
+  RoomBPuzzle3Complete,
+  RoomCPuzzle1Complete,
+  RoomAPuzzle1,
+  RoomAPuzzle2,
+  RoomBIntroCard,
+  RoomBPuzzle1,
+  RoomBPuzzle2,
+  RoomBPuzzle3,
+  RoomCPuzzle1,
+  RoomCPuzzle2,
+  SessionRunningCard,
+  StartGameCard,
+  StatusBar,
+} from "@/components";
 import { GlobalDispatchContext, GlobalStateContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
-import { backendAPI, setErrorMessage, setGameState} from "@/utils";
-import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { backendAPI, formatElapsedFromTimestamp, setErrorMessage, setGameState } from "@/utils";
 
-type ScreenType = "start" | "exit" | "leaderboard" | "puzzle1" | "puzzle2" | "puzzle3" | "puzzle4" | "puzzle5" | "puzzle6" | "puzzle7" | "null";
+type ScreenType =
+  | "start"
+  | "exit"
+  | "leaderboard"
+  | "puzzle1"
+  | "puzzle2"
+  | "puzzle3"
+  | "puzzle4"
+  | "puzzle5"
+  | "puzzle6"
+  | "puzzle7"
+  | "null";
+
+const SCREENS: ScreenType[] = [
+  "start",
+  "exit",
+  "leaderboard",
+  "puzzle1",
+  "puzzle2",
+  "puzzle3",
+  "puzzle4",
+  "puzzle5",
+  "puzzle6",
+  "puzzle7",
+];
+
+const isScreen = (value: string | null): value is ScreenType => value !== null && (SCREENS as string[]).includes(value);
 
 const getScreenFromSearch = (): ScreenType => {
-  const params = new URLSearchParams(window.location.search);
-  const screen = params.get("screen");
-
-  switch (screen) {
-    case "start":
-      return "start";
-    case "exit":
-      return "exit";
-    case "puzzle1":
-      return "puzzle1";
-    case "puzzle2":
-      return "puzzle2";
-    case "puzzle3":
-      return "puzzle3";
-    case "puzzle4":
-      return "puzzle4";
-    case "puzzle5":
-      return "puzzle5";
-    case "puzzle6":
-      return "puzzle6";
-    case "puzzle7":
-      return "puzzle7";
-    case "leaderboard":
-      return "leaderboard";
-    default:
-      return "null";
-  }
+  const screen = new URLSearchParams(window.location.search).get("screen");
+  return isScreen(screen) ? screen : "null";
 };
 
-const getForceRefreshInventoryFromSearch = () => {
-  const params = new URLSearchParams(window.location.search);
-  return params.get("forceRefreshInventory") === "true";
-};
+const getForceRefreshInventoryFromSearch = () =>
+  new URLSearchParams(window.location.search).get("forceRefreshInventory") === "true";
 
-const StatusPill = ({ label, detail, color }: { label: string; detail: string; color: string }) => (
-  <div
-    className="rounded-lg p-3"
-    style={{
-      background: "rgba(11,18,34,0.9)",
-      border: `1px solid ${color}30`,
-      boxShadow: `0 0 14px ${color}20`,
-    }}
-  >
-    <p className="p2" style={{ color: color, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" }}>{label}</p>
-    <p className="p2" style={{ color: "#c7d0e5", marginTop: 4 }}>{detail}</p>
-  </div>
-);
-
-const StartGameCard = ({
-  onStart,
-  isLoading,
-}: {
-  onStart: () => Promise<void>;
-  isLoading: boolean;
-}) => (
-  <div
-    className="card w-full relative overflow-hidden"
-    style={{
-      background: "radial-gradient(120% 120% at 30% 20%, rgba(34,112,255,0.18), transparent 45%), radial-gradient(120% 120% at 70% 10%, rgba(111,33,255,0.16), transparent 50%), linear-gradient(140deg, #050b18 0%, #0b1222 45%, #0f1b31 100%)",
-      borderColor: "rgba(27,224,242,0.35)",
-      boxShadow: "0 0 28px rgba(27,224,242,0.18), 0 20px 50px rgba(0,0,0,0.45)",
-    }}
-  >
-    <div
-      aria-hidden
-      style={{
-        position: "absolute",
-        inset: -40,
-        background: "radial-gradient(circle at 80% 20%, rgba(255,215,64,0.12) 0, transparent 40%), radial-gradient(circle at 10% 90%, rgba(27,224,242,0.15) 0, transparent 45%)",
-        filter: "blur(18px)",
-        pointerEvents: "none",
-      }}
-    />
-    <div className="card-details flex flex-col gap-4 relative">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h3 className="card-title" style={{ color: "#f6b300", letterSpacing: "0.05em", textTransform: "uppercase", lineHeight: 1.2 }}>
-          Escape Room<br />Briefing
-        </h3>
-      </div>
-
-      <p className="p2" style={{ color: "#dbe8ff", fontSize: "1.02rem", lineHeight: 1.6, whiteSpace: "normal" }}>
-        “Welcome crew. This is Commander Vega. The station’s failing—your team has 30 minutes to bring Power, Comms, and the Airlock back online. Tap station assets for clues, crack the puzzles, and get us out.”
-      </p>
-
-      <div
-        className="rounded-xl p-4 border"
-        style={{
-          background: "rgba(17,27,47,0.8)",
-          borderColor: "rgba(63,94,166,0.65)",
-          boxShadow: "inset 0 0 0 1px rgba(27,224,242,0.12)",
-        }}
-      >
-        <p className="p2" style={{ color: "#b6c7e8", lineHeight: 1.6 }}>
-          • Repair route: Power Bay → Comms Deck → Airlock Control.<br />
-          • Countdown: 30:00; if it hits zero, the station locks you out.<br />
-          • Playstyle: Click assets in-world to pull up clues and puzzles. Solve to advance.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <StatusPill label="Power" detail="Restore systems" color="#1be0f2" />
-        <StatusPill label="Comms" detail="Align + decode" color="#f6b300" />
-        <StatusPill label="Airlock" detail="Override to escape" color="#9b7bff" />
-      </div>
-
-      <div className="card-actions mt-2">
-        <button
-          className="btn w-full sm:w-auto"
-          style={{
-            background: "linear-gradient(135deg, #1f5ad7 0%, #1a4ebc 40%, #00c2ff 100%)",
-            borderColor: "rgba(0,194,255,0.9)",
-            fontWeight: 800,
-            letterSpacing: "0.04em",
-            paddingTop: "14px",
-            paddingBottom: "14px",
-          boxShadow: "0 0 16px rgba(0,194,255,0.55)",
-          textTransform: "uppercase",
-        }}
-        onClick={onStart}
-        disabled={isLoading}
-      >
-          Start the Game
-        </button>
-      </div>
-    </div>
-  </div>
-);
-
-const ExitGameCard = ({ onExit, isLoading }: { onExit: () => void; isLoading: boolean }) => (
-  <div className="card w-full">
-    <div className="card-details">
-      <h3 className="card-title">Exit Escape Room</h3>
-      <p className="card-description p2">End your current session and return to the start area.</p>
-      <div className="card-actions">
-        <button className="btn btn-outline" onClick={onExit} disabled={isLoading}>
-          Exit Game
-        </button>
-      </div>
-    </div>
-  </div>
-);
-
-const InfoCard = ({ title, message }: { title: string; message: string }) => (
-  <div className="card w-full">
-    <div className="card-details">
-      <h3 className="card-title">{title}</h3>
-      <p className="card-description p2">{message}</p>
-    </div>
-  </div>
-);
-
-const StatusBar = ({
-  elapsed,
-  currentRoom,
-  onOpenInventory,
-  onExit,
-  isLoading,
-  hasStarted,
-}: {
-  elapsed: string;
-  currentRoom?: string | null;
-  onOpenInventory: () => void;
-  onExit: () => void;
-  isLoading: boolean;
-  hasStarted: boolean;
-}) => (
-  <div className="card w-full">
-    <div className="card-details">
-      <div className="flex items-center justify-between">
-        <div className="flex-col">
-          <p className="p2">Timer: {elapsed}</p>
-          <p className="p2">Room: {currentRoom || "--"}</p>
-        </div>
-        <div className="card-actions">
-          <button className="btn btn-outline" onClick={onOpenInventory} disabled={!hasStarted}>
-            Inventory
-          </button>
-          <button className="btn btn-outline" onClick={onExit} disabled={isLoading}>
-            Exit
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-const InventoryPanel = ({
-  onClose,
-  visitorData,
-  inventoryItems,
-}: {
-  onClose: () => void;
-  visitorData: any;
-  inventoryItems?: { id: string; name?: string; imageUrl?: string | null; description?: string; metadata?: any }[];
-}) => {
-  const [selectedItem, setSelectedItem] = useState<{
-    id: string;
-    name?: string;
-    imageUrl?: string | null;
-    description?: string;
-    metadata?: any;
-  } | null>(null);
-
-  return (
-    <>
-      <div className="card w-full">
-        <div className="card-details">
-          <div className="card-actions">
-            <button className="btn btn-text" onClick={onClose}>
-              Close
-            </button>
-          </div>
-
-          <h3 className="card-title">Inventory</h3>
-
-          <div className="grid gap-4">
-            <div className="card">
-              <div className="card-details">
-                <h4 className="h4">Mission Items</h4>
-                {(() => {
-                  const hasFuse = !!visitorData?.inventory?.fuse;
-                  const hasWrench = !!visitorData?.inventory?.wrench;
-                  const hasCard = !!visitorData?.inventory?.accessCard;
-
-                  
-                  const filtered =
-                    inventoryItems?.filter((item) => {
-                      const name = (item.name || item.id || "").toLowerCase();
-                      if (name.includes("fuse")) return hasFuse;
-                      if (name.includes("wrench")) return hasWrench;
-                      if (name.includes("access")) return hasCard;
-                      return false;
-                    }) || [];
-
-                  const showInventoryItems = filtered.length > 0;
-
-                  return showInventoryItems ? (
-                    <div className="grid gap-3">
-                      {filtered.map((item) => {
-                        const localSerial =
-                          item.id === "fuse"
-                            ? visitorData?.inventory?.fuse?.serial
-                            : item.id === "wrench"
-                              ? visitorData?.inventory?.wrench?.serial
-                              : item.id === "accessCard"
-                                ? visitorData?.inventory?.accessCard?.partialCode
-                                : undefined;
-                        const detail =
-                          item.metadata?.serial ||
-                          localSerial ||
-                          item.description ||
-                          "Item collected";
-
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            className="flex items-center gap-3 p-3 rounded-lg text-left"
-                            style={{
-                              background: "rgba(17,27,47,0.08)",
-                              border: "1px solid rgba(63,94,166,0.18)",
-                              cursor: "pointer",
-                            }}
-                            onClick={() => setSelectedItem(item)}
-                          >
-                            {item.imageUrl ? (
-                              <img
-                                src={item.imageUrl}
-                                alt={item.name || item.id}
-                                style={{ width: 135, height: 135, objectFit: "contain", borderRadius: 12, background: "#0b1323", padding: 6 }}
-                              />
-                            ) : (
-                              <div
-                                className="flex items-center justify-center"
-                                style={{ width: 135, height: 135, borderRadius: 12, background: "#0b1323", color: "#c7d0e5", padding: 12 }}
-                              >
-                                <span className="p3">No preview</span>
-                              </div>
-                            )}
-                            <div className="flex flex-col">
-                              <p className="p2" style={{ fontWeight: 700 }}>{item.name || item.id}</p>
-                              <p className="p3" style={{ color: "#9babc7" }}>
-                                {detail}
-                              </p>
-                              <p className="p3" style={{ color: "#f6b300", marginTop: 8 }}>
-                                Click to enlarge
-                              </p>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="p2" style={{ color: "#c7d0e5" }}>Nothing in your inventory yet. Solve puzzles to collect mission items.</p>
-                  );
-                })()}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {selectedItem && (
-        <div
-          onClick={() => setSelectedItem(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(3, 8, 19, 0.84)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "1.5rem",
-            zIndex: 50,
-          }}
-        >
-          <div
-            className="card"
-            onClick={(event) => event.stopPropagation()}
-            style={{
-              width: "min(92vw, 720px)",
-              maxHeight: "90vh",
-              overflow: "auto",
-              background: "linear-gradient(145deg, #091223 0%, #0d1a33 100%)",
-              border: "1px solid rgba(27,224,242,0.25)",
-              boxShadow: "0 24px 70px rgba(0,0,0,0.55)",
-            }}
-          >
-            <div className="card-details">
-              <div className="card-actions">
-                <button className="btn btn-text" onClick={() => setSelectedItem(null)}>
-                  Close
-                </button>
-              </div>
-
-              <h3 className="card-title">{selectedItem.name || selectedItem.id}</h3>
-
-              {selectedItem.imageUrl ? (
-                <img
-                  src={selectedItem.imageUrl}
-                  alt={selectedItem.name || selectedItem.id}
-                  style={{
-                    width: "100%",
-                    maxHeight: "70vh",
-                    objectFit: "contain",
-                    borderRadius: 16,
-                    background: "#050b18",
-                    padding: 16,
-                  }}
-                />
-              ) : (
-                <div
-                  className="flex items-center justify-center rounded-xl"
-                  style={{
-                    minHeight: 320,
-                    background: "#050b18",
-                    color: "#c7d0e5",
-                  }}
-                >
-                  <p className="p2">No larger image available for this item.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-};
-
-const LeaderboardPanel = ({
-  leaderboard,
-}: {
-  leaderboard?: {profileId: string; name: string; completionTime: number; escaped: boolean; attempts: number}[];
-}) => (
-  <div className="card w-full">
-    <div className="card-details">
-      <h3 className="card-title">Leaderboard</h3>
-      <p className="p2">Top Escape Room Times</p>
-      {!leaderboard || leaderboard.length === 0 ? (
-        <p className="p2">No entries yet. Be the first to escape!</p>
-      ) : (
-        <table className="table">
-          <thead>
-            <tr>
-              <th></th>
-              <th className="h5">Name</th>
-              <th className="h5">Time</th>
-              <th className="h5">Attempts</th>
-              <th className="h5">Escaped</th>
-            </tr>
-          </thead>
-          <tbody>
-            {leaderboard.map((entry, index) => (
-              <tr key={entry.profileId}>
-                <td className="p2">{index + 1}</td>
-                <td className="p2">{entry.name}</td>
-                <td className="p2">{entry.completionTime}s</td>
-                <td className="p2">{entry.attempts}</td>
-                <td className="p2">{entry.escaped ? "Yes" : "No"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
-  </div>
-);
-
-const SessionRunningCard = () => (
-  <div
-    className="card w-full relative overflow-hidden"
-    style={{
-      background: "radial-gradient(120% 120% at 20% 15%, rgba(34,112,255,0.15), transparent 45%), radial-gradient(120% 120% at 80% 0%, rgba(255,215,64,0.12), transparent 45%), linear-gradient(135deg, #080f1d 0%, #0f1c33 50%, #0b1022 100%)",
-      borderColor: "rgba(27,224,242,0.35)",
-      boxShadow: "0 0 26px rgba(0, 194, 255, 0.16), 0 20px 48px rgba(0,0,0,0.45)",
-    }}
-  >
-    <div
-      aria-hidden
-      style={{
-        position: "absolute",
-        inset: -50,
-        background: "radial-gradient(circle at 85% 20%, rgba(111,33,255,0.14) 0, transparent 40%), radial-gradient(circle at 10% 90%, rgba(27,224,242,0.12) 0, transparent 50%)",
-        filter: "blur(18px)",
-        pointerEvents: "none",
-      }}
-    />
-    <div className="card-details flex flex-col gap-4 relative">
-      <h3 className="card-title" style={{ color: "#f6b300", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-        Power Bay Orders
-      </h3>
-      <p className="p2" style={{ color: "#dbe8ff", fontSize: "1.02rem", lineHeight: 1.6 }}>
-        “Crew, this is Commander Vega. You’re live inside the Power Bay. Start interacting with station assets to reroute power and get this room online.”
-      </p>
-    </div>
-  </div>
-);
-
-const FuseDisplay = () => (
-  <div
-    className="rounded-xl p-4 border"
-    style={{
-      background: "radial-gradient(circle at 40% 30%, rgba(108, 210, 255, 0.12), transparent 50%), rgba(14,24,44,0.9)",
-      borderColor: "rgba(108, 240, 190, 0.45)",
-      boxShadow: "0 10px 22px rgba(108, 240, 190, 0.18)",
-    }}
-  >
-    <svg width="160" height="120" viewBox="0 0 160 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="20" y="50" width="120" height="20" rx="6" fill="#c7d0e5" stroke="#8fa0bc" strokeWidth="3" />
-      <rect x="40" y="42" width="80" height="36" rx="10" fill="#e7edf7" stroke="#9bb2d1" strokeWidth="3" />
-      <rect x="55" y="46" width="50" height="28" rx="6" fill="#f8fbff" stroke="#c2d2e8" strokeWidth="2" />
-      <path d="M60 60h8l8-8 8 16 8-8h8" stroke="#7c8aa8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      <rect x="15" y="42" width="20" height="36" rx="8" fill="#d5deed" stroke="#9fb3ce" strokeWidth="3" />
-      <rect x="125" y="42" width="20" height="36" rx="8" fill="#d5deed" stroke="#9fb3ce" strokeWidth="3" />
-      <text x="80" y="105" textAnchor="middle" fontFamily="Inter, system-ui, sans-serif" fontSize="16" fontWeight="800" fill="#f6b300">74A1</text>
-    </svg>
-  </div>
-);
-
-const WrenchDisplay = () => (
-  <div
-    className="rounded-xl p-4 border"
-    style={{
-      background: "radial-gradient(circle at 40% 30%, rgba(255,200,120,0.12), transparent 50%), rgba(14,24,44,0.9)",
-      borderColor: "rgba(255,200,120,0.45)",
-      boxShadow: "0 10px 22px rgba(255,200,120,0.18)",
-    }}
-  >
-    <svg width="180" height="120" viewBox="0 0 180 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="30" y="54" width="90" height="12" rx="3" fill="#c7d0e5" stroke="#8fa0bc" strokeWidth="3" />
-      <rect x="96" y="42" width="46" height="36" rx="8" fill="#dfe7f4" stroke="#9bb2d1" strokeWidth="3" />
-      <rect x="110" y="36" width="26" height="14" rx="4" fill="#b7c6dc" stroke="#8fa0bc" strokeWidth="3" />
-      <rect x="18" y="48" width="18" height="24" rx="6" fill="#c48a62" stroke="#9b6c4f" strokeWidth="3" />
-      <rect x="120" y="62" width="10" height="12" rx="2" fill="#7f8faa" />
-      <path d="M102 70l12-6-6-10" stroke="#7f8faa" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      <text x="90" y="105" textAnchor="middle" fontFamily="Inter, system-ui, sans-serif" fontSize="16" fontWeight="800" fill="#f6b300">26B5</text>
-    </svg>
-  </div>
-);
-
-const Puzzle1CompleteCard = () => (
-  <div
-    className="card w-full relative overflow-hidden"
-    style={{
-      background: "radial-gradient(120% 120% at 20% 20%, rgba(34,112,255,0.12), transparent 45%), radial-gradient(120% 120% at 80% 0%, rgba(111,33,255,0.12), transparent 45%), linear-gradient(135deg, #0c1629 0%, #0b1323 50%, #0a1021 100%)",
-      borderColor: "rgba(99,211,146,0.55)",
-      boxShadow: "0 0 28px rgba(99,211,146,0.25), 0 20px 48px rgba(0,0,0,0.45)",
-    }}
-  >
-    <div
-      aria-hidden
-      style={{
-        position: "absolute",
-        inset: -50,
-        background: "radial-gradient(circle at 85% 20%, rgba(255,215,64,0.14) 0, transparent 40%), radial-gradient(circle at 10% 90%, rgba(27,224,242,0.12) 0, transparent 50%)",
-        filter: "blur(18px)",
-        pointerEvents: "none",
-      }}
-    />
-    <div className="card-details flex flex-col md:flex-row items-center gap-5 relative">
-      <div className="flex-1">
-        <p className="p2 uppercase" style={{ color: "#8cf0af", letterSpacing: "0.08em", marginBottom: 6 }}>
-          Power Bay Secure
-        </p>
-        <h3 className="card-title" style={{ color: "#f6b300", letterSpacing: "0.04em", textTransform: "uppercase" }}>
-          Puzzle Complete
-        </h3>
-        <p className="p2 mt-2" style={{ color: "#dbe8ff", lineHeight: 1.6 }}>
-          Electrical cabinet unlocked.
-        </p>
-        <p className="p2 mt-2" style={{ color: "#dbe8ff", lineHeight: 1.6 }}>
-           <strong>Commander Vega</strong>: “Nice work, crew. Keep momentum!”
-        </p>
-      </div>
-    </div>
-    <div className="card-details flex flex-col md:flex-row items-center gap-5 relative">
-      <div className="flex-1">
-        <p className="p2 uppercase" style={{ color: "#8cf0af", letterSpacing: "0.08em", marginBottom: 6 }}>
-          You obtained a <strong>Fuse</strong>! (Serial: 74A1)
-        </p>
-        <p className="p2 mt-2" style={{ color: "#dbe8ff", lineHeight: 1.6 }}>
-          Check your inventory to view details about this item and how it might be used in upcoming puzzles.
-        </p>
-      </div>
-    </div>
-  </div>
-);
-
-const Puzzle2CompleteCard = () => (
-  <div
-    className="card w-full relative overflow-hidden"
-    style={{
-      background: "radial-gradient(120% 120% at 20% 20%, rgba(34,112,255,0.12), transparent 45%), radial-gradient(120% 120% at 80% 0%, rgba(255,179,64,0.14), transparent 45%), linear-gradient(135deg, #0c1629 0%, #0b1323 50%, #0a1021 100%)",
-      borderColor: "rgba(255,200,120,0.55)",
-      boxShadow: "0 0 28px rgba(255,200,120,0.25), 0 20px 48px rgba(0,0,0,0.45)",
-    }}
-  >
-    <div
-      aria-hidden
-      style={{
-        position: "absolute",
-        inset: -50,
-        background: "radial-gradient(circle at 85% 20%, rgba(255,215,64,0.14) 0, transparent 40%), radial-gradient(circle at 10% 90%, rgba(27,224,242,0.12) 0, transparent 50%)",
-        filter: "blur(18px)",
-        pointerEvents: "none",
-      }}
-    />
-    <div className="card-details flex flex-col md:flex-row items-center gap-5 relative">
-      <div className="flex-1">
-        <p className="p2 uppercase" style={{ color: "#ffc878", letterSpacing: "0.08em", marginBottom: 6 }}>
-          Reactor Online
-        </p>
-        <h3 className="card-title" style={{ color: "#f6b300", letterSpacing: "0.04em", textTransform: "uppercase" }}>
-          Puzzle Complete
-        </h3>
-        <p className="p2 mt-2" style={{ color: "#dbe8ff", lineHeight: 1.6 }}>
-          Reactor sequence locked. Wrench (26B5) added to your inventory. Commander Vega: “Power Bay stabilized—proceed to the Comms Deck.”
-        </p>
-      </div>
-      <div style={{ minWidth: 180 }}>
-        <WrenchDisplay />
-      </div>
-    </div>
-  </div>
-);
-
-const RoomBIntroCard = () => (
-  <div
-    className="card w-full relative overflow-hidden"
-    style={{
-      background: "radial-gradient(120% 120% at 25% 15%, rgba(111,33,255,0.14), transparent 45%), radial-gradient(120% 120% at 80% 0%, rgba(27,224,242,0.12), transparent 45%), linear-gradient(140deg, #050b18 0%, #0c162c 50%, #0d1b35 100%)",
-      borderColor: "rgba(111,33,255,0.35)",
-      boxShadow: "0 0 28px rgba(111,33,255,0.22), 0 20px 48px rgba(0,0,0,0.45)",
-    }}
-  >
-    <div
-      aria-hidden
-      style={{
-        position: "absolute",
-        inset: -50,
-        background: "radial-gradient(circle at 85% 20%, rgba(255,215,64,0.12) 0, transparent 40%), radial-gradient(circle at 10% 90%, rgba(27,224,242,0.12) 0, transparent 50%)",
-        filter: "blur(18px)",
-        pointerEvents: "none",
-      }}
-    />
-    <div className="card-details flex flex-col gap-4 relative">
-      <h3 className="card-title" style={{ color: "#f6b300", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-        Room 2: Comms Deck
-      </h3>
-      <p className="p2" style={{ color: "#dbe8ff", lineHeight: 1.6 }}>
-        “Crew, welcome to the Comms Deck. Align the satellites, rebuild the transmission, and decode the valve order to stabilize the signal.”
-      </p>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <StatusPill label="Satellite Alignment" detail="Count the stars" color="#1be0f2" />
-        <StatusPill label="Retrieve the Transmission" detail="Assemble the message" color="#f6b300" />
-        <StatusPill label="Decode the Transmission" detail="Figure out what the message is and determine the correct valve order" color="#9b7bff" />
-      </div>
-    </div>
-  </div>
-);
-
-const Puzzle6CompleteCard = () => (
-  <div
-    className="card w-full relative overflow-hidden"
-    style={{
-      background: "radial-gradient(120% 120% at 25% 15%, rgba(27,224,242,0.14), transparent 45%), radial-gradient(120% 120% at 80% 0%, rgba(111,33,255,0.12), transparent 45%), linear-gradient(135deg, #0c1629 0%, #0b1323 50%, #0a1021 100%)",
-      borderColor: "rgba(27,224,242,0.35)",
-      boxShadow: "0 0 28px rgba(27,224,242,0.22), 0 20px 48px rgba(0,0,0,0.45)",
-    }}
-  >
-    <div
-      aria-hidden
-      style={{
-        position: "absolute",
-        inset: -50,
-        background: "radial-gradient(circle at 85% 20%, rgba(255,215,64,0.14) 0, transparent 40%), radial-gradient(circle at 10% 90%, rgba(27,224,242,0.12) 0, transparent 50%)",
-        filter: "blur(18px)",
-        pointerEvents: "none",
-      }}
-    />
-    <div className="card-details flex flex-col gap-4 relative">
-      <p className="p2 uppercase" style={{ color: "#1be0f2", letterSpacing: "0.08em" }}>
-        Airlock Systems Restored
-      </p>
-      <h3 className="card-title" style={{ color: "#f6b300", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-        Puzzle Complete
-      </h3>
-      <p className="p2" style={{ color: "#dbe8ff", lineHeight: 1.6 }}>
-        Commander Vega: “Circuit stabilized. The keypad is live—enter the override code to finish the escape.”
-      </p>
-    </div>
-  </div>
-);
-
-const formatTime = (seconds?: number | null) => {
-  if (seconds === undefined || seconds === null || Number.isNaN(seconds)) return "--:--";
-  const mm = Math.floor(seconds / 60);
-  const ss = seconds % 60;
-  return `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
-};
-
-const ExitCongratsCard = ({
-  completionTime,
-  leaderboard,
-}: {
-  completionTime?: number | null;
-  leaderboard?: { profileId: string; name: string; completionTime: number; escaped: boolean; attempts: number }[];
-}) => {
-  const timeText = formatTime(completionTime ?? undefined);
-  const placement = completionTime != null && leaderboard && leaderboard.length
-    ? leaderboard
-        .map((entry) => entry.completionTime)
-        .filter((t) => typeof t === "number")
-        .sort((a, b) => a - b)
-        .findIndex((t) => t >= completionTime) + 1 || leaderboard.length + 1
-    : null;
-
-  const topRows = leaderboard ? leaderboard.slice(0, 5) : [];
-
-  return (
-    <div
-      className="card w-full relative overflow-hidden"
-      style={{
-        background: "radial-gradient(120% 120% at 30% 20%, rgba(27,224,242,0.14), transparent 45%), radial-gradient(120% 120% at 80% 0%, rgba(111,33,255,0.12), transparent 45%), linear-gradient(135deg, #050b18 0%, #0b1427 50%, #0c1b33 100%)",
-        borderColor: "rgba(27,224,242,0.35)",
-        boxShadow: "0 0 28px rgba(27,224,242,0.22), 0 20px 48px rgba(0,0,0,0.45)",
-      }}
-    >
-      <div
-        aria-hidden
-        style={{
-          position: "absolute",
-          inset: -50,
-          background: "radial-gradient(circle at 85% 20%, rgba(255,215,64,0.14) 0, transparent 40%), radial-gradient(circle at 10% 90%, rgba(27,224,242,0.12) 0, transparent 50%)",
-          filter: "blur(18px)",
-          pointerEvents: "none",
-        }}
-      />
-      <div className="card-details flex flex-col gap-4 relative">
-        <p className="p2 uppercase" style={{ color: "#1be0f2", letterSpacing: "0.08em" }}>
-          Mission Complete
-        </p>
-        <h3 className="card-title" style={{ color: "#f6b300", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-          Congratulations — Airlock Opened
-        </h3>
-        <p className="p2" style={{ color: "#dbe8ff", lineHeight: 1.6 }}>
-          Commander Vega: “Great work, crew. You restored Power, Comms, and Airlock. Grab your stats and see how you rank.”
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="rounded-xl p-4 border" style={{ background: "rgba(17,27,47,0.85)", borderColor: "rgba(63,94,166,0.65)" }}>
-            <p className="p2 uppercase" style={{ color: "#9b7bff", letterSpacing: "0.08em" }}>Your Time</p>
-            <h4 className="h4" style={{ color: "#f6b300" }}>{timeText}</h4>
-            {placement && placement > 0 && (
-              <p className="p3" style={{ color: "#c7d0e5" }}>Projected rank: #{placement}</p>
-            )}
-          </div>
-          <div className="rounded-xl p-4 border md:col-span-2" style={{ background: "rgba(17,27,47,0.85)", borderColor: "rgba(63,94,166,0.65)" }}>
-            <p className="p2 uppercase" style={{ color: "#1be0f2", letterSpacing: "0.08em" }}>Top Escape Times</p>
-            {topRows.length === 0 ? (
-              <p className="p2" style={{ color: "#c7d0e5" }}>No leaderboard entries yet.</p>
-            ) : (
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th className="p2">Rank</th>
-                    <th className="p2">Crew</th>
-                    <th className="p2">Time</th>
-                    <th className="p2">Attempts</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topRows.map((row, idx) => (
-                    <tr key={row.profileId}>
-                      <td className="p2">#{idx + 1}</td>
-                      <td className="p2">{row.name}</td>
-                      <td className="p2">{formatTime(row.completionTime)}</td>
-                      <td className="p2">{row.attempts}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const RefRow = ({ left, center, right }: { left: string; center: string; right: string }) => (
-  <div
-    className="flex justify-between items-center rounded-md px-3 py-2"
-    style={{
-      background: "rgba(11,18,34,0.9)",
-      border: "1px solid rgba(63,94,166,0.35)",
-    }}
-  >
-    <span className="p2" style={{ color: "#dbe8ff", minWidth: 80 }}>{left}</span>
-    <span className="p2" style={{ color: "#9babc7", minWidth: 60, textAlign: "center" }}>{center}</span>
-    <span className="p2" style={{ color: "#f6b300", minWidth: 80, textAlign: "right" }}>{right}</span>
-  </div>
-);
+const ROOM_B_LOCKED_MESSAGE = "You must restore power in Room A before accessing the Comms Deck.";
+const ROOM_C_LOCKED_MESSAGE = "You must complete Room B before accessing the reactor control room.";
 
 export const Home = () => {
   const dispatch = useContext(GlobalDispatchContext);
-  const {  hasInteractiveParams, visitorData, badges, visitorInventory, leaderboard } = useContext(GlobalStateContext);
+  const { hasInteractiveParams, visitorData, visitorInventory, leaderboard, hasSessionExpired } =
+    useContext(GlobalStateContext);
   const visitorSession = visitorData || null;
+  const puzzlesCompleted = visitorSession?.puzzlesCompleted;
 
   const screen = useMemo(() => getScreenFromSearch(), []);
   const forceRefreshInventory = useMemo(() => getForceRefreshInventoryFromSearch(), []);
+
   const [isLoading, setIsLoading] = useState(false);
   const [elapsed, setElapsed] = useState("--:--");
   const [showInventory, setShowInventory] = useState(false);
@@ -768,21 +87,18 @@ export const Home = () => {
   const [showRoomBIntro, setShowRoomBIntro] = useState(false);
 
   const hasStarted = visitorSession?.sessionActive === true;
-  const isFinished = visitorSession?.puzzlesCompleted?.[7] === true;
+  const isFinished = puzzlesCompleted?.[7] === true;
+  const roomADone = !!(puzzlesCompleted?.[1] && puzzlesCompleted?.[2]);
+  const roomBDone = !!(puzzlesCompleted?.[3] && puzzlesCompleted?.[4] && puzzlesCompleted?.[5]);
 
-  // simple timer display (mm:ss) once a session is active
+  // Live timer display once a session is active
   useEffect(() => {
     if (!hasStarted || !visitorSession?.startTime) {
       setElapsed("--:--");
       return;
     }
-    const start = new Date(visitorSession.startTime).getTime();
-    const tick = () => {
-      const seconds = Math.max(0, Math.floor((Date.now() - start) / 1000));
-      const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
-      const ss = String(seconds % 60).padStart(2, "0");
-      setElapsed(`${mm}:${ss}`);
-    };
+    const startMs = new Date(visitorSession.startTime).getTime();
+    const tick = () => setElapsed(formatElapsedFromTimestamp(startMs));
     tick();
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
@@ -804,78 +120,75 @@ export const Home = () => {
     setIsLoading(false);
   };
 
-  const openExitConfirmation = () => setShowExitConfirmation(true);
   const exitGame = async () => {
     setIsLoading(true);
     try {
       const res = await backendAPI.post("/exit");
       setGameState(dispatch, res.data);
-    } catch(error) { setErrorMessage(dispatch, error as ErrorType); }
+    } catch (error) {
+      setErrorMessage(dispatch, error as ErrorType);
+    }
     setIsLoading(false);
   };
 
+  // Initial game-state fetch
   useEffect(() => {
-    if (hasInteractiveParams) {
-      setIsLoading(true);
-      backendAPI
-        .get("/game-state", { params: { forceRefreshInventory } })
-        .then((response) => {
-          setGameState(dispatch, response.data);
-        })
-        .catch((error) => setErrorMessage(dispatch, error as ErrorType))
-        .finally(() => setIsLoading(false));
-    } else {
+    if (!hasInteractiveParams) {
       setIsLoading(false);
+      return;
     }
-  }, [hasInteractiveParams, dispatch]);
+    setIsLoading(true);
+    backendAPI
+      .get("/game-state", { params: { forceRefreshInventory } })
+      .then((response) => setGameState(dispatch, response.data))
+      .catch((error) => setErrorMessage(dispatch, error as ErrorType))
+      .finally(() => setIsLoading(false));
+  }, [hasInteractiveParams, dispatch, forceRefreshInventory]);
 
+  // After Room A puzzles 1+2 are both done, show the Room B intro card 5s later
   useEffect(() => {
-    const bothRoomAPuzzlesDone =
-      visitorData?.puzzlesCompleted?.[1] && visitorData?.puzzlesCompleted?.[2];
-    const onRoomAScreen =
-      screen === "puzzle1" || screen === "puzzle2";
-
-    let id: number | undefined;
-    if (onRoomAScreen && bothRoomAPuzzlesDone) {
+    const onRoomAScreen = screen === "puzzle1" || screen === "puzzle2";
+    if (!(onRoomAScreen && roomADone)) {
       setShowRoomBIntro(false);
-      id = window.setTimeout(() => setShowRoomBIntro(true), 2000);
-    } else {
-      setShowRoomBIntro(false);
+      return;
     }
+    setShowRoomBIntro(false);
+    const id = window.setTimeout(() => setShowRoomBIntro(true), 5000);
+    return () => window.clearTimeout(id);
+  }, [screen, roomADone]);
 
-    return () => {
-      if (id) window.clearTimeout(id);
-    };
-  }, [screen, visitorData?.puzzlesCompleted?.[1], visitorData?.puzzlesCompleted?.[2]]);
-
-  if(screen === "leaderboard") {
+  // ── Standalone screens (own PageContainer) ──
+  if (screen === "leaderboard") {
     return (
       <PageContainer isLoading={isLoading} headerText="Leaderboard">
         <div className="flex-col gap-4">
-          <LeaderboardPanel leaderboard={leaderboard} />
+          <Leaderboard leaderboard={leaderboard} />
         </div>
       </PageContainer>
     );
-  }
-  // If final puzzle completed, allow showing the completion content even though session ended
-  if (screen === "puzzle7" && isFinished) {
+  } else if (screen === "puzzle7" && isFinished) {
     return (
-      <PageContainer isLoading={isLoading} headerText="">
+      <PageContainer isLoading={isLoading}>
         <div className="flex flex-col w-full items-start gap-4">
           <ExitCongratsCard completionTime={visitorSession?.completionTime} leaderboard={leaderboard} />
         </div>
       </PageContainer>
     );
-  }
-
-  // Pre-start view
-  if (!hasStarted) {
+  } else if (screen !== "start" && hasSessionExpired) {
+    // ── Session Expired view ──
     return (
-      <PageContainer isLoading={isLoading} headerText="">
+      <PageContainer isLoading={isLoading}>
         <div className="flex flex-col w-full items-start gap-4">
-          {screen === "start" && (
-            <StartGameCard onStart={startGame} isLoading={isLoading || !hasInteractiveParams} />
-          )}
+          <LockedState title="Time has run out" message="Click on the start terminal to start a new game." />
+        </div>
+      </PageContainer>
+    );
+  } else if (!hasStarted) {
+    // ── Pre-start view ──
+    return (
+      <PageContainer isLoading={isLoading}>
+        <div className="flex flex-col w-full items-start gap-4">
+          {screen === "start" && <StartGameCard onStart={startGame} isLoading={isLoading || !hasInteractiveParams} />}
           {screen === "exit" && (
             <InfoCard title="No Active Session" message="Start the game first before using the exit terminal." />
           )}
@@ -890,18 +203,15 @@ export const Home = () => {
     );
   }
 
-  const showStatusBar = !isFinished;
-
+  // ── In-game view ──
   return (
-    <PageContainer isLoading={isLoading} headerText="">
+    <PageContainer isLoading={isLoading}>
       <div className="flex flex-col w-full items-start gap-4">
-        {showStatusBar && (
-          <StatusBar  
+        {!isFinished && (
+          <StatusBar
             elapsed={elapsed}
             currentRoom={visitorSession?.currentRoom}
             onOpenInventory={() => setShowInventory(true)}
-            onExit={openExitConfirmation}
-            isLoading={isLoading}
             hasStarted={hasStarted}
           />
         )}
@@ -913,10 +223,6 @@ export const Home = () => {
           />
         )}
 
-        {screen === "exit" && (
-          <ExitGameCard onExit={openExitConfirmation} isLoading={isLoading} />
-        )}
-        
         {showExitConfirmation && (
           <ConfirmationModal
             title="Exit Game"
@@ -926,146 +232,85 @@ export const Home = () => {
           />
         )}
 
-        {screen === "start" && (
-          hasStarted ? <SessionRunningCard /> : <StartGameCard onStart={startGame} isLoading={isLoading || !hasInteractiveParams} />
-        )}
+        {screen === "start" && <SessionRunningCard />}
 
-        {/* Room A Puzzles */}
-        {screen === "puzzle1" && (
-          visitorData?.puzzlesCompleted?.[1] ? (
-            showRoomBIntro ? <RoomBIntroCard /> : <Puzzle1CompleteCard />
+        {/* Room A — Puzzles 1 & 2 */}
+        {screen === "puzzle1" &&
+          (puzzlesCompleted?.[1] ? (
+            showRoomBIntro ? (
+              <RoomBIntroCard />
+            ) : (
+              <RoomAPuzzle1Complete />
+            )
           ) : (
-            <RoomAPuzzle1 refreshGameState={refreshGameState} isCompleted={visitorData?.puzzlesCompleted?.[1]} />
-          )
-        )}
-        
-        {screen === "puzzle2" && (
-          visitorData?.puzzlesCompleted?.[2] ? (
-            showRoomBIntro ? <RoomBIntroCard /> : <Puzzle2CompleteCard />
+            <RoomAPuzzle1 refreshGameState={refreshGameState} />
+          ))}
+
+        {screen === "puzzle2" &&
+          (puzzlesCompleted?.[2] ? (
+            showRoomBIntro ? (
+              <RoomBIntroCard />
+            ) : (
+              <RoomAPuzzle2Complete />
+            )
           ) : (
             <RoomAPuzzle2 refreshGameState={refreshGameState} />
-          )
-        )}
+          ))}
 
-        {/* Room B Puzzle 1 - Your Satellite Alignment Puzzle */}
-        {screen === "puzzle3" && (
-          // Check if Room A is complete (puzzles 1 and 2)
-          (!visitorData?.puzzlesCompleted?.[1] || !visitorData?.puzzlesCompleted?.[2]) ? (
-            <LockedState 
-              title="Room B Locked" 
-              message="You must restore power in Room A before accessing the Comms Deck." 
-            />
-          ) : visitorData?.puzzlesCompleted?.[3] ? (
-            <div className="satellite-success">
-            <div className="success-animation">
-              <div className="satellite-icon">🛰️</div>
-              <h2 style={{ color: "white"}} >Communication Signal Aligned!</h2>
-              <p style={{ color: "gray" }}> The satellites are now in perfect alignment. Communication restored!</p>
-              <div className="signal-bars">
-                <div className="signal-bar active"></div>
-                <div className="signal-bar active"></div>
-                <div className="signal-bar active"></div>
-                <div className="signal-bar active"></div>
-                <div className="signal-bar active"></div>
-              </div>
-            </div>
-            </div>
+        {/* Room B — Puzzles 3, 4, 5 */}
+        {screen === "puzzle3" &&
+          (!roomADone ? (
+            <LockedState title="Room B Locked" message={ROOM_B_LOCKED_MESSAGE} />
+          ) : puzzlesCompleted?.[3] ? (
+            <RoomBPuzzle1Complete />
           ) : (
             <RoomBPuzzle1 refreshGameState={refreshGameState} />
-          )
-        )}
+          ))}
 
-        {screen === "puzzle4" && (
-          (!visitorData?.puzzlesCompleted?.[1] || !visitorData?.puzzlesCompleted?.[2]) ? (
-            <LockedState 
-              title="Room B Locked" 
-              message="You must restore power in Room A before accessing the Comms Deck." 
-            />
-            ) : visitorData?.puzzlesCompleted?.[4] ? (
-              <div className="transmission-reconstruct-success">
-                <div className="success-animation">
-                  <h2>Transmission Reconstructed!</h2>
-                  <div className="reconstructed-message">
-                    <h3>The torn fragments reveal a scrambled transmission:</h3>
-                    <div className="scrambled-output">
-                      <div className="scrambled-line">EVLAV</div>
-                      <div className="scrambled-line">KLCO</div>
-                      <div className="scrambled-line">EURSSRPE</div>
-                    </div>
-                    <p className="next-clue">These scrambled words hold the key to the next puzzle...</p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <RoomBPuzzle2 refreshGameState={refreshGameState} />
-            )
-        )}
+        {screen === "puzzle4" &&
+          (!roomADone ? (
+            <LockedState title="Room B Locked" message={ROOM_B_LOCKED_MESSAGE} />
+          ) : puzzlesCompleted?.[4] ? (
+            <RoomBPuzzle2Complete />
+          ) : (
+            <RoomBPuzzle2 refreshGameState={refreshGameState} />
+          ))}
 
-        {screen === "puzzle5" && (
-          // Check if Room B Puzzle 2 is complete (puzzle 4)
-          (!visitorData?.puzzlesCompleted?.[4]) ? (
-            <LockedState 
-              title="Puzzle Locked" 
-              message="You must reconstruct the transmission first before decoding it." 
+        {screen === "puzzle5" &&
+          (!puzzlesCompleted?.[4] ? (
+            <LockedState
+              title="Puzzle Locked"
+              message="You must reconstruct the transmission first before decoding it."
             />
-          ) : visitorData?.puzzlesCompleted?.[5] ? (
-            <div className="valve-decode-success">
-              <div className="success-animation">
-                <div className="success-icon">🔓</div>
-                <h2>Communications Stabilized!</h2>
-                <div className="access-card-message">
-                  <h3>🎫 ACCESS CARD ACQUIRED! 🎫</h3>
-                  <p>Access card added to your inventory!</p>
-                  <div className="partial-code">
-                    <p>Partial Airlock Code Revealed:</p>
-                    <div className="code-display">7 _ 3 _</div>
-                  </div>
-                </div>
-                <p className="clue-text">Check your inventory to see the Access Card. Proceed to Room C!</p>
-                <div className="signal-bars">
-                  <div className="signal-bar active"></div>
-                  <div className="signal-bar active"></div>
-                  <div className="signal-bar active"></div>
-                  <div className="signal-bar active"></div>
-                  <div className="signal-bar active"></div>
-                </div>
-              </div>
-            </div>
+          ) : puzzlesCompleted?.[5] ? (
+            <RoomBPuzzle3Complete />
           ) : (
             <RoomBPuzzle3 refreshGameState={refreshGameState} />
-          )
-        )}
+          ))}
 
-        {screen === "puzzle6" && (
-          (!visitorData?.puzzlesCompleted?.[3] || !visitorData?.puzzlesCompleted?.[4] || !visitorData?.puzzlesCompleted?.[5]) ? (
-            <LockedState 
-              title="Room C Locked" 
-              message="You must complete Room B before accessing the reactor control room." 
-            />
-          ) : visitorData?.puzzlesCompleted?.[6] ? (
-            <Puzzle6CompleteCard />
+        {/* Room C — Puzzles 6 & 7 */}
+        {screen === "puzzle6" &&
+          (!roomBDone ? (
+            <LockedState title="Room C Locked" message={ROOM_C_LOCKED_MESSAGE} />
+          ) : puzzlesCompleted?.[6] ? (
+            <RoomCPuzzle1Complete />
           ) : (
             <RoomCPuzzle1 refreshGameState={refreshGameState} />
-          )
-        )}
+          ))}
 
-        {screen === "puzzle7" && (
-          (!visitorData?.puzzlesCompleted?.[3] || !visitorData?.puzzlesCompleted?.[4] || !visitorData?.puzzlesCompleted?.[5]) ? (
-            <LockedState 
-              title="Room C Locked" 
-              message="You must complete Room B before accessing the final airlock sequence." 
+        {screen === "puzzle7" &&
+          (!roomBDone ? (
+            <LockedState title="Room C Locked" message={ROOM_C_LOCKED_MESSAGE} />
+          ) : !puzzlesCompleted?.[6] ? (
+            <LockedState
+              title="Final Puzzle Locked"
+              message="Complete Puzzle 6 before attempting the final escape sequence."
             />
-          ) : !visitorData?.puzzlesCompleted?.[6] ? (
-            <LockedState 
-              title="Final Puzzle Locked" 
-              message="Complete Puzzle 6 before attempting the final escape sequence." 
-            />
-          ) : visitorData?.puzzlesCompleted?.[7] ? (
+          ) : puzzlesCompleted?.[7] ? (
             <ExitCongratsCard completionTime={visitorSession?.completionTime} leaderboard={leaderboard} />
-          ) :  (
+          ) : (
             <RoomCPuzzle2 refreshGameState={refreshGameState} />
-          )
-        )}
+          ))}
 
         {screen === "null" && (
           <InfoCard
@@ -1074,6 +319,14 @@ export const Home = () => {
           />
         )}
       </div>
+
+      {!isFinished && (
+        <PageFooter>
+          <button className="btn btn-danger w-full" onClick={() => setShowExitConfirmation(true)} disabled={isLoading}>
+            Exit
+          </button>
+        </PageFooter>
+      )}
     </PageContainer>
   );
 };

@@ -1,4 +1,4 @@
-import { Credentials } from "types";
+import { Credentials } from "../types/index.js";
 import { getCachedInventoryItems } from "./inventoryCache.js";
 
 export type BadgeRecord = {

@@ -27,7 +27,7 @@ export const PageContainer = ({
       )}
       {headerText && (
         <div className="pb-6">
-          <h2>{headerText}</h2>
+          <h2 className="er-title-gold">{headerText}</h2>
         </div>
       )}
       {showSettings ? <AdminView /> : children}

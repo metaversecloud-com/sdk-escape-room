@@ -24,6 +24,7 @@ const globalReducer = (state: InitialState, action: ActionType) => {
           badges: payload.visitorInventory?.badges || {},
           items: (payload as any).inventoryItems || payload.visitorInventory?.items || [],
         },
+        hasSessionExpired: payload.hasSessionExpired,
       };
     case SET_ERROR:
       return {

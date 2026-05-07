@@ -1,0 +1,99 @@
+/*
+ * Escape Room design tokens.
+ * Use these CSS variables (or the .er-* utility/component classes that consume
+ * them) instead of hard-coded hex values, gradients, or shadows in JSX/CSS.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  /* Brand accents */
+  --er-cyan: #1be0f2;
+  --er-gold: #f6b300;
+  --er-violet: #9b7bff;
+  --er-green: #4caf50;
+  --er-green-soft: #8cf0af;
+  --er-red: #ff6b6b;
+  --er-blue: #1f5ad7;
+  --er-blue-deep: #1a4ebc;
+  --er-yellow: #ffd700;
+
+  /* Surfaces (panel backgrounds, deep navy) */
+  --er-bg-deep: #050b18;
+  --er-bg-base: #0b1222;
+  --er-bg-base-2: #0c162c;
+  --er-bg-base-3: #0d1b35;
+  --er-bg-card-a: #0d1629;
+  --er-bg-card-b: #0a1120;
+  --er-bg-card-c: #0f1c33;
+  --er-bg-panel: rgba(11, 18, 34, 0.9);
+  --er-bg-panel-soft: rgba(17, 27, 47, 0.85);
+  --er-bg-inner: rgba(23, 33, 52, 0.75);
+  --er-bg-overlay: rgba(3, 8, 19, 0.84);
+
+  /* Text */
+  --er-text: #f0f6ff;
+  --er-text-muted: #e6ecfa;
+  --er-text-dim: #cfdbf0;
+
+  /* Borders */
+  --er-border-soft: rgba(63, 94, 166, 0.65);
+  --er-border-faint: rgba(63, 94, 166, 0.35);
+  --er-border-strong: #2f3c58;
+
+  /* Gradients (composable via background: var(--er-grad-*) ;) */
+  --er-grad-card-cyan: radial-gradient(120% 120% at 30% 20%, rgba(34, 112, 255, 0.18), transparent 45%),
+    radial-gradient(120% 120% at 70% 10%, rgba(111, 33, 255, 0.16), transparent 50%),
+    linear-gradient(140deg, var(--er-bg-deep) 0%, var(--er-bg-base) 45%, #0f1b31 100%);
+  --er-grad-card-gold: radial-gradient(120% 120% at 20% 20%, rgba(34, 112, 255, 0.12), transparent 45%),
+    radial-gradient(120% 120% at 80% 0%, rgba(255, 179, 64, 0.14), transparent 45%),
+    linear-gradient(135deg, #0c1629 0%, #0b1323 50%, #0a1021 100%);
+  --er-grad-card-violet: radial-gradient(120% 120% at 25% 15%, rgba(111, 33, 255, 0.14), transparent 45%),
+    radial-gradient(120% 120% at 80% 0%, rgba(27, 224, 242, 0.12), transparent 45%),
+    linear-gradient(140deg, var(--er-bg-deep) 0%, var(--er-bg-base-2) 50%, var(--er-bg-base-3) 100%);
+  --er-grad-card-green: radial-gradient(120% 120% at 20% 20%, rgba(34, 112, 255, 0.12), transparent 45%),
+    radial-gradient(120% 120% at 80% 0%, rgba(111, 33, 255, 0.12), transparent 45%),
+    linear-gradient(135deg, #0c1629 0%, #0b1323 50%, #0a1021 100%);
+  --er-grad-card-cyan-2: radial-gradient(120% 120% at 25% 15%, rgba(27, 224, 242, 0.14), transparent 45%),
+    radial-gradient(120% 120% at 80% 0%, rgba(111, 33, 255, 0.12), transparent 45%),
+    linear-gradient(135deg, #0c1629 0%, #0b1323 50%, #0a1021 100%);
+  --er-grad-card-running: radial-gradient(120% 120% at 20% 15%, rgba(34, 112, 255, 0.15), transparent 45%),
+    radial-gradient(120% 120% at 80% 0%, rgba(255, 215, 64, 0.12), transparent 45%),
+    linear-gradient(135deg, #080f1d 0%, var(--er-bg-base-3) 50%, #0b1022 100%);
+  --er-grad-card-modal: linear-gradient(145deg, #091223 0%, #0d1a33 100%);
+  --er-grad-glow-overlay: radial-gradient(circle at 80% 20%, rgba(255, 215, 64, 0.12) 0, transparent 40%),
+    radial-gradient(circle at 10% 90%, rgba(27, 224, 242, 0.15) 0, transparent 45%);
+  --er-grad-glow-overlay-violet: radial-gradient(circle at 85% 20%, rgba(111, 33, 255, 0.14) 0, transparent 40%),
+    radial-gradient(circle at 10% 90%, rgba(27, 224, 242, 0.12) 0, transparent 50%);
+  --er-grad-glow-overlay-cyan: radial-gradient(circle at 85% 20%, rgba(255, 215, 64, 0.14) 0, transparent 40%),
+    radial-gradient(circle at 10% 90%, rgba(27, 224, 242, 0.12) 0, transparent 50%);
+  --er-grad-button-primary: linear-gradient(135deg, var(--er-blue) 0%, var(--er-blue-deep) 40%, #00c2ff 100%);
+  --er-grad-puzzle-bg: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+  --er-grad-card-flat: linear-gradient(135deg, var(--er-bg-card-a) 0%, var(--er-bg-card-b) 100%);
+  --er-grad-card-deep-cyan: linear-gradient(135deg, #050b18 0%, #0b1427 50%, #0c1b33 100%);
+
+  /* Shadows / glows */
+  --er-shadow-card-cyan: 0 0 28px rgba(27, 224, 242, 0.18), 0 20px 50px rgba(0, 0, 0, 0.45);
+  --er-shadow-card-violet: 0 0 28px rgba(111, 33, 255, 0.22), 0 20px 48px rgba(0, 0, 0, 0.45);
+  --er-shadow-card-green: 0 0 28px rgba(99, 211, 146, 0.25), 0 20px 48px rgba(0, 0, 0, 0.45);
+  --er-shadow-card-gold: 0 0 28px rgba(255, 200, 120, 0.25), 0 20px 48px rgba(0, 0, 0, 0.45);
+  --er-shadow-card-cyan-2: 0 0 28px rgba(27, 224, 242, 0.22), 0 20px 48px rgba(0, 0, 0, 0.45);
+  --er-shadow-card-running: 0 0 26px rgba(0, 194, 255, 0.16), 0 20px 48px rgba(0, 0, 0, 0.45);
+  --er-shadow-card-modal: 0 24px 70px rgba(0, 0, 0, 0.55);
+  --er-shadow-button-primary: 0 0 16px rgba(0, 194, 255, 0.55);
+
+  /* Border accents (paired with gradient variants) */
+  --er-border-cyan: rgba(27, 224, 242, 0.35);
+  --er-border-violet: rgba(111, 33, 255, 0.35);
+  --er-border-green: rgba(99, 211, 146, 0.55);
+  --er-border-gold: rgba(255, 200, 120, 0.55);
+
+  /* Layout */
+  --er-radius-card: 16px;
+  --er-radius-pill: 8px;
+  --er-radius-modal: 16px;
+}

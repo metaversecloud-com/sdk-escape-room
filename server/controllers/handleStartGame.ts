@@ -1,112 +1,88 @@
-//load visitor data, if it doesn't exist, create it
-//set sessionState.started to true
-// set startedAt to current time
-// return visitor data in response to be used in frontend to determine which room to load (teleport the user)
-// this function will be called in the frontend when the user clicks the "Start Game" button on the landing page
-
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getVisitor, World } from "@utils/index.js";
-import { VisitorData, WorldConfig} from "../../shared/types/VisitorData.js";
-import { teleportPlayer } from "./index.js";
+import {
+  World,
+  errorHandler,
+  getCredentials,
+  getDefaultVisitorData,
+  getVisitor,
+  teleportPlayer,
+} from "@utils/index.js";
+import { WorldConfig } from "@shared/types/VisitorData.js";
+
+const DEFAULT_SCENE_CONFIG: WorldConfig["config"] = {
+  startSpawnId: "EscapeRoom_start_teleport",
+  roomASpawnId: "EscapeRoom_room1_teleport",
+  roomBSpawnId: "EscapeRoom_room2_teleport",
+  roomCSpawnId: "EscapeRoom_room3_teleport",
+  maxSessionMinutes: 30,
+};
+
 export const handleStartGame = async (req: Request, res: Response) => {
   try {
-    // Get credentials and visitor data
     const credentials = getCredentials(req.query);
-    const { sceneDropId, urlSlug, assetId, visitorId, profileId, uniqueName } = credentials;
+    const { sceneDropId, urlSlug, assetId, visitorId, profileId } = credentials;
     const sessionKey = `${urlSlug}-${sceneDropId}`;
 
-
-    // Get world
-    const world = World.create(urlSlug, { credentials });
-
-    let worldDataObject = (await world.fetchDataObject()) as Record<string, WorldConfig> | null;
-
     // Ensure the world data object has an entry for this scene keyed by sceneDropId.
-    const existingSceneConfig = worldDataObject?.[sceneDropId];
+    const world = World.create(urlSlug, { credentials });
+    const worldDataObject = ((await world.fetchDataObject()) as Record<string, WorldConfig> | null) || {};
+    const existingSceneConfig = worldDataObject[sceneDropId];
     const mergedSceneConfig: WorldConfig = {
       keyAssetId: existingSceneConfig?.keyAssetId || assetId || "",
-      config: {
-        startSpawnId: existingSceneConfig?.config?.startSpawnId || "EscapeRoom_start_teleport",
-        roomASpawnId: existingSceneConfig?.config?.roomASpawnId || "EscapeRoom_room1_teleport",
-        roomBSpawnId: existingSceneConfig?.config?.roomBSpawnId || "EscapeRoom_room2_teleport",
-        roomCSpawnId: existingSceneConfig?.config?.roomCSpawnId || "EscapeRoom_room3_teleport",
-        maxSessionMinutes: existingSceneConfig?.config?.maxSessionMinutes ?? 30,
-      },
+      config: { ...DEFAULT_SCENE_CONFIG, ...(existingSceneConfig?.config || {}) },
     };
-
     if (!existingSceneConfig) {
       const lockId = `${sceneDropId}-${Date.now()}-world`;
-      await world.updateDataObject({ [sceneDropId]: mergedSceneConfig }, { lock: { lockId, releaseLock: true } });
-      worldDataObject = { ...worldDataObject, [sceneDropId]: mergedSceneConfig };
+      await world.updateDataObject(
+        { [sceneDropId]: mergedSceneConfig },
+        { lock: { lockId, releaseLock: true } },
+      );
     }
 
+    // getVisitor guarantees the session-keyed VisitorData exists.
     const { visitor } = await getVisitor(credentials, true);
 
-    const now = new Date().toISOString();
-    // all the session related data is stored in the visitor data object under a key that combines the urlSlug and sceneDropId to ensure uniqueness across different scenes and drops within the same world, allowing for multiple concurrent sessions if needed.
-    const newSession: VisitorData = {
-      escaped: false,
-      completionTime: null,
-      startTime: now,
-      endTime: null,
+    // Build a fresh active session from the defaults and overlay the started state.
+    const newSession = {
+      ...getDefaultVisitorData(),
       sessionActive: true,
-      timedOut: false,
-      currentRoom: "A",
-      puzzlesCompleted: {
-        1: false,
-        2: false,
-        3: false,
-        4: false,
-        5: false,
-        6: false,
-        7: false,
-      },
-      inventory: {
-        fuse: null,
-        wrench: null,
-        accessCard: null,
-      },
+      startTime: new Date().toISOString(),
+      currentRoom: "A" as const,
     };
 
     await visitor.updateDataObject(
       { [sessionKey]: newSession },
-      { lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true },
-      analytics: [
-        {
-          analyticName: "gameStarts",
-          profileId,
-          urlSlug,
-          uniqueKey: `${profileId}-${sessionKey}-start`,
-          incrementBy: 1,
-        },
-        {
-          analyticName: "roomAEntries",
-          profileId,
-          urlSlug,
-          uniqueKey: `${profileId}-${sessionKey}-start`,
-          incrementBy: 1,
-        },
-      ], }  );
-
-    await teleportPlayer(
-      urlSlug,
-      visitorId,
-      credentials,
-      "EscapeRoom_room1_teleport"
+      {
+        lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true },
+        analytics: [
+          {
+            analyticName: "gameStarts",
+            profileId,
+            urlSlug,
+            uniqueKey: `${profileId}-${sessionKey}-start`,
+            incrementBy: 1,
+          },
+          {
+            analyticName: "roomAEntries",
+            profileId,
+            urlSlug,
+            uniqueKey: `${profileId}-${sessionKey}-start`,
+            incrementBy: 1,
+          },
+        ],
+      },
     );
-    
-    console.log("gameStarts", { visitorId, urlSlug, timestamp: now });
 
-    // Return updated visitor data object in response
+    await teleportPlayer(urlSlug, visitorId, credentials, "EscapeRoom_room1_teleport");
+
     return res.json({
       success: true,
       message: "Game started",
       visitorData: newSession,
       worldConfig: mergedSceneConfig.config,
-      sessionKey: sessionKey,
+      sessionKey,
     });
-  } 
-  catch (error) {
+  } catch (error) {
     return errorHandler({
       error,
       functionName: "handleStartGame",

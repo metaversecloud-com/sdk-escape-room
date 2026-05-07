@@ -1,20 +1,24 @@
-import { World } from "@utils/index.js";
-import { VisitorData, WorldConfig, WorldDataObject } from "@shared/types/VisitorData.js";
-import { teleportPlayer } from "../controllers/handleTeleportPlayer.js";
+import { VisitorInterface } from "@rtsdk/topia";
+import { VisitorData, VisitorDataObject, WorldConfig, WorldDataObject } from "@shared/types/VisitorData.js";
+import { Credentials } from "../types/Credentials.js";
+import { teleportPlayer } from "./teleportPlayer.js";
+import { World } from "./topiaInit.js";
 
-type CheckSessionExpirationParams = {
-  credentials: any;
-  visitor: any;
+const DEFAULT_MAX_SESSION_MINUTES = 30;
+
+interface CheckSessionExpirationParams {
+  credentials: Credentials;
+  visitor: VisitorInterface;
   sessionKey: string;
-};
+}
 
-type CheckSessionExpirationResult = {
+interface CheckSessionExpirationResult {
   expired: boolean;
-  visitorDataObject: Record<string, VisitorData>;
+  visitorDataObject: VisitorDataObject;
   session: VisitorData;
   remainingMs: number;
-  worldConfig: WorldConfig["config"] | {};
-};
+  worldConfig: WorldConfig["config"] | Record<string, never>;
+}
 
 export const checkSessionExpiration = async ({
   credentials,
@@ -26,33 +30,25 @@ export const checkSessionExpiration = async ({
   const world = World.create(urlSlug, { credentials });
   let worldData: WorldDataObject | null = null;
   try {
-    const fetchedData = await world.fetchDataObject();
-    worldData = fetchedData as WorldDataObject;
-  } catch (error) {
-    console.log("No world config found");
+    worldData = (await world.fetchDataObject()) as WorldDataObject;
+  } catch {
+    // No world config yet — this can happen on the very first game-state fetch.
   }
+  const worldConfig = worldData?.[sceneDropId]?.config || ({} as Record<string, never>);
 
-  const worldConfig = worldData?.[sceneDropId]?.config;
-
-  let visitorDataObject = (await visitor.fetchDataObject()) as Record<string, VisitorData> | null;
-
-  if (!visitorDataObject || !visitorDataObject[sessionKey]) {
-    throw new Error("No active visitor session found");
-  }
-
+  const visitorDataObject = ((await visitor.fetchDataObject()) as VisitorDataObject | null) || {};
   const session = visitorDataObject[sessionKey];
+  if (!session) {
+    // getVisitor should have initialized this — surface the bug rather than continuing silently.
+    throw new Error(`No visitor session found at "${sessionKey}". Did the controller call getVisitor first?`);
+  }
 
   if (!session.sessionActive || !session.startTime) {
-    return {
-      expired: false,
-      visitorDataObject,
-      session,
-      remainingMs: 0,
-      worldConfig : worldData?.[sceneDropId]?.config || {},
-    };
+    return { expired: false, visitorDataObject, session, remainingMs: 0, worldConfig };
   }
-  const maxSessionMinutes = worldConfig?.maxSessionMinutes || 30;
-  
+
+  const maxSessionMinutes =
+    (worldData?.[sceneDropId]?.config?.maxSessionMinutes ?? DEFAULT_MAX_SESSION_MINUTES) || DEFAULT_MAX_SESSION_MINUTES;
   const startMs = new Date(session.startTime).getTime();
   const nowMs = Date.now();
   const maxMs = maxSessionMinutes * 60 * 1000;
@@ -60,49 +56,32 @@ export const checkSessionExpiration = async ({
   const remainingMs = Math.max(0, maxMs - elapsedMs);
 
   if (elapsedMs < maxMs) {
-    return {
-      expired: false,
-      visitorDataObject,
-      session,
-      remainingMs,
-      worldConfig: worldData?.[sceneDropId]?.config || {},
-    };
+    return { expired: false, visitorDataObject, session, remainingMs, worldConfig };
   }
 
+  // Session has timed out — mark it inactive, write once, teleport home.
   session.sessionActive = false;
   session.timedOut = true;
   session.endTime = new Date(nowMs).toISOString();
-
   visitorDataObject[sessionKey] = session;
 
-  await visitor.updateDataObject(visitorDataObject, {
-    lock: { lockId: `${sessionKey}-${Date.now()}-timeout`, releaseLock: true },
-    analytics: [
-      {
-        analyticName: "gameTimeouts",
-        profileId,
-        urlSlug,
-        uniqueKey: `${profileId}-${sessionKey}-timeout`,
-        incrementBy: 1,
-      },
-    ],
-  });
-
-  await teleportPlayer(
-    urlSlug,
-    visitorId,
-    credentials,
-    "EscapeRoom_start_teleport",
+  await visitor.updateDataObject(
+    { [sessionKey]: session },
+    {
+      lock: { lockId: `${sessionKey}-${Date.now()}-timeout`, releaseLock: true },
+      analytics: [
+        {
+          analyticName: "gameTimeouts",
+          profileId,
+          urlSlug,
+          uniqueKey: `${profileId}-${sessionKey}-timeout`,
+          incrementBy: 1,
+        },
+      ],
+    },
   );
 
-  return {
-    expired: true,
-    visitorDataObject: {
-      ...visitorDataObject,
-      [sessionKey]: session,
-    },
-    session,
-    remainingMs: 0,
-    worldConfig: worldData?.[sceneDropId]?.config || {},
-  };
+  await teleportPlayer(urlSlug, visitorId, credentials, "EscapeRoom_start_teleport");
+
+  return { expired: true, visitorDataObject, session, remainingMs: 0, worldConfig };
 };
