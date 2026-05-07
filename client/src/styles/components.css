@@ -5,6 +5,27 @@
  * inline gradient/glow/border style objects.
  */
 
+/* Full-viewport app background. background-attachment: fixed keeps the gradient
+   sized to the viewport (not the body's content box) so it renders as a single
+   smooth radial gradient even before React has mounted any content, and stays
+   in place when the page scrolls. */
+html,
+body {
+  min-height: 100vh;
+}
+
+body {
+  margin: 0;
+  background: var(--er-grad-card-violet);
+  background-attachment: fixed;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+#root {
+  min-height: 100vh;
+}
+
 /* ─── Themed cards (variants on .card) ─── */
 
 .er-card {
@@ -12,55 +33,10 @@
   overflow: hidden;
 }
 
-.er-card--cyan {
-  background: var(--er-grad-card-cyan);
-  border-color: var(--er-border-cyan);
-  box-shadow: var(--er-shadow-card-cyan);
-}
-
-.er-card--cyan-2 {
-  background: var(--er-grad-card-cyan-2);
-  border-color: var(--er-border-cyan);
-  box-shadow: var(--er-shadow-card-cyan-2);
-}
-
-.er-card--violet {
-  background: var(--er-grad-card-violet);
-  border-color: var(--er-border-violet);
-  box-shadow: var(--er-shadow-card-violet);
-}
-
-.er-card--green {
-  background: var(--er-grad-card-green);
-  border-color: var(--er-border-green);
-  box-shadow: var(--er-shadow-card-green);
-}
-
-.er-card--gold {
-  background: var(--er-grad-card-gold);
-  border-color: var(--er-border-gold);
-  box-shadow: var(--er-shadow-card-gold);
-}
-
 .er-card--running {
   background: var(--er-grad-card-running);
   border-color: var(--er-border-cyan);
   box-shadow: var(--er-shadow-card-running);
-}
-
-.er-card--deep-cyan {
-  background: var(--er-grad-card-deep-cyan);
-  border-color: var(--er-border-cyan);
-  box-shadow: var(--er-shadow-card-cyan-2);
-}
-
-.er-card--flat {
-  background: var(--er-grad-card-flat);
-  border-color: #24304a;
-}
-
-.er-card__details-relative {
-  position: relative;
 }
 
 /* The blurred halo overlay rendered behind a card's content */
@@ -70,36 +46,6 @@
   background: var(--er-grad-glow-overlay);
   filter: blur(18px);
   pointer-events: none;
-}
-
-.er-card__glow--violet {
-  background: var(--er-grad-glow-overlay-violet);
-}
-
-.er-card__glow--cyan {
-  background: var(--er-grad-glow-overlay-cyan);
-}
-
-/* ─── Modal overlay (full-screen) ─── */
-
-.er-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--er-bg-overlay);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-  z-index: 50;
-}
-
-.er-modal {
-  width: min(92vw, 720px);
-  max-height: 90vh;
-  overflow: auto;
-  background: var(--er-grad-card-modal);
-  border: 1px solid var(--er-border-cyan);
-  box-shadow: var(--er-shadow-card-modal);
 }
 
 /* ─── Typography helpers (tinting only — sizes come from SDK .h1-.h4 / .p1-.p4) ─── */
@@ -117,26 +63,6 @@
   font-size: 0.875rem;
 }
 
-.er-eyebrow--cyan {
-  color: var(--er-cyan);
-}
-
-.er-eyebrow--gold {
-  color: var(--er-gold);
-}
-
-.er-eyebrow--violet {
-  color: var(--er-violet);
-}
-
-.er-eyebrow--green {
-  color: var(--er-green-soft);
-}
-
-.er-eyebrow--red {
-  color: var(--er-red);
-}
-
 .er-text {
   color: var(--er-text);
 }
@@ -147,6 +73,26 @@
 
 .er-text-dim {
   color: var(--er-text-dim);
+}
+
+.er-text--cyan {
+  color: var(--er-cyan);
+}
+
+.er-text--gold {
+  color: var(--er-gold);
+}
+
+.er-text--violet {
+  color: var(--er-violet);
+}
+
+.er-text--green {
+  color: var(--er-green-soft);
+}
+
+.er-text--red {
+  color: var(--er-red);
 }
 
 /* ─── Status pill, ref row, code display ─── */
@@ -345,15 +291,6 @@
 }
 
 /* ─── Puzzle frame (shared by every puzzle component) ─── */
-
-.er-puzzle-frame {
-  width: 100%;
-  padding: 2rem;
-  box-sizing: border-box;
-  background: var(--er-grad-puzzle-bg);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 215, 0, 0.3);
-}
 
 .er-puzzle-instructions {
   background: var(--er-bg-inner);
@@ -1047,9 +984,6 @@
 /* ─── Responsive (shared across puzzles) ─── */
 
 @media (max-width: 768px) {
-  .er-puzzle-frame {
-    padding: 1rem;
-  }
   .er-puzzle-header h2 {
     font-size: 1.3rem;
   }

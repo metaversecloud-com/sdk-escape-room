@@ -10,8 +10,9 @@ export const RoomAPuzzle2Complete = () => {
   if (!wrenchImage) return <Loading />;
 
   return (
-    <div className="card er-card--green">
-      <p className="p2 er-eyebrow er-eyebrow--green">Puzzle Complete</p>
+    <div className="grid gap-3">
+      <div aria-hidden className="er-card__glow" />
+      <p className="p2 er-eyebrow er-text--green">Puzzle Complete</p>
       <h3 className="er-title-gold">Reactor Online</h3>
 
       <p className="p2  er-text">

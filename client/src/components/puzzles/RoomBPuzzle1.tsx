@@ -142,7 +142,7 @@ export const RoomBPuzzle1 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
   };
 
   return (
-    <div className="er-puzzle-frame grid gap-4">
+    <div className="grid gap-4 w-full">
       <div className="er-puzzle-header grid gap-2">
         <h2 className="er-title-gold">Satellite Alignment System</h2>
         <p className="p2 er-text">Align the communication satellites to restore the signal.</p>

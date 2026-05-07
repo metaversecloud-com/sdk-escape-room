@@ -106,7 +106,7 @@ export const RoomAPuzzle1 = ({ refreshGameState }: RoomAPuzzle1Props) => {
   };
 
   return (
-    <div className="er-puzzle-frame grid gap-4">
+    <div className="grid gap-4">
       <div className="er-puzzle-header grid gap-2">
         <h2 className="er-title-gold">Power Console</h2>
         <p className="p2 er-text">

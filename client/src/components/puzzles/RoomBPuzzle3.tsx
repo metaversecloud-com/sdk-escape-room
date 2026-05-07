@@ -118,7 +118,7 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
   };
 
   return (
-    <div className="er-puzzle-frame grid gap-4">
+    <div className="grid gap-4 w-full">
       <div className="er-puzzle-header grid gap-2">
         <h2 className="er-title-gold">Transmission Decode & Valve Order</h2>
         <p className="p2 er-text">Decode the scrambled transmission to reveal the system stabilization order.</p>
@@ -146,7 +146,7 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
       )}
 
       <div className="er-puzzle-section grid gap-3">
-        <h3 className="er-eyebrow--red text-center">Scrambled Transmission</h3>
+        <h3 className="er-text--red text-center">Scrambled Transmission</h3>
         <div className="er-scrambled-words">
           <div className="er-scrambled-word">{SCRAMBLED_WORDS.word1}</div>
           <div className="er-scrambled-word">{SCRAMBLED_WORDS.word2}</div>
@@ -155,7 +155,7 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
       </div>
 
       <div className="er-puzzle-section grid gap-3">
-        <h3 className="er-eyebrow--green text-center">Decoded Transmission</h3>
+        <h3 className="er-text--green text-center">Decoded Transmission</h3>
         <div className="er-unscramble-inputs">
           {(["word1", "word2", "word3"] as const).map((wordKey, idx) => {
             const maxLen = idx === 0 ? 6 : idx === 1 ? 5 : 9;
@@ -180,7 +180,7 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
       {wordsUnscrambled && (
         <>
           <div className="er-puzzle-section grid gap-3">
-            <h3 className="er-eyebrow--cyan text-center">System Stabilization Order</h3>
+            <h3 className="er-text--cyan text-center">System Stabilization Order</h3>
             <div className="grid grid-cols-3 gap-3">
               {SYSTEM_ORDER.map((item) => (
                 <div key={item.step} className="er-order-letter-item">
@@ -192,7 +192,7 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
           </div>
 
           <div className="er-puzzle-section grid gap-3">
-            <h3 className="er-eyebrow--violet text-center">Valve Control Panel</h3>
+            <h3 className="er-text--violet text-center">Valve Control Panel</h3>
             <p className="er-clue-text">
               Click valves in the correct order according to the system stabilization order above.
             </p>
@@ -214,7 +214,7 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
           </div>
 
           <div className="er-puzzle-section grid gap-3">
-            <h3 className="er-eyebrow--gold text-center">Current Valve Activation Order</h3>
+            <h3 className="er-text--gold text-center">Current Valve Activation Order</h3>
             <div className="er-order-buttons">
               {valveOrder.length === 0 ? (
                 <p className="er-clue-text">No valves activated yet. Click valves in the correct order!</p>

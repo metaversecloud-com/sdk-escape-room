@@ -134,7 +134,7 @@ export const RoomBPuzzle2 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
   const lockedCount = pieces.filter((p) => p.isLocked).length;
 
   return (
-    <div className="er-puzzle-frame grid gap-4">
+    <div className="grid gap-4 w-full">
       <div className="er-puzzle-header grid gap-2">
         <h2 className="er-title-gold">Reconstruct the Transmission</h2>
         <p className="p2 er-text">Piece together the torn fragments to reveal the hidden message.</p>

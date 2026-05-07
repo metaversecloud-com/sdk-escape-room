@@ -6,9 +6,9 @@ interface StartGameCardProps {
 }
 
 export const StartGameCard = ({ onStart, isLoading }: StartGameCardProps) => (
-  <div className="card w-full er-card er-card--cyan">
+  <div className="grid gap-3">
     <div aria-hidden className="er-card__glow" />
-    <div className="card-details flex flex-col gap-4 er-card__details-relative">
+    <div className="flex flex-col gap-4 er-card">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h3 className="card-title er-title-gold">
           Escape Room

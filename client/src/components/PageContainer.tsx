@@ -21,13 +21,13 @@ export const PageContainer = ({
   if (isLoading) return <Loading />;
 
   return (
-    <div className="p-2 mb-28">
+    <div className="p-4 mb-28">
       {isAdmin && (
         <AdminIconButton setShowSettings={() => setShowSettings(!showSettings)} showSettings={showSettings} />
       )}
       {headerText && (
         <div className="pb-6">
-          <h2>{headerText}</h2>
+          <h2 className="er-title-gold">{headerText}</h2>
         </div>
       )}
       {showSettings ? <AdminView /> : children}

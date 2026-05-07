@@ -1,8 +1,9 @@
 const SCRAMBLED = ["EVLAV", "KLCO", "EURSSRPE"];
 
 export const RoomBPuzzle2Complete = () => (
-  <div className="card er-card--green">
-    <p className="p2 er-eyebrow er-eyebrow--green">Puzzle Complete</p>
+  <div className="grid gap-3">
+    <div aria-hidden className="er-card__glow" />
+    <p className="p2 er-eyebrow er-text--green">Puzzle Complete</p>
     <h3 className="er-title-gold">Communication Signal Aligned</h3>
 
     <div className="er-reconstructed-message my-2 p-3 grid gap-3">

@@ -108,7 +108,7 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
   const isOrderCorrect = CORRECT_ORDER.every((v, i) => v === selectedOrder[i]);
 
   return (
-    <div className="er-puzzle-frame grid gap-4">
+    <div className="grid gap-4 w-full">
       <div className="er-puzzle-header grid gap-2">
         <h2 className="er-title-gold">Reactor Switch Array</h2>
         <p className="p2 er-text">

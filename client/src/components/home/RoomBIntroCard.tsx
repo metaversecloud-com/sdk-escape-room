@@ -1,9 +1,9 @@
 import { StatusPill } from "./StatusPill";
 
 export const RoomBIntroCard = () => (
-  <div className="card w-full er-card er-card--violet">
+  <div className="grid gap-3">
     <div aria-hidden className="er-card__glow" />
-    <div className="card-details flex flex-col gap-2 er-card__details-relative">
+    <div className="flex flex-col gap-4 er-card">
       <h3 className="card-title er-title-gold">Room 2: Comms Deck</h3>
       <p className="p2 er-text">
         “Crew, welcome to the Comms Deck. Align the satellites, rebuild the transmission, and decode the valve order to

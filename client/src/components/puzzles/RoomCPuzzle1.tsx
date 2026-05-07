@@ -104,7 +104,7 @@ export const RoomCPuzzle1 = ({ refreshGameState, isCompleted }: RoomCPuzzle1Prop
   };
 
   return (
-    <div className="er-puzzle-frame grid gap-4">
+    <div className="grid gap-4 w-full">
       <div className="er-puzzle-header grid gap-2">
         <h2 className="er-title-gold">Restore Circuit</h2>
         <p className="p2 er-text">Connect all nodes correctly</p>

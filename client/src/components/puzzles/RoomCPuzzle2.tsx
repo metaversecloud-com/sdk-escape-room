@@ -54,11 +54,11 @@ export const RoomCPuzzle2 = ({ refreshGameState }: RoomCPuzzle2Props) => {
   };
 
   return (
-    <div className="er-puzzle-frame grid gap-4">
+    <div className="grid gap-4 w-full">
       <div className="er-puzzle-header grid gap-2">
         <h2 className="er-title-gold">Final Airlock Code</h2>
         <p className="p2 er-text">Enter final 4-digit code</p>
-        <button className="er-hint-button" onClick={() => setShowHint(!showHint)} disabled={isSubmitting}>
+        <button className="er-hint-button" onClick={() => setShowHint(!showHint)}>
           {showHint ? "Hide Hints" : "💡 Show Hints"}
         </button>
       </div>

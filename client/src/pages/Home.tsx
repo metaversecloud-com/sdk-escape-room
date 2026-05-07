@@ -3,10 +3,9 @@ import { useContext, useEffect, useMemo, useState } from "react";
 import {
   ConfirmationModal,
   ExitCongratsCard,
-  ExitGameCard,
   InfoCard,
   InventoryPanel,
-  LeaderboardPanel,
+  Leaderboard,
   LockedState,
   PageContainer,
   PageFooter,
@@ -163,13 +162,11 @@ export const Home = () => {
     return (
       <PageContainer isLoading={isLoading} headerText="Leaderboard">
         <div className="flex-col gap-4">
-          <LeaderboardPanel leaderboard={leaderboard} />
+          <Leaderboard leaderboard={leaderboard} />
         </div>
       </PageContainer>
     );
-  }
-
-  if (screen === "puzzle7" && isFinished) {
+  } else if (screen === "puzzle7" && isFinished) {
     return (
       <PageContainer isLoading={isLoading}>
         <div className="flex flex-col w-full items-start gap-4">
@@ -177,10 +174,8 @@ export const Home = () => {
         </div>
       </PageContainer>
     );
-  }
-
-  // ── Session Expired view ──
-  if (screen !== "start" && hasSessionExpired) {
+  } else if (screen !== "start" && hasSessionExpired) {
+    // ── Session Expired view ──
     return (
       <PageContainer isLoading={isLoading}>
         <div className="flex flex-col w-full items-start gap-4">
@@ -188,10 +183,8 @@ export const Home = () => {
         </div>
       </PageContainer>
     );
-  }
-
-  // ── Pre-start view ──
-  if (!hasStarted) {
+  } else if (!hasStarted) {
+    // ── Pre-start view ──
     return (
       <PageContainer isLoading={isLoading}>
         <div className="flex flex-col w-full items-start gap-4">
@@ -229,8 +222,6 @@ export const Home = () => {
             inventoryItems={visitorInventory?.items}
           />
         )}
-
-        {screen === "exit" && <ExitGameCard onExit={() => setShowExitConfirmation(true)} isLoading={isLoading} />}
 
         {showExitConfirmation && (
           <ConfirmationModal
