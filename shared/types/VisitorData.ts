@@ -10,10 +10,9 @@ export interface VisitorData {
   endTime: string | null;
   sessionActive: boolean;
   timedOut: boolean;
-  escaped: boolean;
-  
+
   // Progression
-  currentRoom: 'A' | 'B' | 'C' | null;
+  currentRoom: "A" | "B" | "C" | null;
   puzzlesCompleted: {
     1: boolean;
     2: boolean;
@@ -21,16 +20,16 @@ export interface VisitorData {
     4: boolean;
     5: boolean;
     6: boolean;
-    7: boolean; 
+    7: boolean;
   };
-  
+
   // Inventory
   inventory: {
     fuse: { id: string; serial: string } | null;
     wrench: { id: string; serial: string } | null;
     accessCard: { id: string; partialCode: string } | null;
   };
-  
+
   // Completion
   completionTime: number | null;
 }

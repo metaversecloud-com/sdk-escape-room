@@ -194,7 +194,6 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
 
     // Puzzle 7 — game complete: stamp end time, write leaderboard, teleport home, mark survivor.
     if (puzzleNumber === 7) {
-      game.escaped = true;
       game.sessionActive = false;
       game.endTime = new Date().toISOString();
       if (game.startTime) {

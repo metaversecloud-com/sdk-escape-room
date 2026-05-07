@@ -2,13 +2,10 @@ export type ParsedLeaderboardEntry = {
   profileId: string;
   name: string;
   completionTime: number;
-  escaped: boolean;
   attempts: number;
 };
 
-export const getLeaderboard = (
-  leaderboardData?: Record<string, string>,
-): ParsedLeaderboardEntry[] => {
+export const getLeaderboard = (leaderboardData?: Record<string, string>): ParsedLeaderboardEntry[] => {
   if (!leaderboardData) return [];
 
   const byProfile: Record<string, ParsedLeaderboardEntry> = {};
@@ -28,16 +25,12 @@ export const getLeaderboard = (
         profileId,
         name,
         completionTime,
-        escaped: true,
         attempts: attemptCounts[profileId],
       };
       continue;
     }
 
-    if (
-      completionTime > 0 &&
-      (existing.completionTime === 0 || completionTime < existing.completionTime)
-    ) {
+    if (completionTime > 0 && (existing.completionTime === 0 || completionTime < existing.completionTime)) {
       existing.completionTime = completionTime;
       existing.name = name;
     }
@@ -48,7 +41,6 @@ export const getLeaderboard = (
   const entries = Object.values(byProfile);
 
   entries.sort((a, b) => {
-    if (a.escaped !== b.escaped) return a.escaped ? -1 : 1;
     return a.completionTime - b.completionTime;
   });
 

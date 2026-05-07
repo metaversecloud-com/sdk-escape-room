@@ -62,7 +62,6 @@ export type LeaderboardRowType = {
   profileId: string;
   name: string;
   completionTime: number;
-  escaped: boolean;
   attempts: number;
 };
 

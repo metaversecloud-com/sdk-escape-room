@@ -6,7 +6,6 @@ export const getDefaultVisitorData = (): VisitorData => {
     endTime: null,
     sessionActive: false,
     timedOut: false,
-    escaped: false,
     currentRoom: null,
     puzzlesCompleted: {
       1: false,

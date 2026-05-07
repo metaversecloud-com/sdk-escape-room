@@ -39,30 +39,6 @@ export const RoomBPuzzle1 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
     setters[field](value);
   };
 
-  const handleInputChange = (field: FieldName) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value;
-    if (raw === "") {
-      setInputError((prev) => ({ ...prev, [field]: "Please enter a value" }));
-      return;
-    }
-    setValueWithValidation(field, parseInt(raw, 10));
-  };
-
-  const handleStep = (field: FieldName, delta: 1 | -1) => () => {
-    const current = values[field];
-    const next = current + delta;
-    if (next < MIN_VALUE) {
-      setInputError((prev) => ({ ...prev, [field]: `Minimum value is ${MIN_VALUE}` }));
-      return;
-    }
-    if (next > MAX_VALUE) {
-      setInputError((prev) => ({ ...prev, [field]: `Maximum value is ${MAX_VALUE}` }));
-      return;
-    }
-    setters[field](next);
-    clearFieldError(field);
-  };
-
   const handleSubmit = async () => {
     setIsSubmitting(true);
     setError(null);
@@ -119,22 +95,6 @@ export const RoomBPuzzle1 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
             className="er-slider"
           />
           <div className="er-star-display">{getStarDisplay(value)}</div>
-        </div>
-        <div className="er-numeric-controls">
-          <button onClick={handleStep(field, -1)} disabled={value <= MIN_VALUE}>
-            -
-          </button>
-          <input
-            type="number"
-            min={MIN_VALUE}
-            max={MAX_VALUE}
-            value={value}
-            onChange={handleInputChange(field)}
-            className="er-number-input"
-          />
-          <button onClick={handleStep(field, 1)} disabled={value >= MAX_VALUE}>
-            +
-          </button>
         </div>
         {inputError[field] && <div className="er-input-error-message">{inputError[field]}</div>}
       </div>

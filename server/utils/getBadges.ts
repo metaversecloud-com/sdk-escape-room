@@ -10,10 +10,7 @@ export type BadgeRecord = {
   };
 };
 
-export const getBadges = async (
-  credentials: Credentials,
-  forceRefresh = false,
-): Promise<BadgeRecord> => {
+export const getBadges = async (credentials: Credentials, forceRefresh = false): Promise<BadgeRecord> => {
   const inventoryItems = await getCachedInventoryItems({ credentials, forceRefresh });
 
   const badges: BadgeRecord = {};

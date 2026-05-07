@@ -55,9 +55,7 @@ export const checkEscapeBadges = async ({
 
   maybeAward(
     "POWER_RESTORED",
-    (badgeKey === "POWER_RESTORED" || badgeKey === undefined) &&
-      game.puzzlesCompleted[1] &&
-      game.puzzlesCompleted[2],
+    (badgeKey === "POWER_RESTORED" || badgeKey === undefined) && game.puzzlesCompleted[1] && game.puzzlesCompleted[2],
   );
 
   maybeAward(
@@ -68,15 +66,9 @@ export const checkEscapeBadges = async ({
       game.puzzlesCompleted[5],
   );
 
-  maybeAward(
-    "AIRLOCK_ENGINEER",
-    (badgeKey === "AIRLOCK_ENGINEER" || badgeKey === undefined) && puzzleNumber === 6,
-  );
+  maybeAward("AIRLOCK_ENGINEER", (badgeKey === "AIRLOCK_ENGINEER" || badgeKey === undefined) && puzzleNumber === 6);
 
-  maybeAward(
-    "STATION_SURVIVOR",
-    (badgeKey === "STATION_SURVIVOR" || badgeKey === undefined) && puzzleNumber === 7,
-  );
+  maybeAward("STATION_SURVIVOR", (badgeKey === "STATION_SURVIVOR" || badgeKey === undefined) && puzzleNumber === 7);
 
   if (promises.length > 0) {
     await Promise.all(promises);

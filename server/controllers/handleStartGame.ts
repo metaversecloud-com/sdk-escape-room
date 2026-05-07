@@ -33,10 +33,7 @@ export const handleStartGame = async (req: Request, res: Response) => {
     };
     if (!existingSceneConfig) {
       const lockId = `${sceneDropId}-${Date.now()}-world`;
-      await world.updateDataObject(
-        { [sceneDropId]: mergedSceneConfig },
-        { lock: { lockId, releaseLock: true } },
-      );
+      await world.updateDataObject({ [sceneDropId]: mergedSceneConfig }, { lock: { lockId, releaseLock: true } });
     }
 
     // getVisitor guarantees the session-keyed VisitorData exists.

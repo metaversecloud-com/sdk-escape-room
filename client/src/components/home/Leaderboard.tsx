@@ -1,4 +1,5 @@
 import { LeaderboardRowType } from "@/context/types";
+import { formatDuration } from "@/utils";
 
 interface LeaderboardProps {
   leaderboard?: LeaderboardRowType[];
@@ -16,17 +17,15 @@ export const Leaderboard = ({ leaderboard }: LeaderboardProps) => (
             <th className="h5">Name</th>
             <th className="h5">Time</th>
             <th className="h5">Attempts</th>
-            <th className="h5">Escaped</th>
           </tr>
         </thead>
         <tbody>
           {leaderboard.map((entry, index) => (
             <tr key={entry.profileId}>
               <td className="p2">{index + 1}</td>
-              <td className="p2">{entry.name}</td>
-              <td className="p2">{entry.completionTime}s</td>
+              <td className="p2 max-w-[60px]">{entry.name}</td>
+              <td className="p2">{formatDuration(entry.completionTime)}</td>
               <td className="p2">{entry.attempts}</td>
-              <td className="p2">{entry.escaped ? "Yes" : "No"}</td>
             </tr>
           ))}
         </tbody>

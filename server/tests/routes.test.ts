@@ -33,7 +33,6 @@ const buildVisitorMock = (sessionOverrides: Partial<any> = {}) => {
     endTime: null as string | null,
     sessionActive: false,
     timedOut: false,
-    escaped: false,
     currentRoom: null,
     puzzlesCompleted: { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false },
     inventory: { fuse: null, wrench: null, accessCard: null },
@@ -71,9 +70,7 @@ const worldMock = {
     },
   }),
   updateDataObject: jest.fn().mockResolvedValue(undefined),
-  fetchDroppedAssetsWithUniqueName: jest.fn().mockResolvedValue([
-    { id: "spawn", position: { x: 100, y: 200 } },
-  ]),
+  fetchDroppedAssetsWithUniqueName: jest.fn().mockResolvedValue([{ id: "spawn", position: { x: 100, y: 200 } }]),
 };
 
 jest.mock("@utils/index.js", () => ({
@@ -95,7 +92,6 @@ jest.mock("@utils/index.js", () => ({
     endTime: null,
     sessionActive: false,
     timedOut: false,
-    escaped: false,
     currentRoom: null,
     puzzlesCompleted: { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false },
     inventory: { fuse: null, wrench: null, accessCard: null },
@@ -184,10 +180,7 @@ describe("escape-room routes", () => {
       worldConfig: {},
     });
 
-    const res = await request(makeApp())
-      .post("/api/submit-puzzle")
-      .query(baseCreds)
-      .send({ puzzleNumber: 99 });
+    const res = await request(makeApp()).post("/api/submit-puzzle").query(baseCreds).send({ puzzleNumber: 99 });
     expect(res.status).toBe(400);
     expect(res.body.success).toBe(false);
   });
@@ -212,10 +205,7 @@ describe("escape-room routes", () => {
       worldConfig: { maxSessionMinutes: 30 },
     });
 
-    const res = await request(makeApp())
-      .post("/api/submit-puzzle")
-      .query(baseCreds)
-      .send({ puzzleNumber: 1 });
+    const res = await request(makeApp()).post("/api/submit-puzzle").query(baseCreds).send({ puzzleNumber: 1 });
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -240,10 +230,7 @@ describe("escape-room routes", () => {
       worldConfig: {},
     });
 
-    const res = await request(makeApp())
-      .post("/api/submit-puzzle")
-      .query(baseCreds)
-      .send({ puzzleNumber: 1 });
+    const res = await request(makeApp()).post("/api/submit-puzzle").query(baseCreds).send({ puzzleNumber: 1 });
     expect(res.status).toBe(400);
     expect(res.body.success).toBe(false);
   });
