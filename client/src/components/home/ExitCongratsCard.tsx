@@ -25,11 +25,11 @@ export const ExitCongratsCard = ({ completionTime, leaderboard }: ExitCongratsCa
   const topRows = leaderboard ? leaderboard.slice(0, 5) : [];
 
   return (
-    <div className="card w-full er-card er-card--deep-cyan">
+    <div className="card er-card er-card--deep-cyan">
       <div aria-hidden className="er-card__glow er-card__glow--cyan" />
       <div className="card-details flex flex-col gap-4 er-card__details-relative">
         <p className="p2 er-eyebrow er-eyebrow--cyan">Mission Complete</p>
-        <h3 className="card-title er-title-gold">Congratulations — Airlock Opened</h3>
+        <h3 className="er-title-gold">Congratulations — Airlock Opened</h3>
         <p className="p2 er-text">
           Commander Vega: “Great work, crew. You restored Power, Comms, and Airlock. Grab your stats and see how you
           rank.”
@@ -41,9 +41,7 @@ export const ExitCongratsCard = ({ completionTime, leaderboard }: ExitCongratsCa
             <h4 className="h4" style={{ color: "var(--er-gold)" }}>
               {timeText}
             </h4>
-            {placement !== null && placement > 0 && (
-              <p className="p3 er-text-muted">Projected rank: #{placement}</p>
-            )}
+            {placement !== null && placement > 0 && <p className="p3 er-text-muted">Projected rank: #{placement}</p>}
           </div>
           <div className="er-stat-tile md:col-span-2">
             <p className="p2 er-eyebrow er-eyebrow--cyan">Top Escape Times</p>

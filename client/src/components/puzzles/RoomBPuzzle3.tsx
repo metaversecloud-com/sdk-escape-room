@@ -40,7 +40,6 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
   const [valveOrder, setValveOrder] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [unscrambledWords, setUnscrambledWords] = useState({ word1: "", word2: "", word3: "" });
   const [wordsUnscrambled, setWordsUnscrambled] = useState(false);
@@ -69,7 +68,7 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
   };
 
   const handleValveClick = (valveColor: string) => {
-    if (success || isSubmitting || !wordsUnscrambled) return;
+    if (isSubmitting || !wordsUnscrambled) return;
     if (!valveOrder.includes(valveColor)) {
       setValveOrder([...valveOrder, valveColor]);
       if (error) setError(null);
@@ -106,7 +105,6 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
     try {
       const response = await backendAPI.post("/submit-puzzle", { puzzleNumber: 5, sessionKey });
       if (response.data.success) {
-        setSuccess(true);
         if (refreshGameState) await refreshGameState();
         if (onSuccess) onSuccess();
       } else {
@@ -118,33 +116,6 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
     }
     setIsSubmitting(false);
   };
-
-  if (success) {
-    return (
-      <div className="er-success-card">
-        <div className="er-success-icon" aria-hidden>
-          🔓
-        </div>
-        <h2 style={{ color: "white" }}>Communications Stabilized!</h2>
-        <div className="er-access-card-message">
-          <h3>🎫 ACCESS CARD ACQUIRED! 🎫</h3>
-          <p>Access card added to your inventory!</p>
-          <div className="mt-3">
-            <p className="er-text-muted" style={{ marginBottom: "0.5rem" }}>
-              Partial Airlock Code Revealed:
-            </p>
-            <div className="er-code-display">7 _ 3 _</div>
-          </div>
-        </div>
-        <p className="er-clue-text">Check your inventory to see the Access Card. Proceed to Room C!</p>
-        <div className="er-signal-bars" aria-hidden>
-          {[0, 1, 2, 3, 4].map((i) => (
-            <div key={i} className="er-signal-bar active" />
-          ))}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="er-puzzle-frame grid gap-4">

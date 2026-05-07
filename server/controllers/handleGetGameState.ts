@@ -53,12 +53,6 @@ export const handleGetGameState = async (req: Request, res: Response) => {
       session = checkResult.session;
       updatedVisitorDataObject = checkResult.visitorDataObject;
       remainingMs = checkResult.remainingMs;
-
-      return res.status(200).json({
-        success: false,
-        message: "Session expired.",
-        hasSessionExpired: true,
-      });
     }
 
     // SDK shape: visitorInventoryItems[i] = { id, status, item: { name, type, image_url, image_path, ... } }

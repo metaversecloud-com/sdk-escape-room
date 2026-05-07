@@ -180,7 +180,7 @@ export const Home = () => {
   }
 
   // ── Session Expired view ──
-  if (hasSessionExpired) {
+  if (screen !== "start" && hasSessionExpired) {
     return (
       <PageContainer isLoading={isLoading}>
         <div className="flex flex-col w-full items-start gap-4">

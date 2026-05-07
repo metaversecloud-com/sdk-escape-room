@@ -114,7 +114,7 @@ export const RoomCPuzzle2 = ({ refreshGameState }: RoomCPuzzle2Props) => {
       {feedback && <div className="er-puzzle-error">⚠️ {feedback}</div>}
 
       <button className="btn er-puzzle-submit" onClick={handleSubmit} disabled={isSubmitting}>
-        "Submit Code"
+        Submit Code
       </button>
     </div>
   );
