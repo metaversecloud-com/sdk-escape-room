@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { backendAPI } from "../utils/backendAPI";
+import { backendAPI } from "@/utils/backendAPI";
 
 interface RoomBPuzzle3Props {
   onSuccess?: () => void;
@@ -147,10 +147,10 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
   }
 
   return (
-    <div className="er-puzzle-frame">
-      <div className="er-puzzle-header">
-        <h2>🔐 Transmission Decode & Valve Order 🔐</h2>
-        <p>Decode the scrambled transmission to reveal the system stabilization order.</p>
+    <div className="er-puzzle-frame grid gap-4">
+      <div className="er-puzzle-header grid gap-2">
+        <h2 className="er-title-gold">Transmission Decode & Valve Order</h2>
+        <p className="p2 er-text">Decode the scrambled transmission to reveal the system stabilization order.</p>
         <button className="er-hint-button" onClick={() => setShowHint(!showHint)} disabled={isSubmitting}>
           {showHint ? "Hide Hints" : "💡 Show Hints"}
         </button>
@@ -158,9 +158,9 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
 
       {showHint && !wordsUnscrambled && (
         <div className="er-hint-panel">
-          <h4>📡 Transmission Decoding Hints:</h4>
+          <h4>Transmission Decoding Hints:</h4>
           <ul>
-            <li>
+            <li className="p2">
               <strong>EVLAV</strong> → Rearrange these letters to form a device that controls flow (5 letters)
             </li>
             <li>
@@ -174,8 +174,8 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
         </div>
       )}
 
-      <div className="er-transmission-section">
-        <h3>📻 Scrambled Transmission</h3>
+      <div className="er-puzzle-section grid gap-3">
+        <h3 className="er-eyebrow--red text-center">Scrambled Transmission</h3>
         <div className="er-scrambled-words">
           <div className="er-scrambled-word">{SCRAMBLED_WORDS.word1}</div>
           <div className="er-scrambled-word">{SCRAMBLED_WORDS.word2}</div>
@@ -183,13 +183,13 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
         </div>
       </div>
 
-      <div className="er-puzzle-section er-unscramble-section">
-        <h3>🔍 Decoded Transmission</h3>
+      <div className="er-puzzle-section grid gap-3">
+        <h3 className="er-eyebrow--green text-center">Decoded Transmission</h3>
         <div className="er-unscramble-inputs">
           {(["word1", "word2", "word3"] as const).map((wordKey, idx) => {
             const maxLen = idx === 0 ? 6 : idx === 1 ? 5 : 9;
             return (
-              <div className="er-input-group" key={wordKey}>
+              <div className="er-input-group p-2" key={wordKey}>
                 <label>Word {idx + 1}:</label>
                 <input
                   type="text"
@@ -208,9 +208,9 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
 
       {wordsUnscrambled && (
         <>
-          <div className="er-puzzle-section er-stabilization-order">
-            <h3>📋 System Stabilization Order</h3>
-            <div className="er-order-letters">
+          <div className="er-puzzle-section grid gap-3">
+            <h3 className="er-eyebrow--cyan text-center">System Stabilization Order</h3>
+            <div className="grid grid-cols-3 gap-3">
               {SYSTEM_ORDER.map((item) => (
                 <div key={item.step} className="er-order-letter-item">
                   <span className="er-order-step">{item.step}.</span>
@@ -220,12 +220,12 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
             </div>
           </div>
 
-          <div className="er-puzzle-section er-valves-section">
-            <h3>🎛️ Valve Control Panel</h3>
-            <p className="er-valve-instruction">
+          <div className="er-puzzle-section grid gap-3">
+            <h3 className="er-eyebrow--violet text-center">Valve Control Panel</h3>
+            <p className="er-clue-text">
               Click valves in the correct order according to the system stabilization order above.
             </p>
-            <div className="er-valves-grid">
+            <div className="er-valves-grid mt-2">
               {valves.map((valve) => (
                 <button
                   key={valve.color}
@@ -235,23 +235,23 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
                 >
                   <div className="er-valve-color" style={{ backgroundColor: valve.color.toLowerCase() }} />
                   <div className="er-valve-info">
-                    <span className="er-valve-label">{valve.label}</span>
+                    <span className="er-text">{valve.label}</span>
                   </div>
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="er-puzzle-section er-current-order">
-            <h3>🔧 Current Valve Activation Order</h3>
+          <div className="er-puzzle-section grid gap-3">
+            <h3 className="er-eyebrow--gold text-center">Current Valve Activation Order</h3>
             <div className="er-order-buttons">
               {valveOrder.length === 0 ? (
-                <p className="er-empty-order">No valves activated yet. Click valves in the correct order!</p>
+                <p className="er-clue-text">No valves activated yet. Click valves in the correct order!</p>
               ) : (
                 valveOrder.map((valve, index) => (
                   <div key={index} className="er-order-badge">
                     <span className="er-order-number">{index + 1}</span>
-                    <span>{valve}</span>
+                    <span className="er-text">{valve}</span>
                     <button className="er-remove-button" onClick={() => handleRemoveFromOrder(index)}>
                       ✕
                     </button>
@@ -266,11 +266,11 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
       {error && <div className="er-puzzle-error">⚠️ {error}</div>}
 
       <div className="er-puzzle-actions">
-        <button className="er-puzzle-reset" onClick={handleReset} disabled={isSubmitting}>
-          🔄 Reset All
+        <button className="btn er-puzzle-reset" onClick={handleReset} disabled={isSubmitting}>
+          Reset All
         </button>
-        <button className="er-puzzle-submit" onClick={handleSubmit} disabled={isSubmitting || !wordsUnscrambled}>
-          {isSubmitting ? "Stabilizing..." : "✅ Stabilize Communications"}
+        <button className="btn er-puzzle-submit" onClick={handleSubmit} disabled={isSubmitting || !wordsUnscrambled}>
+          {isSubmitting ? "Stabilizing..." : "Stabilize Communications"}
         </button>
       </div>
     </div>

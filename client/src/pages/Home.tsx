@@ -9,12 +9,13 @@ import {
   LeaderboardPanel,
   LockedState,
   PageContainer,
-  Puzzle1CompleteCard,
-  Puzzle2CompleteCard,
-  Puzzle3CompleteCard,
-  Puzzle4CompleteCard,
-  Puzzle5CompleteCard,
-  Puzzle6CompleteCard,
+  PageFooter,
+  RoomAPuzzle1Complete,
+  RoomAPuzzle2Complete,
+  RoomBPuzzle1Complete,
+  RoomBPuzzle2Complete,
+  RoomBPuzzle3Complete,
+  RoomCPuzzle1Complete,
   RoomAPuzzle1,
   RoomAPuzzle2,
   RoomBIntroCard,
@@ -57,8 +58,7 @@ const SCREENS: ScreenType[] = [
   "puzzle7",
 ];
 
-const isScreen = (value: string | null): value is ScreenType =>
-  value !== null && (SCREENS as string[]).includes(value);
+const isScreen = (value: string | null): value is ScreenType => value !== null && (SCREENS as string[]).includes(value);
 
 const getScreenFromSearch = (): ScreenType => {
   const screen = new URLSearchParams(window.location.search).get("screen");
@@ -73,7 +73,8 @@ const ROOM_C_LOCKED_MESSAGE = "You must complete Room B before accessing the rea
 
 export const Home = () => {
   const dispatch = useContext(GlobalDispatchContext);
-  const { hasInteractiveParams, visitorData, visitorInventory, leaderboard } = useContext(GlobalStateContext);
+  const { hasInteractiveParams, visitorData, visitorInventory, leaderboard, hasSessionExpired } =
+    useContext(GlobalStateContext);
   const visitorSession = visitorData || null;
   const puzzlesCompleted = visitorSession?.puzzlesCompleted;
 
@@ -145,7 +146,7 @@ export const Home = () => {
       .finally(() => setIsLoading(false));
   }, [hasInteractiveParams, dispatch, forceRefreshInventory]);
 
-  // After Room A puzzles 1+2 are both done, show the Room B intro card 2s later
+  // After Room A puzzles 1+2 are both done, show the Room B intro card 5s later
   useEffect(() => {
     const onRoomAScreen = screen === "puzzle1" || screen === "puzzle2";
     if (!(onRoomAScreen && roomADone)) {
@@ -153,7 +154,7 @@ export const Home = () => {
       return;
     }
     setShowRoomBIntro(false);
-    const id = window.setTimeout(() => setShowRoomBIntro(true), 2000);
+    const id = window.setTimeout(() => setShowRoomBIntro(true), 5000);
     return () => window.clearTimeout(id);
   }, [screen, roomADone]);
 
@@ -173,6 +174,17 @@ export const Home = () => {
       <PageContainer isLoading={isLoading}>
         <div className="flex flex-col w-full items-start gap-4">
           <ExitCongratsCard completionTime={visitorSession?.completionTime} leaderboard={leaderboard} />
+        </div>
+      </PageContainer>
+    );
+  }
+
+  // ── Session Expired view ──
+  if (hasSessionExpired) {
+    return (
+      <PageContainer isLoading={isLoading}>
+        <div className="flex flex-col w-full items-start gap-4">
+          <LockedState title="Time has run out" message="Click on the start terminal to start a new game." />
         </div>
       </PageContainer>
     );
@@ -207,8 +219,6 @@ export const Home = () => {
             elapsed={elapsed}
             currentRoom={visitorSession?.currentRoom}
             onOpenInventory={() => setShowInventory(true)}
-            onExit={() => setShowExitConfirmation(true)}
-            isLoading={isLoading}
             hasStarted={hasStarted}
           />
         )}
@@ -239,10 +249,10 @@ export const Home = () => {
             showRoomBIntro ? (
               <RoomBIntroCard />
             ) : (
-              <Puzzle1CompleteCard />
+              <RoomAPuzzle1Complete />
             )
           ) : (
-            <RoomAPuzzle1 refreshGameState={refreshGameState} isCompleted={puzzlesCompleted?.[1]} />
+            <RoomAPuzzle1 refreshGameState={refreshGameState} />
           ))}
 
         {screen === "puzzle2" &&
@@ -250,7 +260,7 @@ export const Home = () => {
             showRoomBIntro ? (
               <RoomBIntroCard />
             ) : (
-              <Puzzle2CompleteCard />
+              <RoomAPuzzle2Complete />
             )
           ) : (
             <RoomAPuzzle2 refreshGameState={refreshGameState} />
@@ -261,7 +271,7 @@ export const Home = () => {
           (!roomADone ? (
             <LockedState title="Room B Locked" message={ROOM_B_LOCKED_MESSAGE} />
           ) : puzzlesCompleted?.[3] ? (
-            <Puzzle3CompleteCard />
+            <RoomBPuzzle1Complete />
           ) : (
             <RoomBPuzzle1 refreshGameState={refreshGameState} />
           ))}
@@ -270,7 +280,7 @@ export const Home = () => {
           (!roomADone ? (
             <LockedState title="Room B Locked" message={ROOM_B_LOCKED_MESSAGE} />
           ) : puzzlesCompleted?.[4] ? (
-            <Puzzle4CompleteCard />
+            <RoomBPuzzle2Complete />
           ) : (
             <RoomBPuzzle2 refreshGameState={refreshGameState} />
           ))}
@@ -282,7 +292,7 @@ export const Home = () => {
               message="You must reconstruct the transmission first before decoding it."
             />
           ) : puzzlesCompleted?.[5] ? (
-            <Puzzle5CompleteCard />
+            <RoomBPuzzle3Complete />
           ) : (
             <RoomBPuzzle3 refreshGameState={refreshGameState} />
           ))}
@@ -292,7 +302,7 @@ export const Home = () => {
           (!roomBDone ? (
             <LockedState title="Room C Locked" message={ROOM_C_LOCKED_MESSAGE} />
           ) : puzzlesCompleted?.[6] ? (
-            <Puzzle6CompleteCard />
+            <RoomCPuzzle1Complete />
           ) : (
             <RoomCPuzzle1 refreshGameState={refreshGameState} />
           ))}
@@ -318,6 +328,14 @@ export const Home = () => {
           />
         )}
       </div>
+
+      {!isFinished && (
+        <PageFooter>
+          <button className="btn btn-danger w-full" onClick={() => setShowExitConfirmation(true)} disabled={isLoading}>
+            Exit
+          </button>
+        </PageFooter>
+      )}
     </PageContainer>
   );
 };

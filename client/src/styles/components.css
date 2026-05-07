@@ -133,9 +133,12 @@
   color: var(--er-green-soft);
 }
 
+.er-eyebrow--red {
+  color: var(--er-red);
+}
+
 .er-text {
   color: var(--er-text);
-  line-height: 1.6;
 }
 
 .er-text-muted {
@@ -222,15 +225,17 @@
 
 /* ─── Primary CTA (escape-room flavored) ─── */
 
+.btn {
+  font-size: 1em;
+}
+
 .er-btn-primary {
   background: var(--er-grad-button-primary);
   border-color: rgba(0, 194, 255, 0.9);
-  font-weight: 800;
   letter-spacing: 0.04em;
   padding-top: 14px;
   padding-bottom: 14px;
   box-shadow: var(--er-shadow-button-primary);
-  text-transform: uppercase;
 }
 
 /* ─── Inventory tile (selectable item card) ─── */
@@ -253,8 +258,8 @@
   height: 135px;
   object-fit: contain;
   border-radius: 12px;
-  background: #0b1323;
-  padding: 6px;
+  border: 2px solid #0b1323;
+  background: white;
   flex-shrink: 0;
 }
 
@@ -303,7 +308,7 @@
   border-radius: var(--er-radius-modal);
 }
 
-/* ─── Inventory art frames (used by FuseDisplay/WrenchDisplay/etc.) ─── */
+/* ─── Inventory reward frames (puzzle-complete cards wrap the granted item's image in these) ─── */
 
 .er-art-frame {
   border-radius: 12px;
@@ -347,39 +352,20 @@
   box-sizing: border-box;
   background: var(--er-grad-puzzle-bg);
   border-radius: 20px;
-  color: white;
   border: 1px solid rgba(255, 215, 0, 0.3);
-}
-
-.er-puzzle-header {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.er-puzzle-header h2 {
-  font-size: 1.8rem;
-  margin-bottom: 0.5rem;
-  color: #ffd700;
 }
 
 .er-puzzle-instructions {
   background: var(--er-bg-inner);
-  padding: 1rem;
   border-radius: 12px;
-  margin-bottom: 1.5rem;
   text-align: center;
   border: 1px solid var(--er-border-strong);
-}
-
-.er-puzzle-instructions p {
-  margin: 0.25rem 0;
 }
 
 .er-puzzle-actions {
   display: flex;
   gap: 1rem;
   justify-content: center;
-  margin-top: 2rem;
   flex-wrap: wrap;
 }
 
@@ -388,25 +374,14 @@
   border: 1px solid #f44336;
   border-radius: 8px;
   padding: 1rem;
-  margin: 1rem 0;
   text-align: center;
   color: var(--er-red);
-}
-
-.er-puzzle-info {
-  background: rgba(33, 150, 243, 0.2);
-  border: 1px solid #2196f3;
-  padding: 0.75rem;
-  border-radius: 8px;
-  margin-top: 0.5rem;
-  color: #64b5f6;
 }
 
 .er-puzzle-section {
   background: rgba(0, 0, 0, 0.4);
   border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
+  padding: 1.2rem;
 }
 
 .er-hint-button {
@@ -427,14 +402,13 @@
 
 .er-hint-panel {
   background: rgba(0, 0, 0, 0.5);
-  border-left: 4px solid #ffd700;
+  border-left: 4px solid var(--er-yellow);
   padding: 1rem;
-  margin-bottom: 1.5rem;
   border-radius: 8px;
 }
 
 .er-hint-panel h4 {
-  color: #ffd700;
+  color: var(--er-yellow);
   margin-bottom: 0.5rem;
 }
 
@@ -456,7 +430,6 @@
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s;
-  font-weight: bold;
   background: #4a4f6e;
   color: white;
 }
@@ -473,7 +446,6 @@
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s;
-  font-weight: bold;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
 }
@@ -492,32 +464,27 @@
 
 /* ─── Puzzle 1 (Satellite Alignment): controls, sliders, stars ─── */
 
-.er-satellite-controls {
-  margin: 2rem 0;
-}
-
 .er-control-group {
   background: rgba(255, 255, 255, 0.05);
   border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
+  padding: 1rem;
 }
 
 .er-control-group label {
   display: flex;
   justify-content: space-between;
   margin-bottom: 1rem;
-  font-size: 1.2rem;
-  font-weight: bold;
+  font-size: 1.1rem;
 }
 
 .er-satellite-name {
-  color: #ffd700;
+  color: var(--er-yellow);
 }
 
 .er-satellite-value {
-  color: #4caf50;
-  font-size: 1.5rem;
+  color: var(--er-green);
+  font-size: 1.1rem;
+  font-weight: bold;
 }
 
 .er-slider {
@@ -534,7 +501,7 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #ffd700;
+  background: var(--er-yellow);
   cursor: pointer;
 }
 
@@ -543,8 +510,8 @@
   margin-top: 0.5rem;
   font-size: 1.2rem;
   letter-spacing: 2px;
+  color: white;
 }
-
 .er-numeric-controls {
   display: flex;
   gap: 0.5rem;
@@ -554,7 +521,7 @@
 
 .er-numeric-controls button {
   background: #2a2f4e;
-  border: 1px solid #ffd700;
+  border: 1px solid var(--er-yellow);
   color: white;
   width: 36px;
   height: 36px;
@@ -565,7 +532,7 @@
 }
 
 .er-numeric-controls button:hover:not(:disabled) {
-  background: #ffd700;
+  background: var(--er-yellow);
   color: var(--er-bg-deep);
 }
 
@@ -577,7 +544,7 @@
 
 .er-number-input {
   background: #2a2f4e;
-  border: 1px solid #ffd700;
+  border: 1px solid var(--er-yellow);
   color: white;
   width: 60px;
   text-align: center;
@@ -601,7 +568,6 @@
 .er-paper-grid-container {
   display: flex;
   justify-content: center;
-  margin: 2rem 0;
 }
 
 .er-paper-grid {
@@ -611,7 +577,6 @@
   background: rgba(0, 0, 0, 0.3);
   padding: 20px;
   border-radius: 16px;
-  max-width: 500px;
   width: 100%;
 }
 
@@ -628,7 +593,7 @@
 
 .er-paper-cell:not(.locked):hover {
   transform: scale(1.02);
-  border-color: #ffd700;
+  border-color: var(--er-yellow);
   box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
 }
 
@@ -639,7 +604,7 @@
 }
 
 .er-paper-cell.locked {
-  border: 3px solid #ffd700;
+  border: 3px solid var(--er-yellow);
   background: linear-gradient(135deg, #2a2a4a 0%, #1a1a3a 100%);
   cursor: not-allowed;
   opacity: 0.85;
@@ -714,7 +679,6 @@
 }
 
 .er-progress-indicator {
-  margin: 1.5rem 0;
   text-align: center;
   color: var(--er-text-muted);
 }
@@ -730,31 +694,17 @@
 
 .er-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #ffd700, #ffaa00);
+  background: linear-gradient(90deg, var(--er-yellow), #ffaa00);
   transition: width 0.3s ease;
   border-radius: 4px;
 }
 
 /* ─── Puzzle 3 (Decode + valves): scrambled words, valves, order ─── */
 
-.er-transmission-section {
-  background: rgba(0, 0, 0, 0.4);
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  text-align: center;
-  border: 1px solid var(--er-border-strong);
-}
-
-.er-transmission-section h3 {
-  color: var(--er-red);
-  margin-bottom: 1rem;
-}
-
 .er-scrambled-words {
   display: flex;
   justify-content: center;
-  gap: 2rem;
+  gap: 1rem;
   flex-wrap: wrap;
 }
 
@@ -771,8 +721,7 @@
 }
 
 .er-unscramble-section h3 {
-  color: #4caf50;
-  margin-bottom: 1rem;
+  color: var(--er-green);
 }
 
 .er-unscramble-inputs {
@@ -786,7 +735,6 @@
   align-items: center;
   gap: 1rem;
   background: var(--er-bg-inner);
-  padding: 0.75rem;
   border-radius: 8px;
   flex-wrap: wrap;
 }
@@ -794,7 +742,7 @@
 .er-input-group label {
   min-width: 60px;
   font-weight: bold;
-  color: #ffd700;
+  color: var(--er-yellow);
   flex-shrink: 0;
 }
 
@@ -813,18 +761,13 @@
 
 .er-unscramble-input:focus {
   outline: none;
-  border-color: #ffd700;
+  border-color: var(--er-yellow);
 }
 
 .er-correct-check {
-  color: #4caf50;
+  color: var(--er-green);
   font-size: 1.2rem;
   font-weight: bold;
-}
-
-.er-stabilization-order h3 {
-  color: #6496ff;
-  margin-bottom: 1rem;
 }
 
 .er-order-letters {
@@ -842,7 +785,6 @@
   background: linear-gradient(135deg, var(--er-blue) 0%, var(--er-blue-deep) 100%);
   padding: 1rem 2rem;
   border-radius: 12px;
-  min-width: 80px;
 }
 
 .er-order-step {
@@ -853,20 +795,13 @@
 .er-order-letter {
   font-size: 2rem;
   font-weight: bold;
-  color: #ffd700;
+  color: var(--er-yellow);
   font-family: "Courier New", monospace;
 }
 
 .er-valves-section h3 {
-  color: #ffd700;
+  color: var(--er-yellow);
   margin-bottom: 0.5rem;
-}
-
-.er-valve-instruction {
-  color: var(--er-text-muted);
-  font-size: 0.9rem;
-  margin-bottom: 1rem;
-  font-style: italic;
 }
 
 .er-valves-grid {
@@ -890,12 +825,12 @@
 
 .er-valve-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  border-color: #ffd700;
+  border-color: var(--er-yellow);
 }
 
 .er-valve-button.activated {
   opacity: 0.6;
-  border-color: #4caf50;
+  border-color: var(--er-green);
   cursor: not-allowed;
 }
 
@@ -925,27 +860,12 @@
   gap: 0.25rem;
 }
 
-.er-valve-label {
-  font-weight: bold;
-  color: white;
-}
-
-.er-current-order h3 {
-  color: #ffd700;
-  margin-bottom: 1rem;
-}
-
 .er-order-buttons {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
   align-items: center;
   min-height: 60px;
-}
-
-.er-empty-order {
-  color: var(--er-text-muted);
-  font-style: italic;
 }
 
 .er-order-badge {
@@ -987,15 +907,20 @@
   background: #f44336;
 }
 
+.er-button-text {
+  background: transparent;
+  border: none;
+}
+
 /* ─── Success animation states (used by Puzzle3/4/5 complete cards) ─── */
 
 .er-success-card {
   text-align: center;
-  padding: 2rem;
+  padding: 1.2rem;
   background: var(--er-grad-puzzle-bg);
   border-radius: 20px;
   animation: erPulse 0.5s ease-in-out;
-  border: 2px solid #ffd700;
+  border: 2px solid var(--er-yellow);
 }
 
 .er-success-icon {
@@ -1005,47 +930,40 @@
 
 .er-reconstructed-message {
   background: rgba(0, 0, 0, 0.5);
-  border: 2px solid #ffd700;
+  border: 2px solid var(--er-yellow);
   border-radius: 16px;
-  padding: 1.5rem;
-  margin: 1.5rem 0;
 }
 
-.er-reconstructed-message h3 {
-  color: #ffd700;
-  margin-bottom: 1rem;
+.er-reconstructed-message h4 {
+  color: var(--er-yellow);
 }
 
 .er-scrambled-output {
   font-family: "Courier New", monospace;
   font-size: 1.5rem;
   font-weight: bold;
-  color: #4caf50;
-  margin: 1rem 0;
+  color: var(--er-green);
 }
 
 .er-scrambled-line {
   letter-spacing: 4px;
-  margin: 0.5rem 0;
-  font-size: 1.3rem;
 }
 
 .er-next-clue {
   color: var(--er-text-muted);
   font-style: italic;
-  margin-top: 1rem;
 }
 
 .er-access-card-message {
   background: linear-gradient(135deg, #1a2340 0%, #0f1528 100%);
-  border: 2px solid #ffd700;
+  border: 2px solid var(--er-yellow);
   border-radius: 16px;
   padding: 1.5rem;
   margin: 1.5rem 0;
 }
 
 .er-access-card-message h3 {
-  color: #ffd700;
+  color: var(--er-yellow);
   margin-bottom: 0.5rem;
 }
 
@@ -1054,7 +972,7 @@
 }
 
 .er-clue-text {
-  color: #ffd700;
+  color: var(--er-text-muted);
   font-style: italic;
 }
 
@@ -1062,7 +980,7 @@
   display: flex;
   justify-content: center;
   gap: 5px;
-  margin: 1.5rem 0;
+  margin: 1.2rem 0;
 }
 
 .er-signal-bar {
@@ -1074,7 +992,7 @@
 }
 
 .er-signal-bar.active {
-  background: #4caf50;
+  background: var(--er-green);
 }
 
 .er-signal-bar:nth-child(1) {

@@ -53,17 +53,27 @@ export const handleGetGameState = async (req: Request, res: Response) => {
       session = checkResult.session;
       updatedVisitorDataObject = checkResult.visitorDataObject;
       remainingMs = checkResult.remainingMs;
+
+      return res.status(200).json({
+        success: false,
+        message: "Session expired.",
+        hasSessionExpired: true,
+      });
     }
 
-    const inventoryItems = (visitor.inventoryItems || []).map((item: any) => ({
-      id: item.id,
-      name: item.name,
-      type: item.type,
-      imageUrl: item.image_url || item.image_path || null,
-      description: item.description,
-      metadata: item.metadata || {},
-      status: item.status,
-    }));
+    // SDK shape: visitorInventoryItems[i] = { id, status, item: { name, type, image_url, image_path, ... } }
+    const inventoryItems = (visitor.inventoryItems || []).map((visitorItem: any) => {
+      const item = visitorItem?.item || {};
+      return {
+        id: visitorItem.id,
+        name: item.name,
+        type: item.type,
+        imageUrl: item.image_url || item.image_path || null,
+        description: item.description,
+        metadata: item.metadata || {},
+        status: visitorItem.status,
+      };
+    });
     const badges = await getBadges(credentials, forceRefreshInventory);
 
     return res.json({

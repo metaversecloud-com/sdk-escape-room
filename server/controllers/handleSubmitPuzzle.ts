@@ -96,10 +96,11 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
 
     const expirationResult = await checkSessionExpiration({ credentials, visitor, sessionKey });
     if (expirationResult.expired || !expirationResult.session.sessionActive) {
-      return res.status(400).json({
+      return res.status(200).json({
         success: false,
         message: "Session expired.",
         visitorData: expirationResult.session,
+        hasSessionExpired: true,
       });
     }
     const game = expirationResult.session;
@@ -149,8 +150,11 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     ];
 
     // Room transitions: if the player just satisfied the prerequisites for the
-    // next room, advance currentRoom, queue the room-entry analytic, award the
-    // room-completion badge, and teleport them.
+    // next room, advance currentRoom, queue the room-entry analytic, and award
+    // the room-completion badge. Defer the actual teleport call until AFTER the
+    // visitor write below — that way a missing spawn asset won't block the
+    // puzzle-completion persistence.
+    const pendingTeleports: string[] = [];
     for (const transition of ROOM_TRANSITIONS) {
       if (game.currentRoom !== transition.fromRoom || !transition.isReady(game)) continue;
       game.currentRoom = transition.toRoom;
@@ -171,7 +175,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
           badgeKey: transition.badgeKey,
         }),
       );
-      await teleportPlayer(urlSlug, visitorId, credentials, transition.spawnUniqueName);
+      pendingTeleports.push(transition.spawnUniqueName);
     }
 
     // Puzzle 6 — last puzzle in Room C; awards the engineering badge but doesn't end the game.
@@ -219,7 +223,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         { lock: { lockId: `leaderboard-${profileId}`, releaseLock: true } },
       );
 
-      await teleportPlayer(urlSlug, visitorId, credentials, "EscapeRoom_start_teleport");
+      pendingTeleports.push("EscapeRoom_start_teleport");
 
       analytics.push({
         analyticName: "gameCompleted",
@@ -230,7 +234,10 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       });
     }
 
-    // Single visitor write at the end with all analytics merged.
+    // Persist visitor data + analytics BEFORE teleporting. If a teleport target
+    // is missing or moveVisitor fails, we still want the puzzle completion
+    // (and any room transition) reflected on the server so the client UI
+    // can refresh into the complete-card state.
     await visitor.updateDataObject(
       { [sessionKey]: game },
       {
@@ -238,6 +245,15 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         analytics,
       },
     );
+
+    // Best-effort teleport: log and continue if a spawn asset is missing.
+    for (const spawnUniqueName of pendingTeleports) {
+      try {
+        await teleportPlayer(urlSlug, visitorId, credentials, spawnUniqueName);
+      } catch (err) {
+        console.warn(`teleportPlayer to "${spawnUniqueName}" failed`, err);
+      }
+    }
 
     return res.json({
       success: true,

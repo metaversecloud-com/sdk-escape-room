@@ -27,8 +27,7 @@ export const StartGameCard = ({ onStart, isLoading }: StartGameCardProps) => (
           • Repair route: Power Bay → Comms Deck → Airlock Control.
           <br />
           • Countdown: 30:00; if it hits zero, the station locks you out.
-          <br />
-          • Playstyle: Click assets in-world to pull up clues and puzzles. Solve to advance.
+          <br />• Playstyle: Click assets in-world to pull up clues and puzzles. Solve to advance.
         </p>
       </div>
 

@@ -4,16 +4,23 @@
  * them) instead of hard-coded hex values, gradients, or shadows in JSX/CSS.
  */
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 :root {
   /* Brand accents */
   --er-cyan: #1be0f2;
   --er-gold: #f6b300;
   --er-violet: #9b7bff;
-  --er-green: #65d08c;
+  --er-green: #4caf50;
   --er-green-soft: #8cf0af;
   --er-red: #ff6b6b;
   --er-blue: #1f5ad7;
   --er-blue-deep: #1a4ebc;
+  --er-yellow: #ffd700;
 
   /* Surfaces (panel backgrounds, deep navy) */
   --er-bg-deep: #050b18;
@@ -29,9 +36,9 @@
   --er-bg-overlay: rgba(3, 8, 19, 0.84);
 
   /* Text */
-  --er-text: #dbe8ff;
-  --er-text-muted: #c7d0e5;
-  --er-text-dim: #9babc7;
+  --er-text: #f0f6ff;
+  --er-text-muted: #e6ecfa;
+  --er-text-dim: #cfdbf0;
 
   /* Borders */
   --er-border-soft: rgba(63, 94, 166, 0.65);

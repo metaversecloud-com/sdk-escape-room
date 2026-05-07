@@ -1,0 +1,13 @@
+export * from "./RoomAPuzzle1.js";
+export * from "./RoomAPuzzle1Complete.js";
+export * from "./RoomAPuzzle2.js";
+export * from "./RoomAPuzzle2Complete.js";
+export { default as RoomBPuzzle1 } from "./RoomBPuzzle1";
+export * from "./RoomBPuzzle1Complete.js";
+export { default as RoomBPuzzle2 } from "./RoomBPuzzle2";
+export * from "./RoomBPuzzle2Complete.js";
+export { default as RoomBPuzzle3 } from "./RoomBPuzzle3";
+export * from "./RoomBPuzzle3Complete.js";
+export * from "./RoomCPuzzle1.js";
+export * from "./RoomCPuzzle1Complete.js";
+export * from "./RoomCPuzzle2.js";

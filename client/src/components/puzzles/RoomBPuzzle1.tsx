@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { backendAPI } from "../utils/backendAPI";
+import { backendAPI } from "@/utils/backendAPI";
 
 interface RoomBPuzzle1Props {
   onSuccess?: () => void;
@@ -142,13 +142,13 @@ export const RoomBPuzzle1 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
   };
 
   return (
-    <div className="er-puzzle-frame">
-      <div className="er-puzzle-header">
-        <h2>Satellite Alignment System</h2>
-        <p>Align the communication satellites to restore the signal.</p>
+    <div className="er-puzzle-frame grid gap-4">
+      <div className="er-puzzle-header grid gap-2">
+        <h2 className="er-title-gold">Satellite Alignment System</h2>
+        <p className="p2 er-text">Align the communication satellites to restore the signal.</p>
       </div>
 
-      <div className="er-satellite-controls">
+      <div className="grid gap-4">
         {renderControl("alpha", "Alpha Satellite")}
         {renderControl("beta", "Beta Satellite")}
         {renderControl("gamma", "Omega Satellite")}
@@ -157,10 +157,10 @@ export const RoomBPuzzle1 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
       {error && <div className="er-puzzle-error">⚠️ {error}</div>}
 
       <div className="er-puzzle-actions">
-        <button className="er-puzzle-reset" onClick={handleReset} disabled={isSubmitting}>
+        <button className="btn er-puzzle-reset" onClick={handleReset} disabled={isSubmitting}>
           Reset
         </button>
-        <button className="er-puzzle-submit" onClick={handleSubmit} disabled={isSubmitting}>
+        <button className="btn er-puzzle-submit" onClick={handleSubmit} disabled={isSubmitting}>
           {isSubmitting ? "Aligning..." : "Align Satellites"}
         </button>
       </div>
