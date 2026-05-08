@@ -22,7 +22,7 @@ const globalReducer = (state: InitialState, action: ActionType) => {
         badges: payload.badges,
         visitorInventory: {
           badges: payload.visitorInventory?.badges || {},
-          items: (payload as any).inventoryItems || payload.visitorInventory?.items || [],
+          items: payload.visitorInventory?.items || [],
         },
         hasSessionExpired: payload.hasSessionExpired,
       };

@@ -16,11 +16,6 @@ export const getDefaultVisitorData = (): VisitorData => {
       6: false,
       7: false,
     },
-    inventory: {
-      fuse: null,
-      wrench: null,
-      accessCard: null,
-    },
     completionTime: null,
   };
 };

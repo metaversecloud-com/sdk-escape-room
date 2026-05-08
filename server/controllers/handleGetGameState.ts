@@ -41,7 +41,8 @@ export const handleGetGameState = async (req: Request, res: Response) => {
       leaderboard = getLeaderboard((keyAsset.dataObject as KeyAssetDataObject | null)?.leaderboard);
     }
 
-    // Visitor (data + inventory). getVisitor guarantees session defaults exist.
+    // Visitor (data + inventory). getVisitor guarantees session defaults exist
+    // and builds visitorInventory with both badges and items.
     const { visitor, visitorDataObject, visitorInventory } = await getVisitor(credentials, true);
 
     // If the session is active, run an expiration check (may mark it timed-out).
@@ -55,19 +56,6 @@ export const handleGetGameState = async (req: Request, res: Response) => {
       remainingMs = checkResult.remainingMs;
     }
 
-    // SDK shape: visitorInventoryItems[i] = { id, status, item: { name, type, image_url, image_path, ... } }
-    const inventoryItems = (visitor.inventoryItems || []).map((visitorItem: any) => {
-      const item = visitorItem?.item || {};
-      return {
-        id: visitorItem.id,
-        name: item.name,
-        type: item.type,
-        imageUrl: item.image_url || item.image_path || null,
-        description: item.description,
-        metadata: item.metadata || {},
-        status: visitorItem.status,
-      };
-    });
     const badges = await getBadges(credentials, forceRefreshInventory);
 
     return res.json({
@@ -79,7 +67,6 @@ export const handleGetGameState = async (req: Request, res: Response) => {
       uniqueName: droppedAsset?.uniqueName || null,
       badges,
       visitorInventory,
-      inventoryItems,
       leaderboard,
       remainingMs,
     });

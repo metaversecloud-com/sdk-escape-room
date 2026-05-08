@@ -1,7 +1,7 @@
 import { awardBadge } from "@utils/index.js";
 import { Credentials } from "../types/Credentials.js";
 import { VisitorInterface } from "@rtsdk/topia";
-import { VisitorInventory } from "./getVisitorBadges.js";
+import { VisitorInventory } from "./getVisitorInventory.js";
 import { VisitorData } from "../../shared/types/VisitorData.js";
 
 const BADGES = {

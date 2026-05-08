@@ -71,6 +71,5 @@ export type InventoryItemSummary = {
   type?: string;
   imageUrl?: string | null;
   description?: string;
-  metadata?: Record<string, any>;
   status?: string;
 };

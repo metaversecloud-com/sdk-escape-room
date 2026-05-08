@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { VisitorInterface } from "@rtsdk/topia";
 import {
   DroppedAsset,
+  VisitorInventory,
   World,
   checkEscapeBadges,
   checkSessionExpiration,
@@ -20,17 +21,13 @@ const VALID_PUZZLE_NUMBERS: ReadonlySet<PuzzleNumber> = new Set([1, 2, 3, 4, 5, 
 const isPuzzleNumber = (value: unknown): value is PuzzleNumber =>
   typeof value === "number" && VALID_PUZZLE_NUMBERS.has(value as PuzzleNumber);
 
-// Per-puzzle inventory rewards. Looked up by item name in the ecosystem inventory.
-type InventoryRewardSpec = {
-  itemName: string;
-  key: keyof VisitorData["inventory"];
-  build: () => VisitorData["inventory"][keyof VisitorData["inventory"]];
-};
-
-const PUZZLE_INVENTORY_REWARDS: Partial<Record<PuzzleNumber, InventoryRewardSpec>> = {
-  1: { itemName: "Fuse", key: "fuse", build: () => ({ id: "fuse", serial: "74A1" }) },
-  2: { itemName: "Wrench", key: "wrench", build: () => ({ id: "wrench", serial: "26B5" }) },
-  5: { itemName: "Access Card", key: "accessCard", build: () => ({ id: "accessCard", partialCode: "7 _ 3 _" }) },
+// Maps a puzzle number to the ecosystem inventory item the player earns by
+// solving it. The item is looked up by name and granted via the SDK; the
+// visitor's actual inventory is the source of truth.
+const PUZZLE_REWARDS: Partial<Record<PuzzleNumber, string>> = {
+  1: "Fuse",
+  2: "Wrench",
+  5: "Access Card",
 };
 
 interface RoomTransition {
@@ -64,20 +61,16 @@ const ROOM_TRANSITIONS: RoomTransition[] = [
 const applyInventoryReward = async (
   credentials: Credentials,
   visitor: VisitorInterface,
-  game: VisitorData,
+  visitorInventory: VisitorInventory,
   puzzleNumber: PuzzleNumber,
 ) => {
-  const reward = PUZZLE_INVENTORY_REWARDS[puzzleNumber];
-  if (!reward) return;
-  if (game.inventory[reward.key]) return;
-  game.inventory[reward.key] = reward.build() as any;
+  const itemName = PUZZLE_REWARDS[puzzleNumber];
+  if (!itemName) return;
+  if (visitorInventory.items.some((i) => i.name === itemName)) return;
 
   const inventoryItems = await getCachedInventoryItems({ credentials });
-  const match = inventoryItems.find(
-    (item: any) => item.name?.toLowerCase() === reward.itemName.toLowerCase() && item.type === "ITEM",
-  );
+  const match = inventoryItems.find((item: any) => item.name === itemName && item.type === "ITEM");
   if (match) await visitor.grantInventoryItem(match, 1);
-  return match;
 };
 
 export const handleSubmitPuzzle = async (req: Request, res: Response) => {
@@ -121,7 +114,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
 
     // Mutate the in-memory session.
     game.puzzlesCompleted[puzzleNumber] = true;
-    await applyInventoryReward(credentials, visitor, game, puzzleNumber);
+    await applyInventoryReward(credentials, visitor, visitorInventory, puzzleNumber);
 
     const badgesAwarded: string[] = [];
     const badgesOwned: string[] = [];
@@ -154,7 +147,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     // the room-completion badge. Defer the actual teleport call until AFTER the
     // visitor write below — that way a missing spawn asset won't block the
     // puzzle-completion persistence.
-    const pendingTeleports: string[] = [];
+    let teleport;
     for (const transition of ROOM_TRANSITIONS) {
       if (game.currentRoom !== transition.fromRoom || !transition.isReady(game)) continue;
       game.currentRoom = transition.toRoom;
@@ -175,7 +168,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
           badgeKey: transition.badgeKey,
         }),
       );
-      pendingTeleports.push(transition.spawnUniqueName);
+      teleport = transition.spawnUniqueName;
     }
 
     // Puzzle 6 — last puzzle in Room C; awards the engineering badge but doesn't end the game.
@@ -222,15 +215,27 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         { lock: { lockId: `leaderboard-${profileId}`, releaseLock: true } },
       );
 
-      pendingTeleports.push("EscapeRoom_start_teleport");
+      teleport = "EscapeRoom_start_teleport";
 
-      analytics.push({
-        analyticName: "gameCompleted",
-        profileId,
-        urlSlug,
-        uniqueKey: `${profileId}-${sessionKey}-puzzle-${puzzleNumber}`,
-        incrementBy: 1,
-      });
+      visitor
+        .triggerParticle({
+          name: "explosion_float",
+          duration: 6,
+        })
+        .catch((error) =>
+          errorHandler({
+            error,
+            functionName: "handleSubmitPuzzle",
+            message: "Error triggering particle effects",
+          }),
+        ),
+        analytics.push({
+          analyticName: "gameCompleted",
+          profileId,
+          urlSlug,
+          uniqueKey: `${profileId}-${sessionKey}-puzzle-${puzzleNumber}`,
+          incrementBy: 1,
+        });
     }
 
     // Persist visitor data + analytics BEFORE teleporting. If a teleport target
@@ -245,12 +250,11 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       },
     );
 
-    // Best-effort teleport: log and continue if a spawn asset is missing.
-    for (const spawnUniqueName of pendingTeleports) {
+    if (teleport) {
       try {
-        await teleportPlayer(urlSlug, visitorId, credentials, spawnUniqueName);
+        await teleportPlayer(urlSlug, visitorId, credentials, teleport);
       } catch (err) {
-        console.warn(`teleportPlayer to "${spawnUniqueName}" failed`, err);
+        console.warn(`teleportPlayer to "${teleport}" failed`, err);
       }
     }
 

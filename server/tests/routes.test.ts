@@ -35,7 +35,6 @@ const buildVisitorMock = (sessionOverrides: Partial<any> = {}) => {
     timedOut: false,
     currentRoom: null,
     puzzlesCompleted: { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false },
-    inventory: { fuse: null, wrench: null, accessCard: null },
     completionTime: null,
     ...sessionOverrides,
   };
@@ -94,7 +93,6 @@ jest.mock("@utils/index.js", () => ({
     timedOut: false,
     currentRoom: null,
     puzzlesCompleted: { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false },
-    inventory: { fuse: null, wrench: null, accessCard: null },
     completionTime: null,
   })),
   World: { create: jest.fn() },
@@ -125,7 +123,7 @@ describe("escape-room routes", () => {
       visitor,
       visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
       session,
-      visitorInventory: { badges: {} },
+      visitorInventory: { badges: {}, items: [] },
     });
 
     const res = await request(makeApp()).get("/api/game-state").query(baseCreds);
@@ -143,7 +141,7 @@ describe("escape-room routes", () => {
       visitor,
       visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
       session,
-      visitorInventory: { badges: {} },
+      visitorInventory: { badges: {}, items: [] },
     });
 
     const res = await request(makeApp()).post("/api/start-game").query(baseCreds);
@@ -170,7 +168,7 @@ describe("escape-room routes", () => {
       visitor,
       visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
       session,
-      visitorInventory: { badges: {} },
+      visitorInventory: { badges: {}, items: [] },
     });
     mockUtils.checkSessionExpiration.mockResolvedValue({
       expired: false,
@@ -195,7 +193,7 @@ describe("escape-room routes", () => {
       visitor,
       visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
       session,
-      visitorInventory: { badges: {} },
+      visitorInventory: { badges: {}, items: [] },
     });
     mockUtils.checkSessionExpiration.mockResolvedValue({
       expired: false,
@@ -220,7 +218,7 @@ describe("escape-room routes", () => {
       visitor,
       visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
       session,
-      visitorInventory: { badges: {} },
+      visitorInventory: { badges: {}, items: [] },
     });
     mockUtils.checkSessionExpiration.mockResolvedValue({
       expired: true,
@@ -244,7 +242,7 @@ describe("escape-room routes", () => {
       visitor,
       visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
       session,
-      visitorInventory: { badges: {} },
+      visitorInventory: { badges: {}, items: [] },
     });
 
     const res = await request(makeApp()).post("/api/exit").query(baseCreds);
@@ -265,7 +263,7 @@ describe("escape-room routes", () => {
       visitor,
       visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
       session,
-      visitorInventory: { badges: {} },
+      visitorInventory: { badges: {}, items: [] },
     });
 
     const res = await request(makeApp()).get("/api/session").query(baseCreds);
@@ -283,7 +281,7 @@ describe("escape-room routes", () => {
       visitor,
       visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
       session,
-      visitorInventory: { badges: {} },
+      visitorInventory: { badges: {}, items: [] },
     });
     mockUtils.checkSessionExpiration.mockResolvedValue({
       expired: false,

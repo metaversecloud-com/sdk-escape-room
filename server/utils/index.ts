@@ -10,7 +10,7 @@ export * from "./getDefaultVisitorData.js";
 export * from "./getLeaderboard.js";
 export * from "./getVersion.js";
 export * from "./getVisitor.js";
-export * from "./getVisitorBadges.js";
+export * from "./getVisitorInventory.js";
 export * from "./inventoryCache.js";
 export * from "./standardizeError.js";
 export * from "./teleportPlayer.js";

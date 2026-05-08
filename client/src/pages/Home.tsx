@@ -216,11 +216,7 @@ export const Home = () => {
           />
         )}
         {showInventory && (
-          <InventoryPanel
-            onClose={() => setShowInventory(false)}
-            visitorData={visitorSession}
-            inventoryItems={visitorInventory?.items}
-          />
+          <InventoryPanel onClose={() => setShowInventory(false)} inventoryItems={visitorInventory?.items} />
         )}
 
         {showExitConfirmation && (

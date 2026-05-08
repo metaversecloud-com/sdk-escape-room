@@ -1,170 +1,218 @@
-# README Template
+# Escape Room — Topia SDK App
 
-Please update the following in each of your SDK application.
+A multi-room escape-room game for [Topia](https://topia.io) worlds. Players have **30 minutes** to restore Power, Comms, and the Airlock by clicking interactive station assets, solving the puzzle in each one, and progressing through three rooms (A → B → C). Completion times go to a per-asset leaderboard. Built on the [Topia JavaScript SDK](https://metaversecloud-com.github.io/mc-sdk-js/index.html).
 
-## Introduction / Summary
+## How a session flows
 
-This template is meant to give you a simple starting point to build new features in Topia using our Javascript SDK. Please reference the [documentation](https://metaversecloud-com.github.io/mc-sdk-js/index.html) for a more detailed breakdown of what the SDK is capable of and how to use it!
+1. The player clicks the **Start Terminal** asset (drawer with `?screen=start`) and hits **Start the Game**. The server records `startTime`, sets `currentRoom: "A"`, and teleports them to **Room A**.
+2. **Room A — Power Bay**: solve **Puzzle 1** (color-sequence panel, grants the **Fuse** inventory item) and **Puzzle 2** (timed switch order, grants the **Wrench**). Completing both auto-advances the player to **Room B** and awards the **Power Restored** badge.
+3. **Room B — Comms Deck**: **Puzzle 3** (satellite alignment), **Puzzle 4** (transmission fragments — sliding-tile puzzle), **Puzzle 5** (decode the scrambled words and operate the valves in order, grants the **Access Card**). Completing all three advances to **Room C** and awards **Signal Recovered**.
+4. **Room C — Airlock Control**: **Puzzle 6** (circuit-restoration node graph, awards **Airlock Engineer**) and **Puzzle 7** (the final 4-digit airlock code, derived from inventory items, awards **Station Survivor** and writes a leaderboard entry).
+5. If the 30-minute timer expires before the player escapes, the session is marked `timedOut`, the player is teleported back to the start, and the UI surfaces a "Time has run out" state.
 
 ## Key Features
 
 ### Canvas elements & interactions
 
-- Key Asset: When clicked this asset will open the drawer and allow users and admins to start interacting with the app.
+Every interactive station asset opens the same drawer iframe; each asset's drawer is parameterized by a `?screen=` query string. The supported screens are:
+
+| `?screen=` | Drawer content |
+|---|---|
+| `start` | Briefing card + **Start the Game** button (or "session running" card if already started) |
+| `puzzle1` … `puzzle7` | The matching puzzle, or its complete-state card if already solved |
+| `leaderboard` | Standalone leaderboard view |
+| `exit` | Exit confirmation |
+
+Required dropped-asset unique names (see "Required Assets" below) define the rooms' physical spawn points and the leaderboard's host asset.
 
 ### Drawer content
 
-- How to play instructions
-- Leaderboard
-- Admin features (see below)
+- **Briefing card** with mission objectives and Start CTA (`?screen=start`).
+- **Status bar** with live timer and an Inventory button (modal panel showing granted items + their ecosystem `image_path`).
+- **Per-puzzle UI** — color sequencer, timed switch panel, satellite sliders, sliding-tile reconstruction, scrambled-word decode + valve sequencer, circuit-restoration node graph, and a 4-digit keypad.
+- **Exit button** — sticky `PageFooter` confirmation modal that ends the session and teleports the player back to the start.
+- **Leaderboard** — top times rendered as `XmYs`, sorted by escape time.
+- **Admin gear icon** — placeholder; future admin actions (puzzle reset, leaderboard moderation, etc.) belong in `client/src/components/AdminView.tsx`.
 
-### Admin features
+### Badges
 
-_Does your app have special admin functionality? If so your key features may looks something like this:_
+Granted via `visitor.grantInventoryItem` from the ecosystem inventory:
 
-- Access: Click on the key asset to open the drawer and then select the Admin tab. Any changes you make here will only affect this instance of the application and will not impact other instances dropped in this or other worlds.
-- Theme selection: Use the dropdown to select a theme.
-- Reset: Click on the Reset button to clear the active game state and rebuild the game board in it's default state.
+| Badge name | When awarded |
+|---|---|
+| `Power Restored` | After solving Puzzle 1 + Puzzle 2 (Room A complete) |
+| `Signal Recovered` | After solving Puzzle 3 + 4 + 5 (Room B complete) |
+| `Airlock Engineer` | After solving Puzzle 6 |
+| `Station Survivor` | After solving Puzzle 7 (full escape) |
 
-### Themes description
+## Required Assets with Unique Names
 
-- Winter (default): A snowy theme that when selected will drop snowflakes throughout the scene
-- Spring: A garden theme that when selected will drop flowers throughout the scene
+The world must contain dropped assets with the following `uniqueName` values for the escape-room flow to work. Each is found at runtime via `World.fetchDroppedAssetsWithUniqueName({ uniqueName, isPartial: false })`.
 
-### Data objects
+| Unique Name Pattern | Purpose |
+|---|---|
+| `keyAsset` | The leaderboard host asset. Each session writes its completion entry to `keyAsset.dataObject.leaderboard`. |
+| `EscapeRoom_start_teleport` | Teleport target after **Start Game**, after **Exit**, and after a session timeout. |
+| `EscapeRoom_room1_teleport` | Teleport target on game start (Room A spawn). |
+| `EscapeRoom_room2_teleport` | Teleport target after Room A → B transition. |
+| `EscapeRoom_room3_teleport` | Teleport target after Room B → C transition. |
 
-#### Visitor / User
+> **Note:** All five must be placed in the world manually by an admin. Teleport calls are best-effort — if a spawn asset is missing the server logs a warning, persists puzzle completion as normal, and the player can walk to the next room manually.
 
-The data object attached to the visitor should store information related specifically to the visitor i.e. progress. For tracking across multiple world/instances use `${urlSlug}_${sceneDropId}` as a unique key. Example data:
+### Required ecosystem inventory items
+
+Created in the [Topia dashboard](https://topia.io/t/dashboard/integrations) under the same public key the app uses. Items are looked up by **exact name** (case-insensitive); badges by name + `type === "BADGE"`; mission items by name + `type === "ITEM"`.
+
+| Item name | Type | When granted |
+|---|---|---|
+| `Fuse` | ITEM | Puzzle 1 complete |
+| `Wrench` | ITEM | Puzzle 2 complete |
+| `Access Card` | ITEM | Puzzle 5 complete |
+| `Power Restored` | BADGE | Room A complete |
+| `Signal Recovered` | BADGE | Room B complete |
+| `Airlock Engineer` | BADGE | Puzzle 6 complete |
+| `Station Survivor` | BADGE | Puzzle 7 complete (escape) |
+
+The ecosystem item's `image_path` is rendered inside the puzzle complete cards and the inventory modal.
+
+## Technical Architecture
+
+### Data Objects
+
+#### Visitor (`visitor.dataObject`)
+
+Sessions are scoped per `sceneDropId` so a single visitor can have independent runs across multiple key-asset instances in the same world. Initialization happens automatically inside `getVisitor` so any controller call order is safe.
 
 ```ts
 {
-  [`${urlSlug}_${sceneDropId}`]: {
-    currentStreak: number,
-    lastCollectedDate: string,
-    longestStreak: number,
-    totalCollected: number,
+  [`${urlSlug}-${sceneDropId}`]: {
+    startTime: string | null;        // ISO timestamp when the player started
+    endTime: string | null;          // ISO timestamp when the session ended (escape, exit, or timeout)
+    sessionActive: boolean;
+    timedOut: boolean;               // true if the 30-min timer expired
+    currentRoom: "A" | "B" | "C" | null;
+    puzzlesCompleted: { 1: boolean; 2: boolean; 3: boolean; 4: boolean; 5: boolean; 6: boolean; 7: boolean };
+    inventory: {
+      fuse: { id: "fuse"; serial: "74A1" } | null;
+      wrench: { id: "wrench"; serial: "26B5" } | null;
+      accessCard: { id: "accessCard"; partialCode: "7 _ 3 _" } | null;
+    };
+    completionTime: number | null;   // total escape time in seconds (set on Puzzle 7)
   }
 }
 ```
 
-#### Key Asset
+#### World (`world.dataObject`)
 
-The data object attached to the dropped key asset will should information related to this specific implementation of the app and would be deleted if the key asset is removed from world. Example data:
-
-```ts
-{
-  isResetInProgress: boolean;
-  lastInteractionDate: string;
-  lastPlayerTurn: string;
-  playerCount: number;
-  resetCount: number;
-  turnCount: number;
-}
-```
-
-#### World
-
-The data object attached to the world will store information for every instance of the app in a given world by keyAssetId or sceneDropId and will persist even if a specific instance is removed from world. Data stored in the World data object should be minimal to avoid running into limits. Example data:
+Per-`sceneDropId` config, written on the player's first `/start-game` call.
 
 ```ts
 {
   [sceneDropId]: {
-    keyAssetId: string;
-    themeId: string;
+    keyAssetId: string;              // the dropped asset hosting the leaderboard
+    config: {
+      startSpawnId: "EscapeRoom_start_teleport";
+      roomASpawnId: "EscapeRoom_room1_teleport";
+      roomBSpawnId: "EscapeRoom_room2_teleport";
+      roomCSpawnId: "EscapeRoom_room3_teleport";
+      maxSessionMinutes: 30;
+    };
   }
 }
 ```
 
-## Environment Variables
+#### Key Asset (`keyAsset.dataObject`)
 
-Create a `.env` file in the root directory. See `.env-example` for a template.
+Leaderboard entries keyed by `${profileId}-${timestamp}` (multiple attempts per profile are aggregated server-side in `getLeaderboard`).
 
-| Variable               | Description                                                                        | Required |
-| ---------------------- | ---------------------------------------------------------------------------------- | -------- |
-| `NODE_ENV`             | Node environment                                                                   | No       |
-| `SKIP_PREFLIGHT_CHECK` | Skip CRA preflight check                                                           | No       |
-| `LEADERBOARD_BASE_URL` | Base URL for the leaderboard service                                               | No       |
-| `INSTANCE_DOMAIN`      | Topia API domain (`api.topia.io` for production, `api-stage.topia.io` for staging) | Yes      |
-| `INTERACTIVE_KEY`      | Topia interactive app key                                                          | Yes      |
-| `INTERACTIVE_SECRET`   | Topia interactive app secret                                                       | Yes      |
-
-## Developers:
-
-### Built With
-
-#### Client
-
-![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)
-![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?style=for-the-badge&logo=vite&logoColor=white)
-![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)
-
-#### Server
-
-![Node.js](https://img.shields.io/badge/node.js-%2343853D.svg?style=for-the-badge&logo=node.js&logoColor=white)
-![Express](https://img.shields.io/badge/express-%23000000.svg?style=for-the-badge&logo=express&logoColor=white)
-
-### Styling Requirements
-
-This project uses the Topia SDK's CSS classes for consistent styling. Please follow these requirements:
-
-1. **Use SDK CSS classes** from https://sdk-style.s3.amazonaws.com/styles-3.0.2.css for all UI components.
-2. **Do not use Tailwind utilities** when an SDK class exists for that purpose.
-3. **Follow the examples** in `.ai/examples/styles.md` and `.ai/examples/page.md`.
-4. **Use the correct component structure** with proper aliased imports.
-
-See the comprehensive style guide in `.ai/style-guide.md` for complete requirements and examples.
-
-### Getting Started
-
-- Clone this repository
-- Run `npm i` in server
-- `cd client`
-- Run `npm i` in client
-- `cd ..` back to server
-
-### Add your .env environmental variables
-
-```json
-INSTANCE_DOMAIN=api.topia.io
-INSTANCE_PROTOCOL=https
-INTERACTIVE_KEY=xxxxxxxxxxxxx
-INTERACTIVE_SECRET=xxxxxxxxxxxxxx
+```ts
+{
+  leaderboard: {
+    [`${profileId}-${timestamp}`]: `${displayName}|${completionTimeSeconds}`;
+  }
+}
 ```
 
-### Where to find INTERACTIVE_KEY and INTERACTIVE_SECRET
+### API Endpoints
 
-[Topia Dev Account Dashboard](https://dev.topia.io/t/dashboard/integrations)
+All routes accept the standard interactive credentials in query params (`assetId`, `interactivePublicKey`, `interactiveNonce`, `urlSlug`, `visitorId`, `profileId`, `displayName`, `sceneDropId`, …).
 
-[Topia Production Account Dashboard](https://topia.io/t/dashboard/integrations)
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/api/game-state` | Returns `{ droppedAsset, visitorData, worldConfig, badges, visitorInventory, inventoryItems, leaderboard, remainingMs, ... }`. Supports `?forceRefreshInventory=true` to bust the 24-hour ecosystem-inventory cache. |
+| GET | `/api/session` | Lightweight session-status check. Returns `{ active, timedOut, remainingMs, visitorData }`. |
+| POST | `/api/start-game` | Initializes a fresh `VisitorData` session, teleports the player to Room A, fires `gameStarts` + `roomAEntries` analytics. |
+| POST | `/api/submit-puzzle` | Body: `{ puzzleNumber: 1..7 }`. Marks the puzzle complete, grants any inventory reward, runs room transitions if conditions are met, awards badges, persists once, then runs deferred best-effort teleports. Validates puzzle number; returns 400 for invalid; returns 200 with `hasSessionExpired: true` if the session has timed out. |
+| POST | `/api/exit` | Marks `sessionActive: false`, fires `manualGameExits` analytic, teleports the player back to the start. |
+| GET | `/api/system/health` | Health check + selected env vars. |
 
-### Helpful links
+### Server-side conventions
 
-- [SDK Developer docs](https://metaversecloud-com.github.io/mc-sdk-js/index.html)
-- [View it in action!](topia.io/appname-prod)
-- To see an example of an on canvas turn based game check out TicTacToe:
-  - (github))[https://github.com/metaversecloud-com/sdk-tictactoe]
-  - (demo))[https://topia.io/tictactoe-prod]
+- **Visitor data initialization** — every controller calls `getVisitor(credentials, true)` first; it returns `{ visitor, visitorDataObject, session, visitorInventory }` and guarantees the per-session record exists with valid defaults.
+- **Single visitor write per submission** — `handleSubmitPuzzle` mutates the in-memory session, accumulates analytics, and writes once at the end so a missing spawn asset (which would throw inside `teleportPlayer`) cannot roll back puzzle completion.
+- **Best-effort teleports** — pending teleports are run in a `try/catch` after the visitor write. A failed teleport logs a warning; the puzzle still persists.
+- **Inventory cache** — `getCachedInventoryItems` caches the ecosystem inventory for 6 hours with stale-cache fallback. Pass `forceRefresh: true` (or the client's `?forceRefreshInventory=true`) to bypass.
 
-## New for June 2025: Multiplayer Experience Engine
+### Client-side conventions
 
-Topia has developed a powerful new Experience Engine that enables extremely low-latency, interactive in-canvas multiplayer experiences. This engine is purpose-built for real-time interaction and supports a wide range of dynamic behaviors, making it ideal for collaborative activities, games, and social experiences within Topia worlds.
+- **Server-first** — all SDK calls happen in server controllers. The client uses `backendAPI` (don't bypass) and never imports `@rtsdk/topia`.
+- **Cascade layers** — `index.html` declares `@layer tailwind, sdk;` before any stylesheet, then loads SDK CSS via `<link layer="sdk">`. Tailwind utilities go inside `@layer tailwind { ... }` and the app's own classes (`tokens.css`, `components.css`) stay unlayered. Priority order: **custom (unlayered) > SDK > Tailwind**. Tailwind preflight is disabled in `tailwind.config.js`; the `*, *::before, *::after { box-sizing: border-box }` rule is restored by hand in `tokens.css`.
+- **Design tokens** — every color, gradient, glow, and accent border lives in `client/src/styles/tokens.css` as a CSS custom property. `client/src/styles/components.css` exposes shared `.er-*` classes (cards, modals, puzzle frames, success states). No inline gradient/glow style objects in JSX.
+- **Component layout** — `Home.tsx` is orchestration only. UI lives under `client/src/components/home/`, `client/src/components/puzzles/`, and the shared SDK-style primitives under `client/src/components/`.
 
-### Key Features
+## Environment Variables
 
-- Ultra Low Latency: Real-time feedback for seamless multi-user interaction and state synchronization.
-- Physics & Collision: Includes a robust physics and collision system to support realistic and responsive behaviors.
-- Real-Time Interactivity: Supports dynamic responses to user input and environmental changes inside the canvas.
-- Optimized for the Web: Engineered to perform smoothly across browser-based environments with minimal resource impact.
+Create a `.env` file at the repo root. See `.env-example` for a template.
 
-### SDK Integration: Leverage the SDK inside the Experience Engine to:
+| Variable | Description | Required |
+|---|---|---|
+| `INTERACTIVE_KEY` | Topia interactive app public key. | Yes |
+| `INTERACTIVE_SECRET` | Topia interactive app secret. | Yes |
+| `INSTANCE_DOMAIN` | Topia API domain. `api.topia.io` for production, `api-stage.topia.io` for staging. | Yes |
+| `INSTANCE_PROTOCOL` | Always `https`. | No (defaults to `https`) |
+| `LEADERBOARD_BASE_URL` | Optional override for the standalone leaderboard service URL. | No |
+| `NODE_ENV` | `development` or `production`. | No |
 
-- Trigger visual/audio effects based on real-time interactions
-- Save and persist spatial data, such as object positions or interaction states
+Find your `INTERACTIVE_KEY` and `INTERACTIVE_SECRET` in the Topia dashboard:
 
-This engine unlocks a whole new layer of interactivity, paving the way for creative, immersive experiences including educational tools, multiplayer games, or collaborative activities.
+- [Dev Account Dashboard](https://dev.topia.io/t/dashboard/integrations)
+- [Production Account Dashboard](https://topia.io/t/dashboard/integrations)
 
-### Get In Touch
+## Getting Started
 
-To sign up for the experience engine private beta, visit https://topia.io/p/game-engine.
+```bash
+# install dependencies (workspaces hoist client + server)
+npm install
+
+# create .env from the template
+cp .env-example .env
+# then fill in INTERACTIVE_KEY and INTERACTIVE_SECRET
+
+# start the client (Vite) and server (Express) concurrently
+npm run dev
+```
+
+Other scripts:
+
+| Command | Action |
+|---|---|
+| `npm run dev` | Concurrently runs the Vite dev server and the Express server. |
+| `npm run build` | Type-checks + builds both workspaces. |
+| `npm start` | Runs the production server (after `npm run build`). |
+| `cd server && npm test` | Runs the Jest server tests (9 cases covering every route). |
+
+## Tech Stack
+
+| Layer | Technologies |
+|---|---|
+| Client | React 18, TypeScript, Vite, Tailwind CSS (utilities only — preflight disabled), CSS Cascade Layers |
+| Server | Node 20, Express, TypeScript |
+| SDK | [`@rtsdk/topia`](https://www.npmjs.com/package/@rtsdk/topia) |
+| Tests | Jest + ts-jest + supertest |
+
+## Helpful Links
+
+- [Topia SDK developer docs](https://metaversecloud-com.github.io/mc-sdk-js/index.html)
+- [SDK style sheet](https://sdk-style.s3.amazonaws.com/styles-3.0.2.css)
+- [Topia dashboard (production)](https://topia.io/t/dashboard/integrations)
+- [Topia dashboard (staging)](https://dev.topia.io/t/dashboard/integrations)

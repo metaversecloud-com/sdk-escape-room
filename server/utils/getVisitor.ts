@@ -3,7 +3,7 @@ import { Visitor } from "./topiaInit.js";
 import { Credentials } from "../types/index.js";
 import { standardizeError } from "./standardizeError.js";
 import { getDefaultVisitorData } from "./getDefaultVisitorData.js";
-import { getVisitorBadges, VisitorInventory } from "./getVisitorBadges.js";
+import { getVisitorInventory, VisitorInventory } from "./getVisitorInventory.js";
 import { VisitorData, VisitorDataObject } from "@shared/types/VisitorData.js";
 
 export interface GetVisitorResult {
@@ -50,7 +50,7 @@ export const getVisitor = async (
     }
 
     await visitor.fetchInventoryItems();
-    const visitorInventory = getVisitorBadges(visitor.inventoryItems || []);
+    const visitorInventory = getVisitorInventory(visitor.inventoryItems || []);
 
     return {
       visitor,
