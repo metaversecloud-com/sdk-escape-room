@@ -12,7 +12,7 @@ export const formatDuration = (seconds?: number | null): string => {
   const safe = Math.max(0, Math.floor(seconds));
   const mm = Math.floor(safe / 60);
   const ss = safe % 60;
-  return `${mm}m${ss}s`;
+  return `${mm}m ${ss}s`;
 };
 
 export const formatElapsedFromTimestamp = (startedAtMs: number | null | undefined): string => {
