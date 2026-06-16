@@ -1,3 +1,5 @@
+export * from "./PuzzleCompleteCard.js";
+export * from "./PuzzleHeader.js";
 export * from "./RoomAPuzzle1.js";
 export * from "./RoomAPuzzle1Complete.js";
 export * from "./RoomAPuzzle2.js";

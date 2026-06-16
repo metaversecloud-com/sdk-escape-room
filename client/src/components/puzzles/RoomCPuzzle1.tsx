@@ -1,7 +1,11 @@
 import { useContext, useEffect, useState } from "react";
+import { content } from "@/constants";
 import { GlobalDispatchContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
 import { backendAPI, setErrorMessage, setGameState } from "@/utils";
+import { PuzzleHeader } from "./PuzzleHeader";
+
+const c = content.puzzles[6];
 
 interface RoomCPuzzle1Props {
   refreshGameState: () => Promise<void>;
@@ -21,10 +25,10 @@ interface Connection {
 }
 
 const NODES: NodeDef[] = [
-  { id: "commsControl", label: "Comms", x: 45, y: 12 },
-  { id: "powerCore", label: "Power Core", x: 12, y: 50 },
-  { id: "airlockControl", label: "Airlock", x: 78, y: 50 },
-  { id: "signalRelay", label: "Signal Relay", x: 45, y: 88 },
+  { id: "commsControl", label: c.nodeLabels.comms, x: 45, y: 12 },
+  { id: "powerCore", label: c.nodeLabels.powerCore, x: 12, y: 50 },
+  { id: "airlockControl", label: c.nodeLabels.airlock, x: 78, y: 50 },
+  { id: "signalRelay", label: c.nodeLabels.signalRelay, x: 45, y: 88 },
 ];
 
 const OFFSET_X = 5;
@@ -105,10 +109,7 @@ export const RoomCPuzzle1 = ({ refreshGameState, isCompleted }: RoomCPuzzle1Prop
 
   return (
     <div className="grid gap-4 w-full">
-      <div className="er-puzzle-header grid gap-2">
-        <h2 className="er-title-gold">Restore Circuit</h2>
-        <p className="p2 er-text">Connect all nodes correctly</p>
-      </div>
+      <PuzzleHeader title={c.title} description={c.description} />
 
       <div className="relative w-full h-[400px] bg-zinc-800 rounded-lg border border-zinc-700 overflow-hidden">
         {NODES.map((node) => {
@@ -152,12 +153,12 @@ export const RoomCPuzzle1 = ({ refreshGameState, isCompleted }: RoomCPuzzle1Prop
         </svg>
       </div>
 
-      {showFailure && <div className="er-puzzle-error">⚠️ Incorrect... resetting</div>}
+      {showFailure && <div className="er-puzzle-error">{c.messages.incorrect}</div>}
 
-      {isCorrect && <p className="p2 text-success">System Online ✔</p>}
+      {isCorrect && <p className="p2 text-success">{c.messages.success}</p>}
 
       <button onClick={handleSubmit} disabled={connections.length === 0} className="btn er-puzzle-submit">
-        Power On
+        {c.submitLabel}
       </button>
     </div>
   );

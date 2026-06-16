@@ -1,7 +1,11 @@
 import { useContext, useMemo, useState } from "react";
+import { content } from "@/constants";
 import { GlobalDispatchContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
 import { backendAPI, setErrorMessage, setGameState } from "@/utils";
+import { PuzzleHeader } from "./PuzzleHeader";
+
+const c = content.puzzles[1];
 
 interface RoomAPuzzle1Props {
   refreshGameState: () => Promise<void>;
@@ -85,7 +89,7 @@ export const RoomAPuzzle1 = ({ refreshGameState }: RoomAPuzzle1Props) => {
     const isCorrect = CORRECT_SEQUENCE.every((c, i) => lights[i] === c);
 
     if (!isCorrect) {
-      setLocalError("That sequence is not correct. Try again.");
+      setLocalError(c.errors.wrongSequence);
       setWrongFlash(true);
       window.setTimeout(() => setWrongFlash(false), 600);
       return;
@@ -107,19 +111,7 @@ export const RoomAPuzzle1 = ({ refreshGameState }: RoomAPuzzle1Props) => {
 
   return (
     <div className="grid gap-4">
-      <div className="er-puzzle-header grid gap-2">
-        <h2 className="er-title-gold">Power Console</h2>
-        <p className="p2 er-text">
-          Set the three dials to the correct color sequence. Use the crew and reference panels to determine the correct
-          sequence.
-        </p>
-      </div>
-
-      <div className="er-puzzle-instructions p-2">
-        <p className="p2 er-text-dim">
-          🎯 <strong>How to Play:</strong> Click each control to cycle through available colors.
-        </p>
-      </div>
+      <PuzzleHeader title={c.title} description={c.description} howToPlay={c.howToPlay} />
 
       <div
         className="p-4 rounded-2xl"
@@ -134,7 +126,7 @@ export const RoomAPuzzle1 = ({ refreshGameState }: RoomAPuzzle1Props) => {
             return (
               <div key={index} className="flex flex-col items-center gap-2">
                 <p className="p2 uppercase er-text-muted" style={{ letterSpacing: "0.06em" }}>
-                  Control {index + 1}
+                  {c.controlLabelPrefix} {index + 1}
                 </p>
                 <button
                   type="button"
@@ -172,12 +164,14 @@ export const RoomAPuzzle1 = ({ refreshGameState }: RoomAPuzzle1Props) => {
         </div>
       </div>
 
-      <p className="p2 text-center er-text-dim">Current: {sequenceText}</p>
+      <p className="p2 text-center er-text-dim">
+        {c.currentPrefix} {sequenceText}
+      </p>
 
       {localError && <div className="er-puzzle-error">⚠️ {localError}</div>}
 
       <button className="er-puzzle-submit" onClick={handleSubmit} disabled={isSubmitting}>
-        Submit Sequence
+        {c.submitLabel}
       </button>
     </div>
   );

@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
+import { content } from "@/constants";
 import { backendAPI } from "@/utils/backendAPI";
+import { PuzzleHeader } from "./PuzzleHeader";
+
+const c = content.puzzles[4];
 
 interface RoomBPuzzle2Props {
   onSuccess?: () => void;
@@ -82,7 +86,7 @@ export const RoomBPuzzle2 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
 
     const targetPiece = pieces.find((p) => p.currentPosition === clickedPosition);
     if (targetPiece?.isLocked) {
-      setMessage("🔒 Cannot swap with a locked fragment!");
+      setMessage(c.errors.cannotSwapLocked);
       setSelectedPiece(null);
       return;
     }
@@ -108,9 +112,7 @@ export const RoomBPuzzle2 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
 
   const handleSubmit = async () => {
     if (!isPuzzleSolved()) {
-      setError(
-        "Not all fragments are in their correct positions! Keep rearranging until all fragments lock into place.",
-      );
+      setError(c.errors.notAllLocked);
       return;
     }
     setIsSubmitting(true);
@@ -135,17 +137,7 @@ export const RoomBPuzzle2 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
 
   return (
     <div className="grid gap-4 w-full">
-      <div className="er-puzzle-header grid gap-2">
-        <h2 className="er-title-gold">Reconstruct the Transmission</h2>
-        <p className="p2 er-text">Piece together the torn fragments to reveal the hidden message.</p>
-      </div>
-
-      <div className="er-puzzle-instructions p-2">
-        <p className="p2 er-text-dim">
-          🎯 <strong>How to Play:</strong> Click a fragment to select it, then click another fragment to swap their
-          positions. Correctly placed fragments will show a 🔒 icon and cannot be moved further.
-        </p>
-      </div>
+      <PuzzleHeader title={c.title} description={c.description} howToPlay={c.howToPlay} />
 
       {message && <div className="er-puzzle-info">{message}</div>}
 
@@ -171,7 +163,9 @@ export const RoomBPuzzle2 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
       </div>
 
       <div className="er-progress-indicator mb-2">
-        <p className="p2 er-text-dim">Progress: {lockedCount}/9 fragments correctly placed</p>
+        <p className="p2 er-text-dim">
+          {c.progressTemplate.replace("{locked}", String(lockedCount)).replace("{total}", "9")}
+        </p>
         <div className="er-progress-bar">
           <div className="er-progress-fill" style={{ width: `${(lockedCount / 9) * 100}%` }} />
         </div>
@@ -181,10 +175,10 @@ export const RoomBPuzzle2 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
 
       <div className="er-puzzle-actions">
         <button className="btn er-puzzle-reset" onClick={handleReset} disabled={isSubmitting}>
-          Shuffle Fragments
+          {c.shuffleLabel}
         </button>
         <button className="btn er-puzzle-submit" onClick={handleSubmit} disabled={isSubmitting || !isPuzzleSolved()}>
-          {isSubmitting ? "Reconstructing..." : "Reconstruct Transmission"}
+          {isSubmitting ? c.submitBusyLabel : c.submitIdleLabel}
         </button>
       </div>
     </div>

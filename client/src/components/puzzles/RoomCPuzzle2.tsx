@@ -1,16 +1,18 @@
 import { useContext, useState } from "react";
+import { content } from "@/constants";
 import { GlobalDispatchContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
 import { backendAPI, setErrorMessage, setGameState } from "@/utils";
+import { PuzzleHeader } from "./PuzzleHeader";
+
+const c = content.puzzles[7];
+const hintCopy = content.ui.hints;
 
 interface RoomCPuzzle2Props {
   refreshGameState?: () => Promise<void>;
 }
 
-const PARTIAL_CODE = "7 _ 3 _";
 const EXPECTED_CODE = "7436";
-const HINT_TEXT =
-  "Check your inventory items. Each item holds a few digits — use the digit from the same place value in both items to fill the blanks.";
 
 const KEYPAD_DIGITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
@@ -24,11 +26,11 @@ export const RoomCPuzzle2 = ({ refreshGameState }: RoomCPuzzle2Props) => {
   const handleSubmit = async () => {
     const code = codeInput.trim();
     if (!/^\d{4}$/.test(code)) {
-      setFeedback("Enter a 4-digit code (numbers only).");
+      setFeedback(c.errors.invalidFormat);
       return;
     }
     if (code !== EXPECTED_CODE) {
-      setFeedback("Incorrect code.");
+      setFeedback(c.errors.wrongCode);
       return;
     }
 
@@ -36,11 +38,11 @@ export const RoomCPuzzle2 = ({ refreshGameState }: RoomCPuzzle2Props) => {
     try {
       const response = await backendAPI.post("/submit-puzzle", { puzzleNumber: 7 });
       setGameState(dispatch, response.data);
-      setFeedback("Correct code! Airlock escape sequence activated.");
+      setFeedback(c.messages.success);
       if (refreshGameState) await refreshGameState();
     } catch (error) {
       setErrorMessage(dispatch, error as ErrorType);
-      setFeedback("Unexpected error while submitting code.");
+      setFeedback(c.errors.unexpected);
     } finally {
       setIsSubmitting(false);
     }
@@ -55,17 +57,15 @@ export const RoomCPuzzle2 = ({ refreshGameState }: RoomCPuzzle2Props) => {
 
   return (
     <div className="grid gap-4 w-full">
-      <div className="er-puzzle-header grid gap-2">
-        <h2 className="er-title-gold">Final Airlock Code</h2>
-        <p className="p2 er-text">Enter final 4-digit code</p>
+      <PuzzleHeader title={c.title} description={c.description}>
         <button className="er-hint-button" onClick={() => setShowHint(!showHint)}>
-          {showHint ? "Hide Hints" : "💡 Show Hints"}
+          {showHint ? hintCopy.hide : hintCopy.show}
         </button>
-      </div>
+      </PuzzleHeader>
 
       {showHint && (
         <div className="er-hint-panel">
-          <p className="p2 er-text-muted">{HINT_TEXT}</p>
+          <p className="p2 er-text-muted">{c.hint}</p>
         </div>
       )}
 
@@ -76,7 +76,7 @@ export const RoomCPuzzle2 = ({ refreshGameState }: RoomCPuzzle2Props) => {
         type="text"
         maxLength={4}
         value={codeInput}
-        placeholder={PARTIAL_CODE}
+        placeholder={c.placeholder}
         onChange={(e) => setCodeInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
       />
 
@@ -95,7 +95,7 @@ export const RoomCPuzzle2 = ({ refreshGameState }: RoomCPuzzle2Props) => {
           onClick={() => handleKeypadClick("clear")}
           className="aspect-square w-full bg-red-500 hover:bg-red-400 text-white text-lg font-bold rounded-xl"
         >
-          C
+          {c.clearLabel}
         </button>
         <button
           onClick={() => handleKeypadClick("0")}
@@ -107,14 +107,14 @@ export const RoomCPuzzle2 = ({ refreshGameState }: RoomCPuzzle2Props) => {
           onClick={() => handleKeypadClick("delete")}
           className="aspect-square w-full bg-yellow-500 hover:bg-yellow-400 text-black text-lg font-bold rounded-xl"
         >
-          ⌫
+          {c.backspaceLabel}
         </button>
       </div>
 
       {feedback && <div className="er-puzzle-error">⚠️ {feedback}</div>}
 
       <button className="btn er-puzzle-submit" onClick={handleSubmit} disabled={isSubmitting}>
-        Submit Code
+        {c.submitLabel}
       </button>
     </div>
   );

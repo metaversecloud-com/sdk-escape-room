@@ -17,19 +17,23 @@ import {
   RoomCPuzzle1Complete,
   RoomAPuzzle1,
   RoomAPuzzle2,
-  RoomBIntroCard,
   RoomBPuzzle1,
   RoomBPuzzle2,
   RoomBPuzzle3,
   RoomCPuzzle1,
   RoomCPuzzle2,
-  SessionRunningCard,
+  RoomIntroCard,
   StartGameCard,
   StatusBar,
+  StatusPill,
 } from "@/components";
+import { content } from "@/constants";
 import { GlobalDispatchContext, GlobalStateContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
 import { backendAPI, formatElapsedFromTimestamp, setErrorMessage, setGameState } from "@/utils";
+
+const { states, exitConfirmation, exitButton } = content;
+const roomBPills = content.rooms[2].pills;
 
 type ScreenType =
   | "start"
@@ -66,9 +70,6 @@ const getScreenFromSearch = (): ScreenType => {
 
 const getForceRefreshInventoryFromSearch = () =>
   new URLSearchParams(window.location.search).get("forceRefreshInventory") === "true";
-
-const ROOM_B_LOCKED_MESSAGE = "You must restore power in Room A before accessing the Comms Deck.";
-const ROOM_C_LOCKED_MESSAGE = "You must complete Room B before accessing the reactor control room.";
 
 export const Home = () => {
   const dispatch = useContext(GlobalDispatchContext);
@@ -160,7 +161,7 @@ export const Home = () => {
   // ── Standalone screens (own PageContainer) ──
   if (screen === "leaderboard") {
     return (
-      <PageContainer isLoading={isLoading} headerText="Leaderboard">
+      <PageContainer isLoading={isLoading} headerText={content.leaderboard.pageTitle}>
         <div className="flex-col gap-4">
           <Leaderboard leaderboard={leaderboard} />
         </div>
@@ -179,7 +180,7 @@ export const Home = () => {
     return (
       <PageContainer isLoading={isLoading}>
         <div className="flex flex-col w-full items-start gap-4">
-          <LockedState title="Time has run out" message="Click on the start terminal to start a new game." />
+          <LockedState title={states.sessionExpired.title} message={states.sessionExpired.message} />
         </div>
       </PageContainer>
     );
@@ -190,13 +191,10 @@ export const Home = () => {
         <div className="flex flex-col w-full items-start gap-4">
           {screen === "start" && <StartGameCard onStart={startGame} isLoading={isLoading || !hasInteractiveParams} />}
           {screen === "exit" && (
-            <InfoCard title="No Active Session" message="Start the game first before using the exit terminal." />
+            <InfoCard title={states.noActiveSession.title} message={states.noActiveSession.message} />
           )}
           {screen !== "start" && screen !== "exit" && (
-            <LockedState
-              title="Game Not Started"
-              message="You must begin at the start terminal before accessing any puzzle."
-            />
+            <LockedState title={states.gameNotStarted.title} message={states.gameNotStarted.message} />
           )}
         </div>
       </PageContainer>
@@ -221,31 +219,29 @@ export const Home = () => {
 
         {showExitConfirmation && (
           <ConfirmationModal
-            title="Exit Game"
-            message="Are you sure you want to exit the game? Your progress will NOT be saved."
+            title={exitConfirmation.title}
+            message={exitConfirmation.message}
             handleOnConfirm={exitGame}
             handleToggleShowConfirmationModal={() => setShowExitConfirmation(false)}
           />
         )}
 
-        {screen === "start" && <SessionRunningCard />}
+        {screen === "start" && <RoomIntroCard roomId={1} />}
 
         {/* Room A — Puzzles 1 & 2 */}
         {screen === "puzzle1" &&
-          (puzzlesCompleted?.[1] ? (
-            showRoomBIntro ? (
-              <RoomBIntroCard />
-            ) : (
-              <RoomAPuzzle1Complete />
-            )
-          ) : (
-            <RoomAPuzzle1 refreshGameState={refreshGameState} />
-          ))}
+          (puzzlesCompleted?.[1] ? <RoomAPuzzle1Complete /> : <RoomAPuzzle1 refreshGameState={refreshGameState} />)}
 
         {screen === "puzzle2" &&
           (puzzlesCompleted?.[2] ? (
             showRoomBIntro ? (
-              <RoomBIntroCard />
+              <RoomIntroCard roomId={2}>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {roomBPills.map((pill) => (
+                    <StatusPill key={pill.label} label={pill.label} detail={pill.detail} color={pill.color} />
+                  ))}
+                </div>
+              </RoomIntroCard>
             ) : (
               <RoomAPuzzle2Complete />
             )
@@ -256,7 +252,7 @@ export const Home = () => {
         {/* Room B — Puzzles 3, 4, 5 */}
         {screen === "puzzle3" &&
           (!roomADone ? (
-            <LockedState title="Room B Locked" message={ROOM_B_LOCKED_MESSAGE} />
+            <LockedState title={states.roomBLocked.title} message={states.roomBLocked.message} />
           ) : puzzlesCompleted?.[3] ? (
             <RoomBPuzzle1Complete />
           ) : (
@@ -265,7 +261,7 @@ export const Home = () => {
 
         {screen === "puzzle4" &&
           (!roomADone ? (
-            <LockedState title="Room B Locked" message={ROOM_B_LOCKED_MESSAGE} />
+            <LockedState title={states.roomBLocked.title} message={states.roomBLocked.message} />
           ) : puzzlesCompleted?.[4] ? (
             <RoomBPuzzle2Complete />
           ) : (
@@ -274,10 +270,7 @@ export const Home = () => {
 
         {screen === "puzzle5" &&
           (!puzzlesCompleted?.[4] ? (
-            <LockedState
-              title="Puzzle Locked"
-              message="You must reconstruct the transmission first before decoding it."
-            />
+            <LockedState title={states.puzzle5Locked.title} message={states.puzzle5Locked.message} />
           ) : puzzlesCompleted?.[5] ? (
             <RoomBPuzzle3Complete />
           ) : (
@@ -287,7 +280,7 @@ export const Home = () => {
         {/* Room C — Puzzles 6 & 7 */}
         {screen === "puzzle6" &&
           (!roomBDone ? (
-            <LockedState title="Room C Locked" message={ROOM_C_LOCKED_MESSAGE} />
+            <LockedState title={states.roomCLocked.title} message={states.roomCLocked.message} />
           ) : puzzlesCompleted?.[6] ? (
             <RoomCPuzzle1Complete />
           ) : (
@@ -296,12 +289,9 @@ export const Home = () => {
 
         {screen === "puzzle7" &&
           (!roomBDone ? (
-            <LockedState title="Room C Locked" message={ROOM_C_LOCKED_MESSAGE} />
+            <LockedState title={states.roomCLocked.title} message={states.roomCLocked.message} />
           ) : !puzzlesCompleted?.[6] ? (
-            <LockedState
-              title="Final Puzzle Locked"
-              message="Complete Puzzle 6 before attempting the final escape sequence."
-            />
+            <LockedState title={states.finalPuzzleLocked.title} message={states.finalPuzzleLocked.message} />
           ) : puzzlesCompleted?.[7] ? (
             <ExitCongratsCard completionTime={visitorSession?.completionTime} leaderboard={leaderboard} />
           ) : (
@@ -309,17 +299,14 @@ export const Home = () => {
           ))}
 
         {screen === "null" && (
-          <InfoCard
-            title="No Screen Selected"
-            message="This asset is missing a screen query parameter. Use ?screen=start, ?screen=exit, or ?screen=puzzle1 through ?screen=puzzle7."
-          />
+          <InfoCard title={states.noScreenSelected.title} message={states.noScreenSelected.message} />
         )}
       </div>
 
       {!isFinished && (
         <PageFooter>
           <button className="btn btn-danger w-full" onClick={() => setShowExitConfirmation(true)} disabled={isLoading}>
-            Exit
+            {exitButton}
           </button>
         </PageFooter>
       )}

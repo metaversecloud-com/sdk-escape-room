@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
+import { content } from "@/constants";
 import { InventoryItemSummary } from "@/context/types";
 
 interface InventoryPanelProps {
   onClose: () => void;
   inventoryItems?: InventoryItemSummary[];
 }
+
+const { inventory } = content;
 
 export const InventoryPanel = ({ onClose, inventoryItems }: InventoryPanelProps) => {
   const [selectedItem, setSelectedItem] = useState<InventoryItemSummary | null>(null);
@@ -28,7 +31,7 @@ export const InventoryPanel = ({ onClose, inventoryItems }: InventoryPanelProps)
         onClick={() => setSelectedItem(null)}
         role="dialog"
         aria-modal="true"
-        aria-label="Inventory"
+        aria-label={inventory.panelTitle}
       >
         <div className="modal" onClick={(e) => e.stopPropagation()}>
           <div className="modal-header flex gap-2 grid-cols-2 justify-between">
@@ -42,7 +45,7 @@ export const InventoryPanel = ({ onClose, inventoryItems }: InventoryPanelProps)
             <img src={selectedItem.imageUrl} alt={selectedItem.name || selectedItem.id} />
           ) : (
             <div className="er-inventory-fullsize-placeholder">
-              <p className="p2">No larger image available for this item.</p>
+              <p className="p2">{inventory.noLargerImage}</p>
             </div>
           )}
         </div>
@@ -51,10 +54,10 @@ export const InventoryPanel = ({ onClose, inventoryItems }: InventoryPanelProps)
   }
 
   return (
-    <div className="modal-container" onClick={onClose} role="dialog" aria-modal="true" aria-label="Mission Items">
+    <div className="modal-container" onClick={onClose} role="dialog" aria-modal="true" aria-label={inventory.panelTitle}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header flex gap-2 grid-cols-2 justify-between">
-          <h3 className="flex-grow">Mission Items</h3>
+          <h3 className="flex-grow">{inventory.panelTitle}</h3>
           <button className="er-button-text" onClick={onClose}>
             <img src="https://sdk-style.s3.amazonaws.com/icons/x.svg" style={{ width: "10px" }} />
           </button>
@@ -63,7 +66,7 @@ export const InventoryPanel = ({ onClose, inventoryItems }: InventoryPanelProps)
         <div className="grid gap-4">
           {items.length > 0 ? (
             <div className="grid gap-3">
-              <p className="p2 er-inventory-tile__hint">Click on an item below to enlarge it</p>
+              <p className="p2 er-inventory-tile__hint">{inventory.clickHint}</p>
               {items.map((item) => (
                 <button
                   key={item.id}
@@ -75,7 +78,7 @@ export const InventoryPanel = ({ onClose, inventoryItems }: InventoryPanelProps)
                     <img className="er-inventory-tile__thumb" src={item.imageUrl} alt={item.name || item.id} />
                   ) : (
                     <div className="er-inventory-tile__placeholder">
-                      <span className="p3">No preview</span>
+                      <span className="p3">{inventory.noPreview}</span>
                     </div>
                   )}
                   <div className="flex flex-col">
@@ -86,7 +89,7 @@ export const InventoryPanel = ({ onClose, inventoryItems }: InventoryPanelProps)
               ))}
             </div>
           ) : (
-            <p className="p2 mt-2">Nothing in your inventory yet. Solve puzzles to collect mission items.</p>
+            <p className="p2 mt-2">{inventory.emptyState}</p>
           )}
         </div>
       </div>

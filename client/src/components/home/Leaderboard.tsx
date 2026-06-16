@@ -1,3 +1,4 @@
+import { content } from "@/constants";
 import { LeaderboardRowType } from "@/context/types";
 import { formatDuration } from "@/utils";
 
@@ -5,18 +6,20 @@ interface LeaderboardProps {
   leaderboard?: LeaderboardRowType[];
 }
 
+const { leaderboard: leaderboardCopy } = content;
+
 export const Leaderboard = ({ leaderboard }: LeaderboardProps) => (
   <div>
     {!leaderboard || leaderboard.length === 0 ? (
-      <p className="p2">No entries yet. Be the first to escape!</p>
+      <p className="p2">{leaderboardCopy.emptyState}</p>
     ) : (
       <table className="table p-0">
         <thead>
           <tr>
             <th></th>
-            <th className="h5">Name</th>
-            <th className="h5">Time</th>
-            <th className="h5">Attempts</th>
+            <th className="h5">{leaderboardCopy.headers.name}</th>
+            <th className="h5">{leaderboardCopy.headers.time}</th>
+            <th className="h5">{leaderboardCopy.headers.attempts}</th>
           </tr>
         </thead>
         <tbody>

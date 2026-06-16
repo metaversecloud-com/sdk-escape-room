@@ -1,23 +1,22 @@
-const SCRAMBLED = ["EVLAV", "KLCO", "EURSSRPE"];
+import { content } from "@/constants";
+import { PuzzleCompleteCard } from "./PuzzleCompleteCard";
+
+const c = content.puzzles[4].complete;
 
 export const RoomBPuzzle2Complete = () => (
-  <div className="grid gap-3">
-    <div aria-hidden className="er-card__glow" />
-    <p className="p2 er-eyebrow er-text--green">Puzzle Complete</p>
-    <h3 className="er-title-gold">Communication Signal Aligned</h3>
-
+  <PuzzleCompleteCard title={c.title}>
     <div className="er-reconstructed-message my-2 p-3 grid gap-3">
-      <h4>The torn fragments reveal a scrambled transmission:</h4>
+      <h4>{c.heading}</h4>
       <div className="er-scrambled-output my-2">
-        {SCRAMBLED.map((line) => (
+        {c.scrambled.map((line) => (
           <div key={line} className="er-scrambled-line">
             {line}
           </div>
         ))}
       </div>
     </div>
-    <p className="er-next-clue">These scrambled words hold the key to the next puzzle...</p>
-  </div>
+    <p className="er-next-clue">{c.teaser}</p>
+  </PuzzleCompleteCard>
 );
 
 export default RoomBPuzzle2Complete;

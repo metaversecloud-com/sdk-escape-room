@@ -1,3 +1,4 @@
+import { content } from "@/constants";
 import { LeaderboardRowType } from "@/context/types";
 import { formatDuration } from "@/utils";
 
@@ -5,6 +6,8 @@ interface ExitCongratsCardProps {
   completionTime?: number | null;
   leaderboard?: LeaderboardRowType[];
 }
+
+const { exitScreen } = content;
 
 const computePlacement = (
   completionTime: number | null | undefined,
@@ -26,32 +29,34 @@ export const ExitCongratsCard = ({ completionTime, leaderboard }: ExitCongratsCa
 
   return (
     <div className="grid gap-4 w-full">
-      <p className="p2 er-eyebrow er-text--cyan">Mission Complete</p>
-      <h3 className="er-title-gold">Congratulations — Airlock Opened</h3>
-      <p className="p2 er-text">
-        Commander Vega: “Great work, crew. You restored Power, Comms, and Airlock. Grab your stats and see how you
-        rank.”
-      </p>
+      <p className="p2 er-eyebrow er-text--cyan">{exitScreen.eyebrow}</p>
+      <h3 className="er-title-gold">{exitScreen.title}</h3>
+      <p className="p2 er-text">{exitScreen.message}</p>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="er-stat-tile">
-          <p className="p2 er-eyebrow er-text--violet">Your Time</p>
+          <p className="p2 er-eyebrow er-text--violet">{exitScreen.yourTimeLabel}</p>
           <h4 className="h4" style={{ color: "var(--er-gold)" }}>
             {timeText}
           </h4>
-          {placement !== null && placement > 0 && <p className="p3 er-text-muted">Projected rank: #{placement}</p>}
+          {placement !== null && placement > 0 && (
+            <p className="p3 er-text-muted">
+              {exitScreen.projectedRankPrefix}
+              {placement}
+            </p>
+          )}
         </div>
-        <p className="p2 er-eyebrow er-text--cyan">Top Escape Times</p>
+        <p className="p2 er-eyebrow er-text--cyan">{exitScreen.topTimesLabel}</p>
         {topRows.length === 0 ? (
-          <p className="p2 er-text-muted">No leaderboard entries yet.</p>
+          <p className="p2 er-text-muted">{exitScreen.emptyLeaderboard}</p>
         ) : (
           <table className="table">
             <thead>
               <tr>
-                <th className="p2">Rank</th>
-                <th className="p2">Crew</th>
-                <th className="p2">Time</th>
-                <th className="p2">Attempts</th>
+                <th className="p2">{exitScreen.tableHeaders.rank}</th>
+                <th className="p2">{exitScreen.tableHeaders.crew}</th>
+                <th className="p2">{exitScreen.tableHeaders.time}</th>
+                <th className="p2">{exitScreen.tableHeaders.attempts}</th>
               </tr>
             </thead>
             <tbody>

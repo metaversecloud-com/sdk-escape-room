@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
+import { content } from "@/constants";
 import { backendAPI } from "@/utils/backendAPI";
+import { PuzzleHeader } from "./PuzzleHeader";
+
+const c = content.puzzles[5];
+const hintCopy = content.ui.hints;
 
 interface RoomBPuzzle3Props {
   onSuccess?: () => void;
@@ -93,11 +98,11 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
 
   const handleSubmit = async () => {
     if (!areWordsCorrect()) {
-      setError("The transmission words are not correctly unscrambled. Decode the scrambled message first!");
+      setError(c.errors.wordsNotDecoded);
       return;
     }
     if (!isValveOrderCorrect()) {
-      setError("The valve activation order is incorrect. Follow the system stabilization order!");
+      setError(c.errors.wrongValveOrder);
       return;
     }
     setIsSubmitting(true);
@@ -119,34 +124,27 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
 
   return (
     <div className="grid gap-4 w-full">
-      <div className="er-puzzle-header grid gap-2">
-        <h2 className="er-title-gold">Transmission Decode & Valve Order</h2>
-        <p className="p2 er-text">Decode the scrambled transmission to reveal the system stabilization order.</p>
+      <PuzzleHeader title={c.title} description={c.description}>
         <button className="er-hint-button" onClick={() => setShowHint(!showHint)} disabled={isSubmitting}>
-          {showHint ? "Hide Hints" : "💡 Show Hints"}
+          {showHint ? hintCopy.hide : hintCopy.show}
         </button>
-      </div>
+      </PuzzleHeader>
 
       {showHint && !wordsUnscrambled && (
         <div className="er-hint-panel">
           <h4>Transmission Decoding Hints:</h4>
           <ul>
-            <li className="p2">
-              <strong>EVLAV</strong> → Rearrange these letters to form a device that controls flow (5 letters)
-            </li>
-            <li>
-              <strong>KLCO</strong> → Rearrange these letters to form something that secures a door (4 letters)
-            </li>
-            <li>
-              <strong>EURSSPE</strong> → Rearrange these letters to form something that pushes or exerts force (8
-              letters)
-            </li>
+            {c.hints.map((hint) => (
+              <li className="p2" key={hint}>
+                {hint}
+              </li>
+            ))}
           </ul>
         </div>
       )}
 
       <div className="er-puzzle-section grid gap-3">
-        <h3 className="er-text--red text-center">Scrambled Transmission</h3>
+        <h3 className="er-text--red text-center">{c.sections.scrambled}</h3>
         <div className="er-scrambled-words">
           <div className="er-scrambled-word">{SCRAMBLED_WORDS.word1}</div>
           <div className="er-scrambled-word">{SCRAMBLED_WORDS.word2}</div>
@@ -155,18 +153,18 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
       </div>
 
       <div className="er-puzzle-section grid gap-3">
-        <h3 className="er-text--green text-center">Decoded Transmission</h3>
+        <h3 className="er-text--green text-center">{c.sections.decoded}</h3>
         <div className="er-unscramble-inputs">
           {(["word1", "word2", "word3"] as const).map((wordKey, idx) => {
             const maxLen = idx === 0 ? 6 : idx === 1 ? 5 : 9;
             return (
               <div className="er-input-group p-2" key={wordKey}>
-                <label>Word {idx + 1}:</label>
+                <label>{c.wordInputLabels[idx]}</label>
                 <input
                   type="text"
                   value={unscrambledWords[wordKey]}
                   onChange={(e) => handleUnscrambleChange(wordKey, e.target.value)}
-                  placeholder="Enter decoded word"
+                  placeholder={c.wordInputPlaceholder}
                   className="er-unscramble-input"
                   maxLength={maxLen}
                 />
@@ -180,7 +178,7 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
       {wordsUnscrambled && (
         <>
           <div className="er-puzzle-section grid gap-3">
-            <h3 className="er-text--cyan text-center">System Stabilization Order</h3>
+            <h3 className="er-text--cyan text-center">{c.sections.stabilization}</h3>
             <div className="grid grid-cols-3 gap-3">
               {SYSTEM_ORDER.map((item) => (
                 <div key={item.step} className="er-order-letter-item">
@@ -192,10 +190,8 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
           </div>
 
           <div className="er-puzzle-section grid gap-3">
-            <h3 className="er-text--violet text-center">Valve Control Panel</h3>
-            <p className="er-clue-text">
-              Click valves in the correct order according to the system stabilization order above.
-            </p>
+            <h3 className="er-text--violet text-center">{c.sections.valves}</h3>
+            <p className="er-clue-text">{c.valveInstructions}</p>
             <div className="er-valves-grid mt-2">
               {valves.map((valve) => (
                 <button
@@ -214,10 +210,10 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
           </div>
 
           <div className="er-puzzle-section grid gap-3">
-            <h3 className="er-text--gold text-center">Current Valve Activation Order</h3>
+            <h3 className="er-text--gold text-center">{c.sections.valveOrder}</h3>
             <div className="er-order-buttons">
               {valveOrder.length === 0 ? (
-                <p className="er-clue-text">No valves activated yet. Click valves in the correct order!</p>
+                <p className="er-clue-text">{c.emptyOrderMessage}</p>
               ) : (
                 valveOrder.map((valve, index) => (
                   <div key={index} className="er-order-badge">
@@ -238,10 +234,10 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
 
       <div className="er-puzzle-actions">
         <button className="btn er-puzzle-reset" onClick={handleReset} disabled={isSubmitting}>
-          Reset All
+          {c.resetLabel}
         </button>
         <button className="btn er-puzzle-submit" onClick={handleSubmit} disabled={isSubmitting || !wordsUnscrambled}>
-          {isSubmitting ? "Stabilizing..." : "Stabilize Communications"}
+          {isSubmitting ? c.submitBusyLabel : c.submitIdleLabel}
         </button>
       </div>
     </div>

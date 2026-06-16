@@ -1,7 +1,11 @@
 import { useContext, useEffect, useRef, useState } from "react";
+import { content } from "@/constants";
 import { GlobalDispatchContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
 import { backendAPI, setErrorMessage, setGameState } from "@/utils";
+import { PuzzleHeader } from "./PuzzleHeader";
+
+const c = content.puzzles[2];
 
 interface RoomAPuzzle2Props {
   refreshGameState: () => Promise<void>;
@@ -53,7 +57,7 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
       setTimeLeft((prev) => {
         if (prev === null) return null;
         if (prev <= 1) {
-          resetPuzzle("Time expired. The switches have been reset.");
+          resetPuzzle(c.errors.timeExpired);
           return null;
         }
         return prev - 1;
@@ -77,9 +81,9 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
 
       const isCorrect = CORRECT_ORDER.every((v, i) => v === updated[i]);
       if (isCorrect) {
-        setSuccessMessage("Correct sequence entered. Submit to prime the reactor.");
+        setSuccessMessage(c.messages.correctSequenceReady);
       } else {
-        resetPuzzle("Incorrect sequence. Switches have been reset.");
+        resetPuzzle(c.errors.incorrect);
       }
     }
   };
@@ -92,11 +96,11 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
       const badges = response.data?.badgesAwarded as string[] | undefined;
       const owned = response.data?.badgesOwned as string[] | undefined;
       const failed = response.data?.badgesFailed as string[] | undefined;
-      if (badges?.length) setSuccessMessage(`Reactor primed. Badge awarded: ${badges.join(", ")}.`);
-      else if (owned?.length) setSuccessMessage(`Reactor primed. Badge already earned: ${owned.join(", ")}.`);
-      else if (failed?.length)
-        setSuccessMessage(`Reactor primed. Badge could not be awarded (missing in inventory): ${failed.join(", ")}.`);
-      else setSuccessMessage("Reactor primed.");
+      if (badges?.length) setSuccessMessage(c.messages.badgeAwardedTemplate.replace("{badge}", badges.join(", ")));
+      else if (owned?.length)
+        setSuccessMessage(c.messages.badgeAlreadyTemplate.replace("{badge}", owned.join(", ")));
+      else if (failed?.length) setSuccessMessage(c.messages.badgeNotAwarded);
+      else setSuccessMessage(c.messages.primedFallback);
       await refreshGameState();
     } catch (error) {
       setErrorMessage(dispatch, error as ErrorType);
@@ -109,14 +113,7 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
 
   return (
     <div className="grid gap-4 w-full">
-      <div className="er-puzzle-header grid gap-2">
-        <h2 className="er-title-gold">Reactor Switch Array</h2>
-        <p className="p2 er-text">
-          Reactor priming follows crew priority order. Translate crew priority to channel numbers, then run the
-          remaining switch for the system check. Flip the breaker switches in the correct sequence before the system
-          lockout.
-        </p>
-      </div>
+      <PuzzleHeader title={c.title} description={c.description} />
 
       {timeLeft !== null && (
         <div
@@ -128,7 +125,7 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
             fontWeight: 700,
           }}
         >
-          Time Left: {timeLeft}s
+          {c.timerPrefix} {timeLeft}s
         </div>
       )}
 
@@ -187,7 +184,7 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
                   </div>
                   <div className="flex items-center gap-2">
                     <span style={{ color: "var(--er-gold)", fontWeight: 700 }}>#{switchNumber}</span>
-                    {isSelected && <span style={{ color: "var(--er-green)", fontWeight: 700 }}>Locked</span>}
+                    {isSelected && <span style={{ color: "var(--er-green)", fontWeight: 700 }}>{c.lockedLabel}</span>}
                   </div>
                 </div>
               </button>
@@ -197,7 +194,7 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
       </div>
 
       <p className="p2 text-center er-text-dim">
-        Current Order: {selectedOrder.length ? selectedOrder.join(" → ") : "None"}
+        {c.currentOrderLabel} {selectedOrder.length ? selectedOrder.join(" → ") : c.noneLabel}
       </p>
 
       {localError && <div className="er-puzzle-error">⚠️ {localError}</div>}
@@ -205,14 +202,14 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
       {successMessage && <p className="p2 text-success">{successMessage}</p>}
 
       <button className="btn er-puzzle-reset" onClick={() => resetPuzzle()} disabled={isSubmitting}>
-        Reset
+        {c.resetLabel}
       </button>
       <button
         className="er-puzzle-submit"
         onClick={handleSubmit}
         disabled={isSubmitting || selectedOrder.length !== CORRECT_ORDER.length || !isOrderCorrect}
       >
-        Submit Sequence
+        {c.submitLabel}
       </button>
     </div>
   );

@@ -1,5 +1,9 @@
 import { useState } from "react";
+import { content } from "@/constants";
 import { backendAPI } from "@/utils/backendAPI";
+import { PuzzleHeader } from "./PuzzleHeader";
+
+const c = content.puzzles[3];
 
 interface RoomBPuzzle1Props {
   onSuccess?: () => void;
@@ -29,11 +33,14 @@ export const RoomBPuzzle1 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
   const setValueWithValidation = (field: FieldName, value: number) => {
     clearFieldError(field);
     if (Number.isNaN(value)) {
-      setInputError((prev) => ({ ...prev, [field]: "Please enter a valid number" }));
+      setInputError((prev) => ({ ...prev, [field]: c.errors.invalidNumber }));
       return;
     }
     if (value < MIN_VALUE || value > MAX_VALUE) {
-      setInputError((prev) => ({ ...prev, [field]: `Value must be between ${MIN_VALUE} and ${MAX_VALUE}` }));
+      setInputError((prev) => ({
+        ...prev,
+        [field]: c.errors.outOfRangeTemplate.replace("{min}", String(MIN_VALUE)).replace("{max}", String(MAX_VALUE)),
+      }));
       return;
     }
     setters[field](value);
@@ -57,7 +64,7 @@ export const RoomBPuzzle1 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
         console.error("Puzzle submission error:", err);
       }
     } else {
-      setError("Incorrect alignment. The satellites are not properly aligned.");
+      setError(c.errors.wrongAlignment);
     }
 
     setIsSubmitting(false);
@@ -103,25 +110,22 @@ export const RoomBPuzzle1 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
 
   return (
     <div className="grid gap-4 w-full">
-      <div className="er-puzzle-header grid gap-2">
-        <h2 className="er-title-gold">Satellite Alignment System</h2>
-        <p className="p2 er-text">Align the communication satellites to restore the signal.</p>
-      </div>
+      <PuzzleHeader title={c.title} description={c.description} />
 
       <div className="grid gap-4">
-        {renderControl("alpha", "Alpha Satellite")}
-        {renderControl("beta", "Beta Satellite")}
-        {renderControl("gamma", "Omega Satellite")}
+        {renderControl("alpha", c.satelliteNames[0])}
+        {renderControl("beta", c.satelliteNames[1])}
+        {renderControl("gamma", c.satelliteNames[2])}
       </div>
 
       {error && <div className="er-puzzle-error">⚠️ {error}</div>}
 
       <div className="er-puzzle-actions">
         <button className="btn er-puzzle-reset" onClick={handleReset} disabled={isSubmitting}>
-          Reset
+          {c.resetLabel}
         </button>
         <button className="btn er-puzzle-submit" onClick={handleSubmit} disabled={isSubmitting}>
-          {isSubmitting ? "Aligning..." : "Align Satellites"}
+          {isSubmitting ? c.submitBusyLabel : c.submitIdleLabel}
         </button>
       </div>
     </div>
