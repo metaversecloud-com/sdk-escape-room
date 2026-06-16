@@ -7,6 +7,7 @@ import {
   handleStartGame,
   handleSubmitPuzzle,
   handleTeleport,
+  handleWalkToAsset,
 } from "./controllers/index.js";
 
 const router = express.Router();
@@ -33,6 +34,7 @@ router.get("/system/health", (_req, res) => {
 router.get("/game-state", handleGetGameState);
 router.get("/session", handleCheckSession);
 router.get("/teleport", handleTeleport);
+router.post("/walk-to-asset", handleWalkToAsset);
 router.post("/start-game", handleStartGame);
 router.post("/submit-puzzle", handleSubmitPuzzle);
 router.post("/exit", handleExitGame);

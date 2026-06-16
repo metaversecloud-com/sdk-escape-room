@@ -54,9 +54,15 @@ export const content = {
   /* ─── Leaderboard (standalone leaderboard screen) ──────────────────── */
 
   leaderboard: {
-    pageTitle: "Leaderboard",
+    pageTitle: "Hall of Fame",
+    tabs: { leaderboard: "Leaderboard", badges: "Badges" },
     emptyState: "No entries yet. Be the first to escape!",
     headers: { name: "Name", time: "Time", attempts: "Attempts" },
+    badgesTab: {
+      emptyState: "No badges configured yet. Check back after the world's been set up.",
+      earnedLabel: "Earned",
+      lockedLabel: "Locked",
+    },
   },
 
   /* ─── In-game status bar ───────────────────────────────────────────── */
@@ -261,7 +267,7 @@ export const content = {
       },
       complete: {
         title: "Reactor Online",
-        body: "Reactor sequence locked. Wrench (26B5) added to your inventory. Commander Vega: “Power Bay stabilized—proceed to the Comms Deck.”",
+        body: "Reactor sequence locked. Wrench (26B5) added to your inventory.”",
         itemName: "Wrench",
         artFrameClass: "er-art-frame--wrench",
       },
@@ -372,7 +378,7 @@ export const content = {
     7: {
       title: "Final Airlock Code",
       description: "Enter final 4-digit code",
-      hint: "Check your inventory items. Each item holds a few digits — use the digit from the same place value in both items to fill the blanks.",
+      hint: "Check your Key Inventory items. For each missing number, try using the number at the corresponding spot on the items.",
       placeholder: "7 _ 3 _",
       submitLabel: "Submit Code",
       clearLabel: "C",

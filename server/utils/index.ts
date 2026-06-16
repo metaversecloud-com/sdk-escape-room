@@ -4,6 +4,7 @@ export * from "./checkEscapeBadges.js";
 export * from "./checkSessionExpiration.js";
 export * from "./cleanReturnPayload.js";
 export * from "./errorHandler.js";
+export * from "./fireToast.js";
 export * from "./getBadges.js";
 export * from "./getCredentials.js";
 export * from "./getDefaultVisitorData.js";

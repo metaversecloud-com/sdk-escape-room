@@ -1,6 +1,8 @@
 import { VisitorInterface } from "@rtsdk/topia";
 import { VisitorData, VisitorDataObject, WorldConfig, WorldDataObject } from "@shared/types/VisitorData.js";
+import { toasts } from "@shared/copy/toasts.js";
 import { Credentials } from "../types/Credentials.js";
+import { fireToast } from "./fireToast.js";
 import { teleportPlayer } from "./teleportPlayer.js";
 import { World } from "./topiaInit.js";
 
@@ -80,6 +82,13 @@ export const checkSessionExpiration = async ({
       ],
     },
   );
+
+  await fireToast({
+    visitor,
+    groupId: toasts.timeExpired.groupId,
+    title: toasts.timeExpired.title,
+    text: toasts.timeExpired.text,
+  });
 
   await teleportPlayer(urlSlug, visitorId, credentials, "EscapeRoom_start_teleport");
 

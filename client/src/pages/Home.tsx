@@ -1,6 +1,7 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 
 import {
+  BadgesTab,
   ExitCongratsCard,
   InfoCard,
   InventoryPanel,
@@ -89,7 +90,7 @@ const getForceRefreshInventoryFromSearch = () =>
 
 export const Home = () => {
   const dispatch = useContext(GlobalDispatchContext);
-  const { hasInteractiveParams, visitorData, visitorInventory, leaderboard, hasSessionExpired, worldConfig } =
+  const { hasInteractiveParams, visitorData, visitorInventory, leaderboard, badges, hasSessionExpired, worldConfig } =
     useContext(GlobalStateContext);
   const visitorSession = visitorData || null;
   const puzzlesCompleted = visitorSession?.puzzlesCompleted;
@@ -100,6 +101,7 @@ export const Home = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [timer, setTimer] = useState("--:--");
   const [showInventory, setShowInventory] = useState(false);
+  const [leaderboardTab, setLeaderboardTab] = useState<"leaderboard" | "badges">("leaderboard");
   const [teleportState, setTeleportState] = useState<TeleportState>({ state: "checking" });
 
   const hasStarted = visitorSession?.sessionActive === true;
@@ -209,12 +211,49 @@ export const Home = () => {
       .finally(() => setIsLoading(false));
   }, [hasInteractiveParams, dispatch, forceRefreshInventory]);
 
+  // Walk the visitor to the asset they clicked to open this iframe. Every
+  // Home mount is a fresh asset click, so we fire this once per mount.
+  // Fire-and-forget — the walk happens in the world independently of any UI.
+  useEffect(() => {
+    if (!hasInteractiveParams) return;
+    backendAPI.post("/walk-to-asset").catch(() => {
+      // Swallow errors silently — failing to walk shouldn't surface as a
+      // user-facing error. The screen content still rendered correctly.
+    });
+  }, [hasInteractiveParams]);
+
   // ── Standalone screens (own PageContainer) ──
   if (screen === "leaderboard") {
+    const tabCopy = content.leaderboard.tabs;
+    const tabs: Array<{ id: "leaderboard" | "badges"; label: string }> = [
+      { id: "leaderboard", label: tabCopy.leaderboard },
+      { id: "badges", label: tabCopy.badges },
+    ];
     return (
       <PageContainer isLoading={isLoading} headerText={content.leaderboard.pageTitle}>
         <div className="flex-col gap-4">
-          <Leaderboard leaderboard={leaderboard} />
+          <div className="flex gap-2 mb-4" role="tablist">
+            {tabs.map((tab) => {
+              const active = leaderboardTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  className={active ? "btn btn-outline" : "btn "}
+                  onClick={() => setLeaderboardTab(tab.id)}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+          {leaderboardTab === "leaderboard" ? (
+            <Leaderboard leaderboard={leaderboard} />
+          ) : (
+            <BadgesTab badges={badges} earned={visitorInventory?.badges} />
+          )}
         </div>
       </PageContainer>
     );

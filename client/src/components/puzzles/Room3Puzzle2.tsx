@@ -12,7 +12,7 @@ interface Room3Puzzle2Props {
   refreshGameState?: () => Promise<void>;
 }
 
-const EXPECTED_CODE = "7436";
+const EXPECTED_CODE = "7435";
 
 const KEYPAD_DIGITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 

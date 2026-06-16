@@ -1,3 +1,4 @@
+export * from "./BadgesTab.js";
 export * from "./ExitCongratsCard.js";
 export * from "./InfoCard.js";
 export * from "./InventoryPanel.js";

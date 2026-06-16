@@ -48,6 +48,8 @@ const buildVisitorMock = (sessionOverrides: Partial<any> = {}) => {
     grantInventoryItem: jest.fn().mockResolvedValue(undefined),
     moveVisitor: jest.fn().mockResolvedValue(undefined),
     closeIframe: jest.fn().mockResolvedValue(undefined),
+    fireToast: jest.fn().mockResolvedValue(undefined),
+    triggerParticle: jest.fn().mockResolvedValue(undefined),
   };
   return { visitor, session };
 };
@@ -85,6 +87,7 @@ jest.mock("@utils/index.js", () => ({
   getLeaderboard: jest.fn().mockReturnValue([]),
   checkSessionExpiration: jest.fn(),
   checkEscapeBadges: jest.fn().mockResolvedValue({ awarded: [], alreadyOwned: [], failed: [] }),
+  fireToast: jest.fn().mockResolvedValue(undefined),
   getCachedInventoryItems: jest.fn().mockResolvedValue([]),
   teleportPlayer: jest.fn().mockResolvedValue(undefined),
   getDefaultVisitorData: jest.fn(() => ({

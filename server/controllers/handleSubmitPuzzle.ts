@@ -7,11 +7,13 @@ import {
   checkEscapeBadges,
   checkSessionExpiration,
   errorHandler,
+  fireToast,
   getCachedInventoryItems,
   getCredentials,
   getVisitor,
   teleportPlayer,
 } from "@utils/index.js";
+import { toasts } from "@shared/copy/toasts.js";
 import { Credentials, KeyAssetDataObject, VisitorData, WorldConfig } from "../types/index.js";
 
 type PuzzleNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -69,7 +71,15 @@ const applyInventoryReward = async (
 
   const inventoryItems = await getCachedInventoryItems({ credentials });
   const match = inventoryItems.find((item: any) => item.name === itemName && item.type === "ITEM");
-  if (match) await visitor.grantInventoryItem(match, 1);
+  if (!match) return;
+
+  await visitor.grantInventoryItem(match, 1);
+  await fireToast({
+    visitor,
+    groupId: toasts.itemEarned.groupId,
+    title: toasts.itemEarned.title,
+    text: toasts.itemEarned.textTemplate.replace("{item}", itemName),
+  });
 };
 
 export const handleSubmitPuzzle = async (req: Request, res: Response) => {
@@ -115,6 +125,17 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     game.puzzlesCompleted[puzzleNumber] = true;
     await applyInventoryReward(credentials, visitor, visitorInventory, puzzleNumber);
 
+    // Generic puzzle-solved toast. Puzzle 7 gets the "escaped" toast below
+    // instead — that beat is more meaningful as the game-end moment.
+    if (puzzleNumber !== 7) {
+      await fireToast({
+        visitor,
+        groupId: toasts.puzzleSolved.groupId,
+        title: toasts.puzzleSolved.title,
+        text: toasts.puzzleSolved.text,
+      });
+    }
+
     const badgesAwarded: string[] = [];
     const badgesOwned: string[] = [];
     const badgesFailed: string[] = [];
@@ -141,13 +162,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       },
     ];
 
-    // Room transitions: if the player just satisfied the prerequisites for the
-    // next room, advance `currentRoom`, queue the room-entry analytic, and
-    // award the room-completion badge. The actual teleport is no longer fired
-    // here — players step through an in-world teleport pad (handled by
-    // `handleTeleport`), so finishing the last puzzle of a room just unlocks
-    // the pad without yanking the camera. Puzzle 7 (game-end) still teleports
-    // home below.
+    // Room transitions: Puzzle 7 (game-end) teleports home
     let teleport;
     for (const transition of ROOM_TRANSITIONS) {
       if (game.currentRoom !== transition.fromRoom || !transition.isReady(game)) continue;
@@ -169,6 +184,12 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
           badgeKey: transition.badgeKey,
         }),
       );
+      await fireToast({
+        visitor,
+        groupId: toasts.roomCleared.groupId,
+        title: toasts.roomCleared.title,
+        text: toasts.roomCleared.textTemplate.replace("{room}", String(transition.toRoom)),
+      });
     }
 
     // Puzzle 6 — last puzzle in Room 3; awards the engineering badge but doesn't end the game.
@@ -206,6 +227,13 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         }),
       );
 
+      await fireToast({
+        visitor,
+        groupId: toasts.escaped.groupId,
+        title: toasts.escaped.title,
+        text: toasts.escaped.text,
+      });
+
       const updatedLeaderboard = {
         ...(keyAssetDataObject?.leaderboard || {}),
         [`${profileId}-${Date.now()}`]: `${displayName}|${game.completionTime ?? 0}`,
@@ -217,7 +245,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
 
       teleport = "EscapeRoom_start_teleport";
 
-      visitor
+      await visitor
         .triggerParticle({
           name: "explosion_float",
           duration: 6,
@@ -228,14 +256,28 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
             functionName: "handleSubmitPuzzle",
             message: "Error triggering particle effects",
           }),
-        ),
-        analytics.push({
-          analyticName: "gameCompleted",
-          profileId,
-          urlSlug,
-          uniqueKey: `${profileId}-${sessionKey}-puzzle-${puzzleNumber}`,
-          incrementBy: 1,
-        });
+        );
+
+      analytics.push({
+        analyticName: "gameCompleted",
+        profileId,
+        urlSlug,
+        uniqueKey: `${profileId}-${sessionKey}-puzzle-${puzzleNumber}`,
+        incrementBy: 1,
+      });
+    } else {
+      await visitor
+        .triggerParticle({
+          name: "firework1_gold",
+          duration: 1,
+        })
+        .catch((error) =>
+          errorHandler({
+            error,
+            functionName: "handleSubmitPuzzle",
+            message: "Error triggering particle effects",
+          }),
+        );
     }
 
     // Persist visitor data + analytics BEFORE teleporting. If a teleport target
