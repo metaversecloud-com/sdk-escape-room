@@ -5,7 +5,7 @@ import { PuzzleHeader } from "./PuzzleHeader";
 
 const c = content.puzzles[4];
 
-interface RoomBPuzzle2Props {
+interface Room2Puzzle2Props {
   onSuccess?: () => void;
   sessionKey?: string;
   refreshGameState?: () => Promise<void>;
@@ -43,7 +43,7 @@ const shufflePieces = (pieces: PuzzlePiece[]): PuzzlePiece[] => {
 const updateLockedStatus = (pieces: PuzzlePiece[]) =>
   pieces.map((piece) => ({ ...piece, isLocked: piece.currentPosition === piece.correctPosition }));
 
-export const RoomBPuzzle2 = ({ onSuccess, sessionKey, refreshGameState }: RoomBPuzzle2Props) => {
+export const Room2Puzzle2 = ({ onSuccess, sessionKey, refreshGameState }: Room2Puzzle2Props) => {
   const [pieces, setPieces] = useState<PuzzlePiece[]>([]);
   const [selectedPiece, setSelectedPiece] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -185,4 +185,4 @@ export const RoomBPuzzle2 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
   );
 };
 
-export default RoomBPuzzle2;
+export default Room2Puzzle2;

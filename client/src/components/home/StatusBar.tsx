@@ -3,7 +3,7 @@ import { content } from "@/constants";
 interface StatusBarProps {
   /** Pre-formatted "MM:SS" string. */
   timer: string;
-  currentRoom?: string | null;
+  currentRoom?: number | null;
   onOpenInventory: () => void;
   hasStarted: boolean;
 }

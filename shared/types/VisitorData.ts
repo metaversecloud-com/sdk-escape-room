@@ -10,7 +10,7 @@ export interface VisitorData {
   timedOut: boolean;
 
   // Progression
-  currentRoom: "A" | "B" | "C" | null;
+  currentRoom: 1 | 2 | 3 | null;
   puzzlesCompleted: {
     1: boolean;
     2: boolean;

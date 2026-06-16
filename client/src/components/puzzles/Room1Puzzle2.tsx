@@ -7,7 +7,7 @@ import { PuzzleHeader } from "./PuzzleHeader";
 
 const c = content.puzzles[2];
 
-interface RoomAPuzzle2Props {
+interface Room1Puzzle2Props {
   refreshGameState: () => Promise<void>;
 }
 
@@ -19,7 +19,7 @@ const SWITCH_SELECTED_BG = "linear-gradient(180deg, #1f5ad7 0%, #1a4ebc 100%)";
 const TOGGLE_OFF_BG = "linear-gradient(180deg, #a0a7b7 0%, #7c8498 100%)";
 const TOGGLE_ON_BG = "linear-gradient(180deg, #65d08c 0%, #3ca766 100%)";
 
-export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
+export const Room1Puzzle2 = ({ refreshGameState }: Room1Puzzle2Props) => {
   const dispatch = useContext(GlobalDispatchContext);
 
   const [selectedOrder, setSelectedOrder] = useState<number[]>([]);
@@ -215,4 +215,4 @@ export const RoomAPuzzle2 = ({ refreshGameState }: RoomAPuzzle2Props) => {
   );
 };
 
-export default RoomAPuzzle2;
+export default Room1Puzzle2;

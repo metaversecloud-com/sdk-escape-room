@@ -6,7 +6,7 @@ import { PuzzleHeader } from "./PuzzleHeader";
 const c = content.puzzles[5];
 const hintCopy = content.ui.hints;
 
-interface RoomBPuzzle3Props {
+interface Room2Puzzle3Props {
   onSuccess?: () => void;
   sessionKey?: string;
   refreshGameState?: () => Promise<void>;
@@ -41,7 +41,7 @@ const shuffle = <T,>(array: T[]): T[] => {
   return shuffled;
 };
 
-export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBPuzzle3Props) => {
+export const Room2Puzzle3 = ({ onSuccess, sessionKey, refreshGameState }: Room2Puzzle3Props) => {
   const [valveOrder, setValveOrder] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -244,4 +244,4 @@ export const RoomBPuzzle3 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
   );
 };
 
-export default RoomBPuzzle3;
+export default Room2Puzzle3;

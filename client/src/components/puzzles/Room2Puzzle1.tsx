@@ -5,7 +5,7 @@ import { PuzzleHeader } from "./PuzzleHeader";
 
 const c = content.puzzles[3];
 
-interface RoomBPuzzle1Props {
+interface Room2Puzzle1Props {
   onSuccess?: () => void;
   sessionKey?: string;
   refreshGameState?: () => Promise<void>;
@@ -17,7 +17,7 @@ const CORRECT_VALUES = { alpha: 7, beta: 7, gamma: 6 } as const;
 
 type FieldName = "alpha" | "beta" | "gamma";
 
-export const RoomBPuzzle1 = ({ onSuccess, sessionKey, refreshGameState }: RoomBPuzzle1Props) => {
+export const Room2Puzzle1 = ({ onSuccess, sessionKey, refreshGameState }: Room2Puzzle1Props) => {
   const [alpha, setAlpha] = useState(0);
   const [beta, setBeta] = useState(0);
   const [gamma, setGamma] = useState(0);
@@ -132,4 +132,4 @@ export const RoomBPuzzle1 = ({ onSuccess, sessionKey, refreshGameState }: RoomBP
   );
 };
 
-export default RoomBPuzzle1;
+export default Room2Puzzle1;

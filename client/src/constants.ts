@@ -23,13 +23,13 @@
  *                          the post-solve celebration card.
  *
  * Puzzle map for reference:
- *   1 → Power Console            (Room A)
- *   2 → Reactor Switch Array     (Room A)
- *   3 → Satellite Alignment      (Room B)
- *   4 → Reconstruct Transmission (Room B)
- *   5 → Decode + Valve Order     (Room B)
- *   6 → Restore Circuit          (Room C)
- *   7 → Final Airlock Code       (Room C)
+ *   1 → Power Console            (Room 1)
+ *   2 → Reactor Switch Array     (Room 1)
+ *   3 → Satellite Alignment      (Room 2)
+ *   4 → Reconstruct Transmission (Room 2)
+ *   5 → Decode + Valve Order     (Room 2)
+ *   6 → Restore Circuit          (Room 3)
+ *   7 → Final Airlock Code       (Room 3)
  */
 export const content = {
   /* ─── Reusable chrome strings ───────────────────────────────────────── */
@@ -75,6 +75,31 @@ export const content = {
     message: "Are you sure you want to exit the game? Your progress will NOT be saved.",
   },
   exitButton: "Exit",
+
+  /* ─── Teleport (room→room) screen ─────────────────────────────────────
+     Shown when the player clicks an in-world teleport pad. The client
+     hits /api/teleport which checks puzzle prerequisites and, if met,
+     moves the player to the destination room's spawn. Each sub-object
+     is the copy for one possible outcome.
+  */
+
+  teleport: {
+    loading: {
+      title: "Teleporting…",
+      message: "Checking your progress.",
+    },
+    // Success has no copy of its own — on success the destination room's
+    // `RoomIntroCard` is rendered instead (title + description live under
+    // `content.rooms[N]`).
+    blocked: {
+      title: "Door Locked",
+      message: "You must complete all puzzles in the room before proceeding.",
+    },
+    invalidTarget: {
+      title: "Nowhere to go",
+      message: "There's no next room from here.",
+    },
+  },
 
   /* ─── Pre-game briefing (StartGameCard) ────────────────────────────── */
 
@@ -129,13 +154,13 @@ export const content = {
       message:
         "This asset is missing a screen query parameter. Use ?screen=start, ?screen=exit, or ?screen=puzzle1 through ?screen=puzzle7.",
     },
-    roomBLocked: {
-      title: "Room B Locked",
-      message: "You must restore power in Room A before accessing the Comms Deck.",
+    room2Locked: {
+      title: "Room 2 Locked",
+      message: "You must restore power in Room 1 before accessing the Comms Deck.",
     },
-    roomCLocked: {
-      title: "Room C Locked",
-      message: "You must complete Room B before accessing the reactor control room.",
+    room3Locked: {
+      title: "Room 3 Locked",
+      message: "You must complete Room 2 before accessing the reactor control room.",
     },
     puzzle5Locked: {
       title: "Puzzle Locked",
@@ -177,12 +202,16 @@ export const content = {
         },
       ],
     },
+    3: {
+      title: "Airlock Control",
+      description: `“Crew, this is Commander Vega. You've made your way inside the Airlock Control. Restore the airlock circuit so that the keypad becomes operational.”`,
+    },
   },
 
   /* ─── Per-puzzle copy ──────────────────────────────────────────────── */
 
   puzzles: {
-    /* Puzzle 1 — Power Console (Room A) */
+    /* Puzzle 1 — Power Console (Room 1) */
     1: {
       title: "Power Console",
       description:
@@ -208,7 +237,7 @@ export const content = {
       },
     },
 
-    /* Puzzle 2 — Reactor Switch Array (Room A) */
+    /* Puzzle 2 — Reactor Switch Array (Room 1) */
     2: {
       title: "Reactor Switch Array",
       description:
@@ -238,7 +267,7 @@ export const content = {
       },
     },
 
-    /* Puzzle 3 — Satellite Alignment (Room B) */
+    /* Puzzle 3 — Satellite Alignment (Room 2) */
     3: {
       title: "Satellite Alignment System",
       description: "Align the communication satellites to restore the signal.",
@@ -257,7 +286,7 @@ export const content = {
       },
     },
 
-    /* Puzzle 4 — Reconstruct Transmission (Room B) */
+    /* Puzzle 4 — Reconstruct Transmission (Room 2) */
     4: {
       title: "Reconstruct the Transmission",
       description: "Piece together the torn fragments to reveal the hidden message.",
@@ -265,7 +294,7 @@ export const content = {
         "Click a fragment to select it, then click another fragment to swap their positions. Correctly placed fragments will show a 🔒 icon and cannot be moved further.",
       submitIdleLabel: "Reconstruct Transmission",
       submitBusyLabel: "Reconstructing...",
-      shuffleLabel: "Shuffle Fragments",
+      shuffleLabel: "Reset",
       progressTemplate: "Progress: {locked}/{total} fragments correctly placed",
       errors: {
         cannotSwapLocked: "🔒 Cannot swap with a locked fragment!",
@@ -280,7 +309,7 @@ export const content = {
       },
     },
 
-    /* Puzzle 5 — Transmission Decode + Valve Order (Room B) */
+    /* Puzzle 5 — Transmission Decode + Valve Order (Room 2) */
     5: {
       title: "Transmission Decode & Valve Order",
       description: "Decode the scrambled transmission to reveal the system stabilization order.",
@@ -314,11 +343,11 @@ export const content = {
         itemNotification: "Access card added to your inventory!",
         codeLabel: "Partial Airlock Code Revealed:",
         codeDisplay: "7 _ 3 _",
-        teaser: "Check your inventory to see the Access Card. Proceed to Room C!",
+        teaser: "Check your inventory to see the Access Card. Proceed to Room 3!",
       },
     },
 
-    /* Puzzle 6 — Restore Circuit (Room C) */
+    /* Puzzle 6 — Restore Circuit (Room 3) */
     6: {
       title: "Restore Circuit",
       description: "Connect all nodes correctly",
@@ -339,7 +368,7 @@ export const content = {
       },
     },
 
-    /* Puzzle 7 — Final Airlock Code (Room C) */
+    /* Puzzle 7 — Final Airlock Code (Room 3) */
     7: {
       title: "Final Airlock Code",
       description: "Enter final 4-digit code",

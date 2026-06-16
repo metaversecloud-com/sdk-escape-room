@@ -7,7 +7,7 @@ import { PuzzleHeader } from "./PuzzleHeader";
 
 const c = content.puzzles[1];
 
-interface RoomAPuzzle1Props {
+interface Room1Puzzle1Props {
   refreshGameState: () => Promise<void>;
 }
 
@@ -62,7 +62,7 @@ const WRONG_FLASH_STYLES = {
   dotShadow: "0 0 16px #ff6b6b",
 };
 
-export const RoomAPuzzle1 = ({ refreshGameState }: RoomAPuzzle1Props) => {
+export const Room1Puzzle1 = ({ refreshGameState }: Room1Puzzle1Props) => {
   const dispatch = useContext(GlobalDispatchContext);
 
   const [lights, setLights] = useState<PuzzleColor[]>(["OFF", "OFF", "OFF"]);
@@ -177,4 +177,4 @@ export const RoomAPuzzle1 = ({ refreshGameState }: RoomAPuzzle1Props) => {
   );
 };
 
-export default RoomAPuzzle1;
+export default Room1Puzzle1;

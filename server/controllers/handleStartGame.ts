@@ -38,7 +38,7 @@ export const handleStartGame = async (req: Request, res: Response) => {
       ...getDefaultVisitorData(),
       sessionActive: true,
       startTime: new Date().toISOString(),
-      currentRoom: "A" as const,
+      currentRoom: 1 as const,
     };
 
     await visitor.updateDataObject(
@@ -54,7 +54,7 @@ export const handleStartGame = async (req: Request, res: Response) => {
             incrementBy: 1,
           },
           {
-            analyticName: "roomAEntries",
+            analyticName: "room1Entries",
             profileId,
             urlSlug,
             uniqueKey: `${profileId}-${sessionKey}-start`,

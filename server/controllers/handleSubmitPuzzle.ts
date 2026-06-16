@@ -35,26 +35,25 @@ interface RoomTransition {
   toRoom: VisitorData["currentRoom"];
   isReady: (game: VisitorData) => boolean;
   badgeKey: "POWER_RESTORED" | "SIGNAL_RECOVERED";
-  spawnUniqueName: string;
   analyticName: string;
 }
 
+// Spawn unique names for these transitions now live in `handleTeleport.ts` —
+// the player walks through an in-world pad to actually move between rooms.
 const ROOM_TRANSITIONS: RoomTransition[] = [
   {
-    fromRoom: "A",
-    toRoom: "B",
+    fromRoom: 1,
+    toRoom: 2,
     isReady: (g) => g.puzzlesCompleted[1] && g.puzzlesCompleted[2],
     badgeKey: "POWER_RESTORED",
-    spawnUniqueName: "EscapeRoom_room2_teleport",
-    analyticName: "roomBEntries",
+    analyticName: "room2Entries",
   },
   {
-    fromRoom: "B",
-    toRoom: "C",
+    fromRoom: 2,
+    toRoom: 3,
     isReady: (g) => g.puzzlesCompleted[3] && g.puzzlesCompleted[4] && g.puzzlesCompleted[5],
     badgeKey: "SIGNAL_RECOVERED",
-    spawnUniqueName: "EscapeRoom_room3_teleport",
-    analyticName: "roomCEntries",
+    analyticName: "room3Entries",
   },
 ];
 
@@ -143,10 +142,12 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     ];
 
     // Room transitions: if the player just satisfied the prerequisites for the
-    // next room, advance currentRoom, queue the room-entry analytic, and award
-    // the room-completion badge. Defer the actual teleport call until AFTER the
-    // visitor write below — that way a missing spawn asset won't block the
-    // puzzle-completion persistence.
+    // next room, advance `currentRoom`, queue the room-entry analytic, and
+    // award the room-completion badge. The actual teleport is no longer fired
+    // here — players step through an in-world teleport pad (handled by
+    // `handleTeleport`), so finishing the last puzzle of a room just unlocks
+    // the pad without yanking the camera. Puzzle 7 (game-end) still teleports
+    // home below.
     let teleport;
     for (const transition of ROOM_TRANSITIONS) {
       if (game.currentRoom !== transition.fromRoom || !transition.isReady(game)) continue;
@@ -168,10 +169,9 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
           badgeKey: transition.badgeKey,
         }),
       );
-      teleport = transition.spawnUniqueName;
     }
 
-    // Puzzle 6 — last puzzle in Room C; awards the engineering badge but doesn't end the game.
+    // Puzzle 6 — last puzzle in Room 3; awards the engineering badge but doesn't end the game.
     if (puzzleNumber === 6) {
       collectBadges(
         await checkEscapeBadges({

@@ -3,10 +3,10 @@ import { PuzzleCompleteCard } from "./PuzzleCompleteCard";
 
 const c = content.puzzles[6].complete;
 
-export const RoomCPuzzle1Complete = () => (
+export const Room3Puzzle1Complete = () => (
   <PuzzleCompleteCard title={c.title}>
     <p className="p2 er-text">{c.body}</p>
   </PuzzleCompleteCard>
 );
 
-export default RoomCPuzzle1Complete;
+export default Room3Puzzle1Complete;

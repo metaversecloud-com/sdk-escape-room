@@ -47,6 +47,7 @@ const buildVisitorMock = (sessionOverrides: Partial<any> = {}) => {
     fetchInventoryItems: jest.fn().mockResolvedValue(undefined),
     grantInventoryItem: jest.fn().mockResolvedValue(undefined),
     moveVisitor: jest.fn().mockResolvedValue(undefined),
+    closeIframe: jest.fn().mockResolvedValue(undefined),
   };
   return { visitor, session };
 };
@@ -148,7 +149,7 @@ describe("escape-room routes", () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.visitorData.sessionActive).toBe(true);
-    expect(res.body.visitorData.currentRoom).toBe("A");
+    expect(res.body.visitorData.currentRoom).toBe(1);
     expect(visitor.updateDataObject).toHaveBeenCalled();
     expect(mockUtils.teleportPlayer).toHaveBeenCalledWith(
       baseCreds.urlSlug,
@@ -162,7 +163,7 @@ describe("escape-room routes", () => {
     const { visitor, session } = buildVisitorMock({
       sessionActive: true,
       startTime: new Date().toISOString(),
-      currentRoom: "A",
+      currentRoom: 1,
     });
     mockUtils.getVisitor.mockResolvedValue({
       visitor,
@@ -187,7 +188,7 @@ describe("escape-room routes", () => {
     const { visitor, session } = buildVisitorMock({
       sessionActive: true,
       startTime: new Date().toISOString(),
-      currentRoom: "A",
+      currentRoom: 1,
     });
     mockUtils.getVisitor.mockResolvedValue({
       visitor,

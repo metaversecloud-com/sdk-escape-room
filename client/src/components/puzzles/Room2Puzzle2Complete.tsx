@@ -3,7 +3,7 @@ import { PuzzleCompleteCard } from "./PuzzleCompleteCard";
 
 const c = content.puzzles[4].complete;
 
-export const RoomBPuzzle2Complete = () => (
+export const Room2Puzzle2Complete = () => (
   <PuzzleCompleteCard title={c.title}>
     <div className="er-reconstructed-message my-2 p-3 grid gap-3">
       <h4>{c.heading}</h4>
@@ -19,4 +19,4 @@ export const RoomBPuzzle2Complete = () => (
   </PuzzleCompleteCard>
 );
 
-export default RoomBPuzzle2Complete;
+export default Room2Puzzle2Complete;

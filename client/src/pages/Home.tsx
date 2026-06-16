@@ -1,31 +1,28 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 
 import {
-  ConfirmationModal,
   ExitCongratsCard,
   InfoCard,
   InventoryPanel,
   Leaderboard,
   LockedState,
   PageContainer,
-  PageFooter,
-  RoomAPuzzle1Complete,
-  RoomAPuzzle2Complete,
-  RoomBPuzzle1Complete,
-  RoomBPuzzle2Complete,
-  RoomBPuzzle3Complete,
-  RoomCPuzzle1Complete,
-  RoomAPuzzle1,
-  RoomAPuzzle2,
-  RoomBPuzzle1,
-  RoomBPuzzle2,
-  RoomBPuzzle3,
-  RoomCPuzzle1,
-  RoomCPuzzle2,
+  Room1Puzzle1Complete,
+  Room1Puzzle2Complete,
+  Room2Puzzle1Complete,
+  Room2Puzzle2Complete,
+  Room2Puzzle3Complete,
+  Room3Puzzle1Complete,
+  Room1Puzzle1,
+  Room1Puzzle2,
+  Room2Puzzle1,
+  Room2Puzzle2,
+  Room2Puzzle3,
+  Room3Puzzle1,
+  Room3Puzzle2,
   RoomIntroCard,
   StartGameCard,
   StatusBar,
-  StatusPill,
 } from "@/components";
 import { content } from "@/constants";
 import { GlobalDispatchContext, GlobalStateContext } from "@/context/GlobalContext";
@@ -38,13 +35,16 @@ import {
   setGameState,
 } from "@/utils";
 
-const { states, exitConfirmation, exitButton } = content;
-const roomBPills = content.rooms[2].pills;
+const { states, exitConfirmation, exitButton, teleport } = content;
 
 type ScreenType =
   | "start"
   | "exit"
+  | "teleport"
   | "leaderboard"
+  | "room1"
+  | "room2"
+  | "room3"
   | "puzzle1"
   | "puzzle2"
   | "puzzle3"
@@ -57,7 +57,11 @@ type ScreenType =
 const SCREENS: ScreenType[] = [
   "start",
   "exit",
+  "teleport",
   "leaderboard",
+  "room1",
+  "room2",
+  "room3",
   "puzzle1",
   "puzzle2",
   "puzzle3",
@@ -66,6 +70,12 @@ const SCREENS: ScreenType[] = [
   "puzzle6",
   "puzzle7",
 ];
+
+/** Result of a /teleport call. `checking` is the local pre-response state. */
+type TeleportState =
+  | { state: "checking" }
+  | { state: "teleported"; targetRoom: number }
+  | { state: "blocked"; reason: string };
 
 const isScreen = (value: string | null): value is ScreenType => value !== null && (SCREENS as string[]).includes(value);
 
@@ -90,13 +100,12 @@ export const Home = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [timer, setTimer] = useState("--:--");
   const [showInventory, setShowInventory] = useState(false);
-  const [showExitConfirmation, setShowExitConfirmation] = useState(false);
-  const [showRoomBIntro, setShowRoomBIntro] = useState(false);
+  const [teleportState, setTeleportState] = useState<TeleportState>({ state: "checking" });
 
   const hasStarted = visitorSession?.sessionActive === true;
   const isFinished = puzzlesCompleted?.[7] === true;
-  const roomADone = !!(puzzlesCompleted?.[1] && puzzlesCompleted?.[2]);
-  const roomBDone = !!(puzzlesCompleted?.[3] && puzzlesCompleted?.[4] && puzzlesCompleted?.[5]);
+  const room1Done = !!(puzzlesCompleted?.[1] && puzzlesCompleted?.[2]);
+  const room2Done = !!(puzzlesCompleted?.[3] && puzzlesCompleted?.[4] && puzzlesCompleted?.[5]);
 
   const maxSessionMinutes = worldConfig?.maxSessionMinutes ?? 30;
 
@@ -163,6 +172,29 @@ export const Home = () => {
     setIsLoading(false);
   };
 
+  // Teleport screen — fired when the player clicks an in-world teleport pad.
+  // The asset's iframe URL carries `?screen=teleport` and optionally `&room=N`
+  // (N = 1/2/3, the destination). Server checks prerequisites and either
+  // performs the teleport or refuses; we render the appropriate copy below.
+  useEffect(() => {
+    if (screen !== "teleport" || !hasInteractiveParams) return;
+    setTeleportState({ state: "checking" });
+    const targetRoom = new URLSearchParams(window.location.search).get("room");
+    backendAPI
+      .get("/teleport", { params: targetRoom ? { room: targetRoom } : {} })
+      .then((res) => {
+        // Dispatch so visitorData / hasSessionExpired stay in sync if the
+        // server detected an expired session during the check.
+        setGameState(dispatch, { ...res.data, hasSessionExpired: res.data?.hasSessionExpired === true });
+        if (res.data?.teleported) {
+          setTeleportState({ state: "teleported", targetRoom: res.data.targetRoom });
+        } else {
+          setTeleportState({ state: "blocked", reason: res.data?.reason ?? "incomplete" });
+        }
+      })
+      .catch((error) => setErrorMessage(dispatch, error as ErrorType));
+  }, [screen, hasInteractiveParams, dispatch]);
+
   // Initial game-state fetch
   useEffect(() => {
     if (!hasInteractiveParams) {
@@ -176,18 +208,6 @@ export const Home = () => {
       .catch((error) => setErrorMessage(dispatch, error as ErrorType))
       .finally(() => setIsLoading(false));
   }, [hasInteractiveParams, dispatch, forceRefreshInventory]);
-
-  // After Room A puzzles 1+2 are both done, show the Room B intro card 5s later
-  useEffect(() => {
-    const onRoomAScreen = screen === "puzzle1" || screen === "puzzle2";
-    if (!(onRoomAScreen && roomADone)) {
-      setShowRoomBIntro(false);
-      return;
-    }
-    setShowRoomBIntro(false);
-    const id = window.setTimeout(() => setShowRoomBIntro(true), 5000);
-    return () => window.clearTimeout(id);
-  }, [screen, roomADone]);
 
   // ── Standalone screens (own PageContainer) ──
   if (screen === "leaderboard") {
@@ -248,99 +268,101 @@ export const Home = () => {
           <InventoryPanel onClose={() => setShowInventory(false)} inventoryItems={visitorInventory?.items} />
         )}
 
-        {showExitConfirmation && (
-          <ConfirmationModal
-            title={exitConfirmation.title}
-            message={exitConfirmation.message}
-            handleOnConfirm={exitGame}
-            handleToggleShowConfirmationModal={() => setShowExitConfirmation(false)}
-          />
+        {screen === "exit" && (
+          // Exit terminal — its own in-world asset. Clicking it brings the
+          // player here; the page is the confirmation. There's no Cancel —
+          // walking away or clicking a different in-world asset is "no".
+          <div className="card w-full">
+            <div className="card-details">
+              <h3 className="card-title">{exitConfirmation.title}</h3>
+              <p className="card-description p2 pt-2">{exitConfirmation.message}</p>
+              <button className="btn btn-danger" onClick={exitGame} disabled={isLoading}>
+                {exitButton}
+              </button>
+            </div>
+          </div>
         )}
 
-        {screen === "start" && <RoomIntroCard roomId={1} />}
-
-        {/* Room A — Puzzles 1 & 2 */}
-        {screen === "puzzle1" &&
-          (puzzlesCompleted?.[1] ? <RoomAPuzzle1Complete /> : <RoomAPuzzle1 refreshGameState={refreshGameState} />)}
-
-        {screen === "puzzle2" &&
-          (puzzlesCompleted?.[2] ? (
-            showRoomBIntro ? (
-              <RoomIntroCard roomId={2}>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {roomBPills.map((pill) => (
-                    <StatusPill key={pill.label} label={pill.label} detail={pill.detail} color={pill.color} />
-                  ))}
-                </div>
-              </RoomIntroCard>
-            ) : (
-              <RoomAPuzzle2Complete />
-            )
+        {screen === "teleport" &&
+          (teleportState.state === "checking" ? (
+            <InfoCard title={teleport.loading.title} message={teleport.loading.message} />
+          ) : teleportState.state === "teleported" ? (
+            <RoomIntroCard roomId={teleportState.targetRoom} />
+          ) : teleportState.reason === "invalidTarget" ? (
+            <LockedState title={teleport.invalidTarget.title} message={teleport.invalidTarget.message} />
           ) : (
-            <RoomAPuzzle2 refreshGameState={refreshGameState} />
+            <LockedState title={teleport.blocked.title} message={teleport.blocked.message} />
           ))}
 
-        {/* Room B — Puzzles 3, 4, 5 */}
+        {/* Room intro cards: the start terminal opens room 1's intro; each
+            room has its own in-world intro terminal at `?screen=roomN` that
+            opens the matching card. Room 2 and 3 intros also fire when a
+            teleport call to that room succeeds (handled in the teleport
+            branch above). */}
+        {(screen === "start" || screen === "room1") && <RoomIntroCard roomId={1} />}
+        {screen === "room2" && <RoomIntroCard roomId={2} />}
+        {screen === "room3" && <RoomIntroCard roomId={3} />}
+
+        {/* Room 1 — Puzzles 1 & 2 */}
+        {screen === "puzzle1" &&
+          (puzzlesCompleted?.[1] ? <Room1Puzzle1Complete /> : <Room1Puzzle1 refreshGameState={refreshGameState} />)}
+
+        {screen === "puzzle2" &&
+          (puzzlesCompleted?.[2] ? <Room1Puzzle2Complete /> : <Room1Puzzle2 refreshGameState={refreshGameState} />)}
+
+        {/* Room 2 — Puzzles 3, 4, 5 */}
         {screen === "puzzle3" &&
-          (!roomADone ? (
-            <LockedState title={states.roomBLocked.title} message={states.roomBLocked.message} />
+          (!room1Done ? (
+            <LockedState title={states.room2Locked.title} message={states.room2Locked.message} />
           ) : puzzlesCompleted?.[3] ? (
-            <RoomBPuzzle1Complete />
+            <Room2Puzzle1Complete />
           ) : (
-            <RoomBPuzzle1 refreshGameState={refreshGameState} />
+            <Room2Puzzle1 refreshGameState={refreshGameState} />
           ))}
 
         {screen === "puzzle4" &&
-          (!roomADone ? (
-            <LockedState title={states.roomBLocked.title} message={states.roomBLocked.message} />
+          (!room1Done ? (
+            <LockedState title={states.room2Locked.title} message={states.room2Locked.message} />
           ) : puzzlesCompleted?.[4] ? (
-            <RoomBPuzzle2Complete />
+            <Room2Puzzle2Complete />
           ) : (
-            <RoomBPuzzle2 refreshGameState={refreshGameState} />
+            <Room2Puzzle2 refreshGameState={refreshGameState} />
           ))}
 
         {screen === "puzzle5" &&
           (!puzzlesCompleted?.[4] ? (
             <LockedState title={states.puzzle5Locked.title} message={states.puzzle5Locked.message} />
           ) : puzzlesCompleted?.[5] ? (
-            <RoomBPuzzle3Complete />
+            <Room2Puzzle3Complete />
           ) : (
-            <RoomBPuzzle3 refreshGameState={refreshGameState} />
+            <Room2Puzzle3 refreshGameState={refreshGameState} />
           ))}
 
-        {/* Room C — Puzzles 6 & 7 */}
+        {/* Room 3 — Puzzles 6 & 7 */}
         {screen === "puzzle6" &&
-          (!roomBDone ? (
-            <LockedState title={states.roomCLocked.title} message={states.roomCLocked.message} />
+          (!room2Done ? (
+            <LockedState title={states.room3Locked.title} message={states.room3Locked.message} />
           ) : puzzlesCompleted?.[6] ? (
-            <RoomCPuzzle1Complete />
+            <Room3Puzzle1Complete />
           ) : (
-            <RoomCPuzzle1 refreshGameState={refreshGameState} />
+            <Room3Puzzle1 refreshGameState={refreshGameState} />
           ))}
 
         {screen === "puzzle7" &&
-          (!roomBDone ? (
-            <LockedState title={states.roomCLocked.title} message={states.roomCLocked.message} />
+          (!room2Done ? (
+            <LockedState title={states.room3Locked.title} message={states.room3Locked.message} />
           ) : !puzzlesCompleted?.[6] ? (
             <LockedState title={states.finalPuzzleLocked.title} message={states.finalPuzzleLocked.message} />
           ) : puzzlesCompleted?.[7] ? (
             <ExitCongratsCard completionTime={visitorSession?.completionTime} leaderboard={leaderboard} />
           ) : (
-            <RoomCPuzzle2 refreshGameState={refreshGameState} />
+            <Room3Puzzle2 refreshGameState={refreshGameState} />
           ))}
 
         {screen === "null" && (
           <InfoCard title={states.noScreenSelected.title} message={states.noScreenSelected.message} />
         )}
       </div>
-
-      {!isFinished && (
-        <PageFooter>
-          <button className="btn btn-danger w-full" onClick={() => setShowExitConfirmation(true)} disabled={isLoading}>
-            {exitButton}
-          </button>
-        </PageFooter>
-      )}
     </PageContainer>
   );
 };

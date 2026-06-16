@@ -8,7 +8,7 @@ import { PuzzleHeader } from "./PuzzleHeader";
 const c = content.puzzles[7];
 const hintCopy = content.ui.hints;
 
-interface RoomCPuzzle2Props {
+interface Room3Puzzle2Props {
   refreshGameState?: () => Promise<void>;
 }
 
@@ -16,7 +16,7 @@ const EXPECTED_CODE = "7436";
 
 const KEYPAD_DIGITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
-export const RoomCPuzzle2 = ({ refreshGameState }: RoomCPuzzle2Props) => {
+export const Room3Puzzle2 = ({ refreshGameState }: Room3Puzzle2Props) => {
   const dispatch = useContext(GlobalDispatchContext);
   const [codeInput, setCodeInput] = useState("");
   const [feedback, setFeedback] = useState("");
@@ -120,4 +120,4 @@ export const RoomCPuzzle2 = ({ refreshGameState }: RoomCPuzzle2Props) => {
   );
 };
 
-export default RoomCPuzzle2;
+export default Room3Puzzle2;

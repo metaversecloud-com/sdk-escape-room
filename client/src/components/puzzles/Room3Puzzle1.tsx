@@ -7,7 +7,7 @@ import { PuzzleHeader } from "./PuzzleHeader";
 
 const c = content.puzzles[6];
 
-interface RoomCPuzzle1Props {
+interface Room3Puzzle1Props {
   refreshGameState: () => Promise<void>;
   isCompleted?: boolean;
 }
@@ -46,7 +46,7 @@ const normalizeConnection = (conn: Connection): Connection =>
 const normalizeAndSort = (conns: Connection[]) =>
   conns.map(normalizeConnection).sort((a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to));
 
-export const RoomCPuzzle1 = ({ refreshGameState, isCompleted }: RoomCPuzzle1Props) => {
+export const Room3Puzzle1 = ({ refreshGameState, isCompleted }: Room3Puzzle1Props) => {
   const dispatch = useContext(GlobalDispatchContext);
 
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
@@ -164,4 +164,4 @@ export const RoomCPuzzle1 = ({ refreshGameState, isCompleted }: RoomCPuzzle1Prop
   );
 };
 
-export default RoomCPuzzle1;
+export default Room3Puzzle1;
