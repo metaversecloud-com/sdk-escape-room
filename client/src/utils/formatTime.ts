@@ -20,3 +20,28 @@ export const formatElapsedFromTimestamp = (startedAtMs: number | null | undefine
   const elapsedSeconds = Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000));
   return formatTime(elapsedSeconds);
 };
+
+/**
+ * Countdown timer formatted as "MM:SS". Returns "--:--" before the session
+ * starts and "00:00" once the deadline has passed. `maxMinutes` defaults to
+ * 30 to match the server's `DEFAULT_MAX_SESSION_MINUTES`.
+ */
+export const formatCountdownFromTimestamp = (
+  startedAtMs: number | null | undefined,
+  maxMinutes: number = 30,
+): string => {
+  if (!startedAtMs) return "--:--";
+  const endMs = startedAtMs + maxMinutes * 60 * 1000;
+  const remainingSeconds = Math.max(0, Math.floor((endMs - Date.now()) / 1000));
+  return formatTime(remainingSeconds);
+};
+
+/** Whole seconds left until the deadline (clamped at 0). Used to fire actions when time expires. */
+export const remainingSecondsFromTimestamp = (
+  startedAtMs: number | null | undefined,
+  maxMinutes: number = 30,
+): number => {
+  if (!startedAtMs) return 0;
+  const endMs = startedAtMs + maxMinutes * 60 * 1000;
+  return Math.max(0, Math.floor((endMs - Date.now()) / 1000));
+};

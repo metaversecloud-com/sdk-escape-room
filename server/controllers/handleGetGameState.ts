@@ -63,7 +63,7 @@ export const handleGetGameState = async (req: Request, res: Response) => {
       droppedAsset,
       sessionKey,
       visitorData: updatedVisitorDataObject?.[sessionKey] || session,
-      worldConfig: worldData?.[sceneDropId]?.config || {},
+      worldConfig: worldData?.[sceneDropId] || {},
       uniqueName: droppedAsset?.uniqueName || null,
       badges,
       visitorInventory,

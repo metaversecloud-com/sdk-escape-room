@@ -261,7 +261,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     return res.json({
       success: true,
       visitorData: game,
-      worldConfig: sceneConfig.config,
+      worldConfig: sceneConfig,
       badgesAwarded,
       badgesOwned,
       badgesFailed,

@@ -1,7 +1,8 @@
 import { content } from "@/constants";
 
 interface StatusBarProps {
-  elapsed: string;
+  /** Pre-formatted "MM:SS" string. */
+  timer: string;
   currentRoom?: string | null;
   onOpenInventory: () => void;
   hasStarted: boolean;
@@ -9,13 +10,13 @@ interface StatusBarProps {
 
 const { statusBar } = content;
 
-export const StatusBar = ({ elapsed, currentRoom, onOpenInventory, hasStarted }: StatusBarProps) => (
+export const StatusBar = ({ timer, currentRoom, onOpenInventory, hasStarted }: StatusBarProps) => (
   <div className="card w-full">
     <div className="card-details">
       <div className="flex items-center justify-between">
         <div className="flex-col">
           <p className="p2">
-            {statusBar.timerLabel} {elapsed}
+            {statusBar.timerLabel} {timer}
           </p>
           <p className="p2">
             {statusBar.roomLabel} {currentRoom || statusBar.roomPlaceholder}

@@ -17,7 +17,7 @@ interface CheckSessionExpirationResult {
   visitorDataObject: VisitorDataObject;
   session: VisitorData;
   remainingMs: number;
-  worldConfig: WorldConfig["config"] | Record<string, never>;
+  worldConfig: WorldConfig | Record<string, never>;
 }
 
 export const checkSessionExpiration = async ({
@@ -34,7 +34,7 @@ export const checkSessionExpiration = async ({
   } catch {
     // No world config yet — this can happen on the very first game-state fetch.
   }
-  const worldConfig = worldData?.[sceneDropId]?.config || ({} as Record<string, never>);
+  const worldConfig = worldData?.[sceneDropId] || ({} as Record<string, never>);
 
   const visitorDataObject = ((await visitor.fetchDataObject()) as VisitorDataObject | null) || {};
   const session = visitorDataObject[sessionKey];
@@ -48,7 +48,7 @@ export const checkSessionExpiration = async ({
   }
 
   const maxSessionMinutes =
-    (worldData?.[sceneDropId]?.config?.maxSessionMinutes ?? DEFAULT_MAX_SESSION_MINUTES) || DEFAULT_MAX_SESSION_MINUTES;
+    (worldData?.[sceneDropId]?.maxSessionMinutes ?? DEFAULT_MAX_SESSION_MINUTES) || DEFAULT_MAX_SESSION_MINUTES;
   const startMs = new Date(session.startTime).getTime();
   const nowMs = Date.now();
   const maxMs = maxSessionMinutes * 60 * 1000;

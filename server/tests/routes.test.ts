@@ -65,7 +65,7 @@ const worldMock = {
   fetchDataObject: jest.fn().mockResolvedValue({
     [baseCreds.sceneDropId]: {
       keyAssetId: "key-asset",
-      config: { maxSessionMinutes: 30 },
+      maxSessionMinutes: 30,
     },
   }),
   updateDataObject: jest.fn().mockResolvedValue(undefined),
@@ -200,7 +200,7 @@ describe("escape-room routes", () => {
       visitorDataObject: {},
       session,
       remainingMs: 1000,
-      worldConfig: { maxSessionMinutes: 30 },
+      worldConfig: { keyAssetId: "key-asset", maxSessionMinutes: 30 },
     });
 
     const res = await request(makeApp()).post("/api/submit-puzzle").query(baseCreds).send({ puzzleNumber: 1 });

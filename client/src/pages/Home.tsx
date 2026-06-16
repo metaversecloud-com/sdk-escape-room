@@ -30,7 +30,13 @@ import {
 import { content } from "@/constants";
 import { GlobalDispatchContext, GlobalStateContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
-import { backendAPI, formatElapsedFromTimestamp, setErrorMessage, setGameState } from "@/utils";
+import {
+  backendAPI,
+  formatCountdownFromTimestamp,
+  remainingSecondsFromTimestamp,
+  setErrorMessage,
+  setGameState,
+} from "@/utils";
 
 const { states, exitConfirmation, exitButton } = content;
 const roomBPills = content.rooms[2].pills;
@@ -73,7 +79,7 @@ const getForceRefreshInventoryFromSearch = () =>
 
 export const Home = () => {
   const dispatch = useContext(GlobalDispatchContext);
-  const { hasInteractiveParams, visitorData, visitorInventory, leaderboard, hasSessionExpired } =
+  const { hasInteractiveParams, visitorData, visitorInventory, leaderboard, hasSessionExpired, worldConfig } =
     useContext(GlobalStateContext);
   const visitorSession = visitorData || null;
   const puzzlesCompleted = visitorSession?.puzzlesCompleted;
@@ -82,7 +88,7 @@ export const Home = () => {
   const forceRefreshInventory = useMemo(() => getForceRefreshInventoryFromSearch(), []);
 
   const [isLoading, setIsLoading] = useState(false);
-  const [elapsed, setElapsed] = useState("--:--");
+  const [timer, setTimer] = useState("--:--");
   const [showInventory, setShowInventory] = useState(false);
   const [showExitConfirmation, setShowExitConfirmation] = useState(false);
   const [showRoomBIntro, setShowRoomBIntro] = useState(false);
@@ -92,18 +98,43 @@ export const Home = () => {
   const roomADone = !!(puzzlesCompleted?.[1] && puzzlesCompleted?.[2]);
   const roomBDone = !!(puzzlesCompleted?.[3] && puzzlesCompleted?.[4] && puzzlesCompleted?.[5]);
 
-  // Live timer display once a session is active
+  const maxSessionMinutes = worldConfig?.maxSessionMinutes ?? 30;
+
+  // Verifies session state with the server (hits the same expiration check
+  // /game-state runs), then dispatches the result. We translate `timedOut`
+  // into `hasSessionExpired` so the UI flips to the "Time has run out" view
+  // — mirrors what handleSubmitPuzzle already sets when it catches a
+  // timeout mid-puzzle.
+  const handleCheckSession = async () => {
+    try {
+      const res = await backendAPI.get("/session");
+      setGameState(dispatch, { ...res.data, hasSessionExpired: res.data?.timedOut === true });
+    } catch (error) {
+      setErrorMessage(dispatch, error as ErrorType);
+    }
+  };
+
+  // Live countdown to the session deadline. When it hits zero we stop ticking
+  // and call handleCheckSession so the server marks the session expired and
+  // the UI flips to the locked state.
   useEffect(() => {
     if (!hasStarted || !visitorSession?.startTime) {
-      setElapsed("--:--");
+      setTimer("--:--");
       return;
     }
     const startMs = new Date(visitorSession.startTime).getTime();
-    const tick = () => setElapsed(formatElapsedFromTimestamp(startMs));
+    const tick = () => {
+      setTimer(formatCountdownFromTimestamp(startMs, maxSessionMinutes));
+      if (remainingSecondsFromTimestamp(startMs, maxSessionMinutes) <= 0) {
+        window.clearInterval(id);
+        handleCheckSession();
+      }
+    };
     tick();
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
-  }, [hasStarted, visitorSession?.startTime]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasStarted, visitorSession?.startTime, maxSessionMinutes]);
 
   const refreshGameState = async () => {
     const response = await backendAPI.get("/game-state");
@@ -207,7 +238,7 @@ export const Home = () => {
       <div className="flex flex-col w-full items-start gap-4">
         {!isFinished && (
           <StatusBar
-            elapsed={elapsed}
+            timer={timer}
             currentRoom={visitorSession?.currentRoom}
             onOpenInventory={() => setShowInventory(true)}
             hasStarted={hasStarted}

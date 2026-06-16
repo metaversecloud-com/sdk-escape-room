@@ -9,13 +9,7 @@ import {
 } from "@utils/index.js";
 import { WorldConfig } from "@shared/types/VisitorData.js";
 
-const DEFAULT_SCENE_CONFIG: WorldConfig["config"] = {
-  startSpawnId: "EscapeRoom_start_teleport",
-  roomASpawnId: "EscapeRoom_room1_teleport",
-  roomBSpawnId: "EscapeRoom_room2_teleport",
-  roomCSpawnId: "EscapeRoom_room3_teleport",
-  maxSessionMinutes: 30,
-};
+const DEFAULT_MAX_SESSION_MINUTES = 30;
 
 export const handleStartGame = async (req: Request, res: Response) => {
   try {
@@ -29,7 +23,7 @@ export const handleStartGame = async (req: Request, res: Response) => {
     const existingSceneConfig = worldDataObject[sceneDropId];
     const mergedSceneConfig: WorldConfig = {
       keyAssetId: existingSceneConfig?.keyAssetId || assetId || "",
-      config: { ...DEFAULT_SCENE_CONFIG, ...(existingSceneConfig?.config || {}) },
+      maxSessionMinutes: existingSceneConfig?.maxSessionMinutes ?? DEFAULT_MAX_SESSION_MINUTES,
     };
     if (!existingSceneConfig) {
       const lockId = `${sceneDropId}-${Date.now()}-world`;
@@ -76,7 +70,7 @@ export const handleStartGame = async (req: Request, res: Response) => {
       success: true,
       message: "Game started",
       visitorData: newSession,
-      worldConfig: mergedSceneConfig.config,
+      worldConfig: mergedSceneConfig,
       sessionKey,
     });
   } catch (error) {

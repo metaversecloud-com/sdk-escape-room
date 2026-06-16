@@ -25,19 +25,13 @@ export interface VisitorData {
   completionTime: number | null;
 }
 
+/**
+ * Per-scene world config, stored at `worldData[sceneDropId]` and also sent
+ * as-is to the client via `/game-state` and `/session` responses.
+ */
 export interface WorldConfig {
   keyAssetId: string;
-  config: {
-    startSpawnId: string | null;
-    roomASpawnId: string | null;
-    roomBSpawnId: string | null;
-    roomCSpawnId: string | null;
-    maxSessionMinutes: number;
-  };
-}
-
-export interface LeaderboardEntry {
-  [profileId: string]: string; // "displayName|completionTime"
+  maxSessionMinutes: number;
 }
 
 export type WorldDataObject = Record<string, WorldConfig>;
