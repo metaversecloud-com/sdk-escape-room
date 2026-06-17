@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { content } from "@/constants";
 import { backendAPI } from "@/utils/backendAPI";
+import { useInitialPuzzleDraft, usePuzzleDraft } from "@/utils";
 import { PuzzleHeader } from "./PuzzleHeader";
+
+interface Draft {
+  pieces: PuzzlePiece[];
+}
 
 const c = content.puzzles[4];
 
@@ -44,12 +49,15 @@ const updateLockedStatus = (pieces: PuzzlePiece[]) =>
   pieces.map((piece) => ({ ...piece, isLocked: piece.currentPosition === piece.correctPosition }));
 
 export const Room2Puzzle2 = ({ onSuccess, sessionKey, refreshGameState }: Room2Puzzle2Props) => {
+  const savedDraft = useInitialPuzzleDraft<Draft>(4);
   const [pieces, setPieces] = useState<PuzzlePiece[]>([]);
   const [selectedPiece, setSelectedPiece] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  usePuzzleDraft(4, { pieces });
 
   useEffect(() => {
     const checkPuzzleCompletion = async () => {
@@ -61,7 +69,14 @@ export const Room2Puzzle2 = ({ onSuccess, sessionKey, refreshGameState }: Room2P
       }
     };
     checkPuzzleCompletion();
-    setPieces(updateLockedStatus(shufflePieces(INITIAL_PIECES)));
+    // Resume from saved positions if the player closed mid-puzzle; otherwise
+    // start a fresh shuffle.
+    if (savedDraft?.pieces?.length === INITIAL_PIECES.length) {
+      setPieces(updateLockedStatus(savedDraft.pieces));
+    } else {
+      setPieces(updateLockedStatus(shufflePieces(INITIAL_PIECES)));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const isPuzzleSolved = () => pieces.every((piece) => piece.isLocked);

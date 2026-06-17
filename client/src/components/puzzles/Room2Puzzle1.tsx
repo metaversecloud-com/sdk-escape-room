@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { content } from "@/constants";
 import { backendAPI } from "@/utils/backendAPI";
+import { useInitialPuzzleDraft, usePuzzleDraft } from "@/utils";
 import { PuzzleHeader } from "./PuzzleHeader";
 
 const c = content.puzzles[3];
@@ -11,6 +12,12 @@ interface Room2Puzzle1Props {
   refreshGameState?: () => Promise<void>;
 }
 
+interface Draft {
+  alpha: number;
+  beta: number;
+  gamma: number;
+}
+
 const MIN_VALUE = 0;
 const MAX_VALUE = 10;
 const CORRECT_VALUES = { alpha: 7, beta: 7, gamma: 6 } as const;
@@ -18,9 +25,11 @@ const CORRECT_VALUES = { alpha: 7, beta: 7, gamma: 6 } as const;
 type FieldName = "alpha" | "beta" | "gamma";
 
 export const Room2Puzzle1 = ({ onSuccess, sessionKey, refreshGameState }: Room2Puzzle1Props) => {
-  const [alpha, setAlpha] = useState(0);
-  const [beta, setBeta] = useState(0);
-  const [gamma, setGamma] = useState(0);
+  const savedDraft = useInitialPuzzleDraft<Draft>(3);
+  const [alpha, setAlpha] = useState(savedDraft?.alpha ?? 0);
+  const [beta, setBeta] = useState(savedDraft?.beta ?? 0);
+  const [gamma, setGamma] = useState(savedDraft?.gamma ?? 0);
+  usePuzzleDraft(3, { alpha, beta, gamma });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [inputError, setInputError] = useState<{ [key: string]: string }>({});

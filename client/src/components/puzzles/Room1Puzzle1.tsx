@@ -2,8 +2,12 @@ import { useContext, useMemo, useState } from "react";
 import { content } from "@/constants";
 import { GlobalDispatchContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
-import { backendAPI, setErrorMessage, setGameState } from "@/utils";
+import { backendAPI, setErrorMessage, setGameState, useInitialPuzzleDraft, usePuzzleDraft } from "@/utils";
 import { PuzzleHeader } from "./PuzzleHeader";
+
+interface Draft {
+  lights: PuzzleColor[];
+}
 
 const c = content.puzzles[1];
 
@@ -65,11 +69,14 @@ const WRONG_FLASH_STYLES = {
 export const Room1Puzzle1 = ({ refreshGameState }: Room1Puzzle1Props) => {
   const dispatch = useContext(GlobalDispatchContext);
 
-  const [lights, setLights] = useState<PuzzleColor[]>(["OFF", "OFF", "OFF"]);
+  const savedDraft = useInitialPuzzleDraft<Draft>(1);
+  const [lights, setLights] = useState<PuzzleColor[]>(savedDraft?.lights ?? ["OFF", "OFF", "OFF"]);
   const [localError, setLocalError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [wrongFlash, setWrongFlash] = useState(false);
+
+  usePuzzleDraft(1, { lights });
 
   const sequenceText = useMemo(() => lights.join(" → "), [lights]);
 
@@ -79,6 +86,13 @@ export const Room1Puzzle1 = ({ refreshGameState }: Room1Puzzle1Props) => {
     const updated = [...lights];
     updated[index] = nextColor(updated[index]);
     setLights(updated);
+  };
+
+  const handleReset = () => {
+    if (completed) return;
+    setLights(["OFF", "OFF", "OFF"]);
+    setLocalError("");
+    setWrongFlash(false);
   };
 
   const handleSubmit = async () => {
@@ -170,9 +184,14 @@ export const Room1Puzzle1 = ({ refreshGameState }: Room1Puzzle1Props) => {
 
       {localError && <div className="er-puzzle-error">⚠️ {localError}</div>}
 
-      <button className="er-puzzle-submit" onClick={handleSubmit} disabled={isSubmitting}>
-        {c.submitLabel}
-      </button>
+      <div className="er-puzzle-actions">
+        <button className="btn er-puzzle-reset" onClick={handleReset} disabled={isSubmitting || completed}>
+          {c.resetLabel}
+        </button>
+        <button className="btn er-puzzle-submit" onClick={handleSubmit} disabled={isSubmitting}>
+          {c.submitLabel}
+        </button>
+      </div>
     </div>
   );
 };

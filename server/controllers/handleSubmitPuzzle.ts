@@ -123,6 +123,8 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
 
     // Mutate the in-memory session.
     game.puzzlesCompleted[puzzleNumber] = true;
+    // Drop the in-progress draft for this puzzle — it's no longer "in progress".
+    if (game.puzzleDrafts) delete game.puzzleDrafts[puzzleNumber];
     await applyInventoryReward(credentials, visitor, visitorInventory, puzzleNumber);
 
     // Generic puzzle-solved toast. Puzzle 7 gets the "escaped" toast below

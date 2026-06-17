@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   BadgesTab,
@@ -77,6 +77,37 @@ type TeleportState =
   | { state: "checking" }
   | { state: "teleported"; targetRoom: number }
   | { state: "blocked"; reason: string };
+
+/**
+ * Maps a screen value to the room number whose progression must be unlocked
+ * before walking the visitor to that asset is allowed. Screens not in the
+ * map (and not in SCREENS_WITHOUT_WALK below) aren't tied to a room and
+ * always permit walking. Keeps the walk effect from yanking a player across
+ * room boundaries to an asset they haven't progressed to yet.
+ */
+const SCREEN_REQUIRED_ROOM: Partial<Record<ScreenType, 1 | 2 | 3>> = {
+  room1: 1,
+  puzzle1: 1,
+  puzzle2: 1,
+  room2: 2,
+  puzzle3: 2,
+  puzzle4: 2,
+  puzzle5: 2,
+  room3: 3,
+  puzzle6: 3,
+  puzzle7: 3,
+};
+
+/**
+ * Screens that should never trigger a walk-to-asset, regardless of room.
+ * - `start`: the start terminal opens the briefing; the player's avatar is
+ *   already next to it.
+ * - `exit`: confirmation page — moving the avatar is confusing here.
+ * - `leaderboard`: a viewable terminal; walking the avatar isn't useful.
+ * - `teleport`: the teleport endpoint already moves the visitor when it
+ *   succeeds, so a separate walk would be redundant or fight the teleport.
+ */
+const SCREENS_WITHOUT_WALK: ReadonlySet<ScreenType> = new Set(["start", "exit", "leaderboard", "teleport"]);
 
 const isScreen = (value: string | null): value is ScreenType => value !== null && (SCREENS as string[]).includes(value);
 
@@ -211,16 +242,45 @@ export const Home = () => {
       .finally(() => setIsLoading(false));
   }, [hasInteractiveParams, dispatch, forceRefreshInventory]);
 
-  // Walk the visitor to the asset they clicked to open this iframe. Every
-  // Home mount is a fresh asset click, so we fire this once per mount.
+  // Walk the visitor to the asset they clicked to open this iframe.
+  //
+  // Fires once per Home mount, gated on:
+  //   1. hasInteractiveParams — credentials available.
+  //   2. visitorData loaded — we need to know currentRoom before deciding.
+  //   3. The asset's required room is reachable by the visitor's
+  //      progression (SCREEN_REQUIRED_ROOM[screen] ≤ visitor.currentRoom).
+  //      Prevents yanking a player across room boundaries to an asset
+  //      they haven't unlocked yet.
+  // The walkedRef pin makes this idempotent — once we've made the decision
+  // (walk or skip), we don't re-fire on subsequent currentRoom transitions.
   // Fire-and-forget — the walk happens in the world independently of any UI.
+  const walkedRef = useRef(false);
   useEffect(() => {
+    if (walkedRef.current) return;
     if (!hasInteractiveParams) return;
+    if (!visitorData) return;
+
+    // Some screens (exit terminal) intentionally don't walk the player —
+    // they're standalone confirmation pages where moving the avatar would
+    // be confusing.
+    if (SCREENS_WITHOUT_WALK.has(screen)) {
+      walkedRef.current = true;
+      return;
+    }
+
+    const requiredRoom = SCREEN_REQUIRED_ROOM[screen];
+    const currentRoom = visitorData.currentRoom ?? 0;
+    if (requiredRoom && requiredRoom > currentRoom) {
+      walkedRef.current = true;
+      return;
+    }
+
+    walkedRef.current = true;
     backendAPI.post("/walk-to-asset").catch(() => {
       // Swallow errors silently — failing to walk shouldn't surface as a
       // user-facing error. The screen content still rendered correctly.
     });
-  }, [hasInteractiveParams]);
+  }, [hasInteractiveParams, visitorData, screen]);
 
   // ── Standalone screens (own PageContainer) ──
   if (screen === "leaderboard") {

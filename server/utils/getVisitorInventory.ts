@@ -14,6 +14,7 @@ export type InventoryItemSummary = {
   description?: string;
   metadata?: Record<string, any>;
   status?: string;
+  quantity?: number;
 };
 
 export type VisitorInventory = {
@@ -26,7 +27,7 @@ export const getVisitorInventory = (visitorInventoryItems: any[]): VisitorInvent
   const visitorInventory: VisitorInventory = { badges: {}, items: [] };
 
   for (const visitorItem of visitorInventoryItems || []) {
-    const { id, status, item } = visitorItem || {};
+    const { id, status, item, quantity } = visitorItem || {};
     const { name, type, image_url, image_path, description, metadata } = item || {};
 
     if (status === "ACTIVE" && name) {
@@ -45,6 +46,7 @@ export const getVisitorInventory = (visitorInventoryItems: any[]): VisitorInvent
           description,
           metadata: metadata || {},
           status,
+          quantity,
         });
       }
     }

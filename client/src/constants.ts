@@ -226,6 +226,7 @@ export const content = {
       controlLabelPrefix: "Control", // → "Control 1", "Control 2", ...
       currentPrefix: "Current:",
       submitLabel: "Submit Sequence",
+      resetLabel: "Reset",
       errors: {
         wrongSequence: "That sequence is not correct. Try again.",
       },
@@ -364,6 +365,7 @@ export const content = {
         signalRelay: "Signal Relay",
       },
       submitLabel: "Power On",
+      resetLabel: "Reset",
       messages: {
         incorrect: "⚠️ Incorrect... resetting",
         success: "System Online ✔",

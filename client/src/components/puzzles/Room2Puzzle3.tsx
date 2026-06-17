@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { content } from "@/constants";
 import { backendAPI } from "@/utils/backendAPI";
+import { useInitialPuzzleDraft, usePuzzleDraft } from "@/utils";
 import { PuzzleHeader } from "./PuzzleHeader";
+
+interface Draft {
+  valveOrder: string[];
+  unscrambledWords: { word1: string; word2: string; word3: string };
+  wordsUnscrambled: boolean;
+}
 
 const c = content.puzzles[5];
 const hintCopy = content.ui.hints;
@@ -42,13 +49,18 @@ const shuffle = <T,>(array: T[]): T[] => {
 };
 
 export const Room2Puzzle3 = ({ onSuccess, sessionKey, refreshGameState }: Room2Puzzle3Props) => {
-  const [valveOrder, setValveOrder] = useState<string[]>([]);
+  const savedDraft = useInitialPuzzleDraft<Draft>(5);
+  const [valveOrder, setValveOrder] = useState<string[]>(savedDraft?.valveOrder ?? []);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showHint, setShowHint] = useState(false);
-  const [unscrambledWords, setUnscrambledWords] = useState({ word1: "", word2: "", word3: "" });
-  const [wordsUnscrambled, setWordsUnscrambled] = useState(false);
+  const [unscrambledWords, setUnscrambledWords] = useState(
+    savedDraft?.unscrambledWords ?? { word1: "", word2: "", word3: "" },
+  );
+  const [wordsUnscrambled, setWordsUnscrambled] = useState(savedDraft?.wordsUnscrambled ?? false);
   const [valves, setValves] = useState<Valve[]>(VALVES_INITIAL);
+
+  usePuzzleDraft(5, { valveOrder, unscrambledWords, wordsUnscrambled });
 
   useEffect(() => {
     setValves(shuffle(VALVES_INITIAL));

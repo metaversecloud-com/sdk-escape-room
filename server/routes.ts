@@ -4,6 +4,7 @@ import {
   handleCheckSession,
   handleExitGame,
   handleGetGameState,
+  handleSavePuzzleDraft,
   handleStartGame,
   handleSubmitPuzzle,
   handleTeleport,
@@ -37,6 +38,7 @@ router.get("/teleport", handleTeleport);
 router.post("/walk-to-asset", handleWalkToAsset);
 router.post("/start-game", handleStartGame);
 router.post("/submit-puzzle", handleSubmitPuzzle);
+router.post("/puzzle-draft", handleSavePuzzleDraft);
 router.post("/exit", handleExitGame);
 
 export default router;

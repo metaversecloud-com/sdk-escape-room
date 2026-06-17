@@ -14,7 +14,7 @@ interface FireToastArgs {
  * puzzle completion or session timeout flows.
  */
 export const fireToast = async ({ visitor, groupId, title, text }: FireToastArgs): Promise<void> => {
-  await visitor.fireToast({ groupId, title, text }).catch((err) => {
+  await visitor.fireToast({ title, text }).catch((err) => {
     console.error(`Failed to fire toast "${title}":`, err);
   });
 };

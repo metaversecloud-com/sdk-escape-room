@@ -2,7 +2,7 @@ import { useContext, useState } from "react";
 import { content } from "@/constants";
 import { GlobalDispatchContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
-import { backendAPI, setErrorMessage, setGameState } from "@/utils";
+import { backendAPI, setErrorMessage, setGameState, useInitialPuzzleDraft, usePuzzleDraft } from "@/utils";
 import { PuzzleHeader } from "./PuzzleHeader";
 
 const c = content.puzzles[7];
@@ -12,16 +12,23 @@ interface Room3Puzzle2Props {
   refreshGameState?: () => Promise<void>;
 }
 
+interface Draft {
+  codeInput: string;
+}
+
 const EXPECTED_CODE = "7435";
 
 const KEYPAD_DIGITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
 export const Room3Puzzle2 = ({ refreshGameState }: Room3Puzzle2Props) => {
   const dispatch = useContext(GlobalDispatchContext);
-  const [codeInput, setCodeInput] = useState("");
+  const savedDraft = useInitialPuzzleDraft<Draft>(7);
+  const [codeInput, setCodeInput] = useState(savedDraft?.codeInput ?? "");
   const [feedback, setFeedback] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showHint, setShowHint] = useState(false);
+
+  usePuzzleDraft(7, { codeInput });
 
   const handleSubmit = async () => {
     const code = codeInput.trim();

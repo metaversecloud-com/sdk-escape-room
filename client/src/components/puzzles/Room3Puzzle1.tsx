@@ -2,7 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import { content } from "@/constants";
 import { GlobalDispatchContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
-import { backendAPI, setErrorMessage, setGameState } from "@/utils";
+import { backendAPI, setErrorMessage, setGameState, useInitialPuzzleDraft, usePuzzleDraft } from "@/utils";
 import { PuzzleHeader } from "./PuzzleHeader";
 
 const c = content.puzzles[6];
@@ -22,6 +22,10 @@ interface NodeDef {
 interface Connection {
   from: string;
   to: string;
+}
+
+interface Draft {
+  connections: Connection[];
 }
 
 const NODES: NodeDef[] = [
@@ -49,8 +53,10 @@ const normalizeAndSort = (conns: Connection[]) =>
 export const Room3Puzzle1 = ({ refreshGameState, isCompleted }: Room3Puzzle1Props) => {
   const dispatch = useContext(GlobalDispatchContext);
 
+  const savedDraft = useInitialPuzzleDraft<Draft>(6);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
-  const [connections, setConnections] = useState<Connection[]>([]);
+  const [connections, setConnections] = useState<Connection[]>(savedDraft?.connections ?? []);
+  usePuzzleDraft(6, { connections });
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [showFailure, setShowFailure] = useState(false);
   const [completed, setCompleted] = useState(false);
@@ -58,6 +64,14 @@ export const Room3Puzzle1 = ({ refreshGameState, isCompleted }: Room3Puzzle1Prop
   useEffect(() => {
     if (isCompleted) setCompleted(true);
   }, [isCompleted]);
+
+  const handleReset = () => {
+    if (completed) return;
+    setSelectedNode(null);
+    setConnections([]);
+    setIsCorrect(null);
+    setShowFailure(false);
+  };
 
   const handleNodeClick = (nodeId: string) => {
     if (completed) return;
@@ -157,9 +171,14 @@ export const Room3Puzzle1 = ({ refreshGameState, isCompleted }: Room3Puzzle1Prop
 
       {isCorrect && <p className="p2 text-success">{c.messages.success}</p>}
 
-      <button onClick={handleSubmit} disabled={connections.length === 0} className="btn er-puzzle-submit">
-        {c.submitLabel}
-      </button>
+      <div className="er-puzzle-actions">
+        <button className="btn er-puzzle-reset" onClick={handleReset} disabled={completed || connections.length === 0}>
+          {c.resetLabel}
+        </button>
+        <button onClick={handleSubmit} disabled={connections.length === 0} className="btn er-puzzle-submit">
+          {c.submitLabel}
+        </button>
+      </div>
     </div>
   );
 };

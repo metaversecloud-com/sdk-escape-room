@@ -17,5 +17,6 @@ export const getDefaultVisitorData = (): VisitorData => {
       7: false,
     },
     completionTime: null,
+    puzzleDrafts: {},
   };
 };

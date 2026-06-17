@@ -23,6 +23,15 @@ export interface VisitorData {
 
   // Completion
   completionTime: number | null;
+
+  /**
+   * In-progress per-puzzle inputs. Persisted by the client on every interaction
+   * (debounced) so a player can close + reopen the iframe without losing what
+   * they had typed/clicked. Cleared per-puzzle when that puzzle is submitted
+   * successfully, and reset wholesale when a new game starts. Shape per puzzle
+   * is opaque to the type system — each puzzle component knows its own draft.
+   */
+  puzzleDrafts?: { [puzzleNumber: number]: unknown };
 }
 
 /**

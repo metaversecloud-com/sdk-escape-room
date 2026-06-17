@@ -1,10 +1,12 @@
 import { Request, Response } from "express";
 import {
   World,
+  clearVisitorInventory,
   errorHandler,
   getCredentials,
   getDefaultVisitorData,
   getVisitor,
+  getVisitorInventory,
   teleportPlayer,
 } from "@utils/index.js";
 import { WorldConfig } from "@shared/types/VisitorData.js";
@@ -30,8 +32,20 @@ export const handleStartGame = async (req: Request, res: Response) => {
       await world.updateDataObject({ [sceneDropId]: mergedSceneConfig }, { lock: { lockId, releaseLock: true } });
     }
 
-    // getVisitor guarantees the session-keyed VisitorData exists.
+    // getVisitor (with details=true) populates visitor.inventoryItems so we can
+    // count what they're carrying before wiping it below.
     const { visitor } = await getVisitor(credentials, true);
+
+    // Fresh game — strip puzzle rewards (Fuse / Wrench / Access Card) from
+    // any previous run so the player starts at zero inventory. Badges are
+    // preserved (clearVisitorInventory skips them).
+    await clearVisitorInventory({ visitor, credentials });
+
+    // Re-read inventory after the clear so the client's context flips to the
+    // empty items list immediately (instead of carrying the stale pre-clear
+    // state until the next /game-state fetch).
+    await visitor.fetchInventoryItems();
+    const visitorInventory = getVisitorInventory(visitor.inventoryItems || []);
 
     // Build a fresh active session from the defaults and overlay the started state.
     const newSession = {
@@ -70,6 +84,7 @@ export const handleStartGame = async (req: Request, res: Response) => {
       success: true,
       message: "Game started",
       visitorData: newSession,
+      visitorInventory,
       worldConfig: mergedSceneConfig,
       sessionKey,
     });

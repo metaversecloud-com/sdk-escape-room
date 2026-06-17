@@ -36,6 +36,7 @@ const buildVisitorMock = (sessionOverrides: Partial<any> = {}) => {
     currentRoom: null,
     puzzlesCompleted: { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false },
     completionTime: null,
+    puzzleDrafts: {},
     ...sessionOverrides,
   };
   const visitor = {
@@ -46,6 +47,7 @@ const buildVisitorMock = (sessionOverrides: Partial<any> = {}) => {
     updateDataObject: jest.fn().mockResolvedValue(undefined),
     fetchInventoryItems: jest.fn().mockResolvedValue(undefined),
     grantInventoryItem: jest.fn().mockResolvedValue(undefined),
+    modifyInventoryItemQuantity: jest.fn().mockResolvedValue({ quantity: 0 }),
     moveVisitor: jest.fn().mockResolvedValue(undefined),
     closeIframe: jest.fn().mockResolvedValue(undefined),
     fireToast: jest.fn().mockResolvedValue(undefined),
@@ -85,9 +87,11 @@ jest.mock("@utils/index.js", () => ({
   getVisitor: jest.fn(),
   getBadges: jest.fn().mockResolvedValue({}),
   getLeaderboard: jest.fn().mockReturnValue([]),
+  getVisitorInventory: jest.fn().mockReturnValue({ badges: {}, items: [] }),
   checkSessionExpiration: jest.fn(),
   checkEscapeBadges: jest.fn().mockResolvedValue({ awarded: [], alreadyOwned: [], failed: [] }),
   fireToast: jest.fn().mockResolvedValue(undefined),
+  clearVisitorInventory: jest.fn().mockResolvedValue(undefined),
   getCachedInventoryItems: jest.fn().mockResolvedValue([]),
   teleportPlayer: jest.fn().mockResolvedValue(undefined),
   getDefaultVisitorData: jest.fn(() => ({
@@ -98,6 +102,7 @@ jest.mock("@utils/index.js", () => ({
     currentRoom: null,
     puzzlesCompleted: { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false },
     completionTime: null,
+    puzzleDrafts: {},
   })),
   World: { create: jest.fn() },
   DroppedAsset: { create: jest.fn() },

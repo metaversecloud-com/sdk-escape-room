@@ -2,13 +2,17 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { content } from "@/constants";
 import { GlobalDispatchContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
-import { backendAPI, setErrorMessage, setGameState } from "@/utils";
+import { backendAPI, setErrorMessage, setGameState, useInitialPuzzleDraft, usePuzzleDraft } from "@/utils";
 import { PuzzleHeader } from "./PuzzleHeader";
 
 const c = content.puzzles[2];
 
 interface Room1Puzzle2Props {
   refreshGameState: () => Promise<void>;
+}
+
+interface Draft {
+  selectedOrder: number[];
 }
 
 const CORRECT_ORDER = [3, 1, 4, 2];
@@ -22,11 +26,14 @@ const TOGGLE_ON_BG = "linear-gradient(180deg, #65d08c 0%, #3ca766 100%)";
 export const Room1Puzzle2 = ({ refreshGameState }: Room1Puzzle2Props) => {
   const dispatch = useContext(GlobalDispatchContext);
 
-  const [selectedOrder, setSelectedOrder] = useState<number[]>([]);
+  const savedDraft = useInitialPuzzleDraft<Draft>(2);
+  const [selectedOrder, setSelectedOrder] = useState<number[]>(savedDraft?.selectedOrder ?? []);
   const [localError, setLocalError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+
+  usePuzzleDraft(2, { selectedOrder });
 
   const timerRef = useRef<number | null>(null);
 
