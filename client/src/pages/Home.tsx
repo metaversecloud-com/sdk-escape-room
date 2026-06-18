@@ -4,6 +4,8 @@ import {
   ArtifactGrantCard,
   ArtifactGrantState,
   BadgesTab,
+  DecoyCard,
+  DecoyState,
   ExitCongratsCard,
   InfoCard,
   InventoryPanel,
@@ -74,6 +76,7 @@ type ScreenType =
   | "puzzle5"
   | "puzzle6"
   | "puzzle7"
+  | "decoy"
   | ArtifactScreen
   | "null";
 
@@ -92,6 +95,7 @@ const SCREENS: ScreenType[] = [
   "puzzle5",
   "puzzle6",
   "puzzle7",
+  "decoy",
   ...ARTIFACT_SCREENS,
 ];
 
@@ -145,8 +149,10 @@ const SCREEN_REQUIRED_ROOM: Partial<Record<ScreenType, 1 | 2 | 3>> = {
  * - `leaderboard`: a viewable terminal; walking the avatar isn't useful.
  * - `teleport`: the teleport endpoint already moves the visitor when it
  *   succeeds, so a separate walk would be redundant or fight the teleport.
+ * - `decoy`: easter-egg trash assets — yanking the avatar over reveals the
+ *   asset's location to other players nearby, which spoils the find.
  */
-const SCREENS_WITHOUT_WALK: ReadonlySet<ScreenType> = new Set(["start", "exit", "leaderboard", "teleport"]);
+const SCREENS_WITHOUT_WALK: ReadonlySet<ScreenType> = new Set(["start", "exit", "leaderboard", "teleport", "decoy"]);
 
 const isScreen = (value: string | null): value is ScreenType => value !== null && (SCREENS as string[]).includes(value);
 
@@ -178,6 +184,7 @@ export const Home = () => {
   // still return `locked: true` which we track here.
   type ArtifactLocalState = ArtifactGrantState | { state: "locked"; requiredRoom: number };
   const [artifactState, setArtifactState] = useState<ArtifactLocalState>({ state: "loading" });
+  const [decoyState, setDecoyState] = useState<DecoyState>({ state: "loading" });
 
   const hasStarted = visitorSession?.sessionActive === true;
   const isFinished = puzzlesCompleted?.[7] === true;
@@ -270,6 +277,25 @@ export const Home = () => {
         }
       })
       .catch((error) => setErrorMessage(dispatch, error as ErrorType));
+  }, [screen, hasInteractiveParams, dispatch]);
+
+  // Decoy / trash screen — fires /discover-decoy on mount which awards the
+  // Trash Digger badge (idempotent — server short-circuits on re-clicks).
+  // The Badge Awarded toast comes from awardBadge on the server; we just
+  // refresh the local inventory so the badges tab updates.
+  useEffect(() => {
+    if (!hasInteractiveParams) return;
+    if (screen !== "decoy") return;
+    setDecoyState({ state: "loading" });
+    backendAPI
+      .post("/discover-decoy")
+      .then((res) => {
+        if (res.data?.visitorInventory) {
+          setGameState(dispatch, { visitorInventory: res.data.visitorInventory });
+        }
+        setDecoyState({ state: "discovered", alreadyHad: res.data?.alreadyHad === true });
+      })
+      .catch((err: unknown) => setErrorMessage(dispatch, err as ErrorType));
   }, [screen, hasInteractiveParams, dispatch]);
 
   // Artifact / collectible screen — derives the item name from `?screen=`,
@@ -501,6 +527,8 @@ export const Home = () => {
           ) : (
             <ArtifactGrantCard itemName={screenToItemName(screen)} state={artifactState} />
           ))}
+
+        {screen === "decoy" && <DecoyCard state={decoyState} />}
 
         {/* Room intro cards: the start terminal opens room 1's intro; each
             room has its own in-world intro terminal at `?screen=roomN` that

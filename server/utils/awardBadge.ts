@@ -1,6 +1,8 @@
 import { Credentials } from "../types/index.js";
 import { standardizeError } from "@utils/index.js";
+import { fireToast } from "./fireToast.js";
 import { getCachedInventoryItems } from "./inventoryCache.js";
+import { toasts } from "@shared/copy/toasts.js";
 
 export const awardBadge = async ({
   credentials,
@@ -14,6 +16,9 @@ export const awardBadge = async ({
   badgeName: string;
 }) => {
   try {
+    // First-time-only guard: short-circuit (no grant, no toast) if the badge
+    // is already on the visitor. Every caller that wants the toast also wants
+    // the grant — they're coupled.
     if (visitorInventory.badges?.[badgeName]) {
       return { success: true };
     }
@@ -29,13 +34,12 @@ export const awardBadge = async ({
 
     await visitor.grantInventoryItem(inventoryItem, 1);
 
-    await visitor
-      .fireToast({
-        groupId: "badges",
-        title: "Badge Awarded",
-        text: `You earned the ${badgeName} badge!`,
-      })
-      .catch(() => console.error(`Failed to fire badge toast for ${badgeName}`));
+    await fireToast({
+      visitor,
+      groupId: toasts.badgeAwarded.groupId,
+      title: toasts.badgeAwarded.title,
+      text: toasts.badgeAwarded.textTemplate.replace("{badge}", badgeName),
+    });
 
     return { success: true };
   } catch (error: any) {

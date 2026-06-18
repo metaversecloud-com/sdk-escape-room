@@ -2,7 +2,14 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { content } from "@/constants";
 import { GlobalDispatchContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
-import { backendAPI, setErrorMessage, setGameState, useInitialPuzzleDraft, usePuzzleDraft } from "@/utils";
+import {
+  backendAPI,
+  reportWrongAttempt,
+  setErrorMessage,
+  setGameState,
+  useInitialPuzzleDraft,
+  usePuzzleDraft,
+} from "@/utils";
 import { PuzzleHeader } from "./PuzzleHeader";
 
 const c = content.puzzles[2];
@@ -91,6 +98,7 @@ export const Room1Puzzle2 = ({ refreshGameState }: Room1Puzzle2Props) => {
         setSuccessMessage(c.messages.correctSequenceReady);
       } else {
         resetPuzzle(c.errors.incorrect);
+        reportWrongAttempt(2);
       }
     }
   };

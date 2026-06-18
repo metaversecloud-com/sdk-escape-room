@@ -4,12 +4,23 @@ import { VisitorInterface } from "@rtsdk/topia";
 import { VisitorInventory } from "./getVisitorInventory.js";
 import { VisitorData } from "../../shared/types/VisitorData.js";
 
-const BADGES = {
+export const BADGES = {
   POWER_RESTORED: "Power Restored",
   SIGNAL_RECOVERED: "Signal Recovered",
   AIRLOCK_ENGINEER: "Airlock Engineer",
   STATION_SURVIVOR: "Station Survivor",
+  // Speed-run badge: full escape under WARP_SPEED_THRESHOLD_SECONDS. Awarded
+  // alongside Station Survivor when puzzle 7 is submitted fast enough.
+  WARP_SPEED: "Warp Speed",
+  // Awarded by /discover-decoy when a player investigates a decoy/trash asset.
+  TRASH_DIGGER: "Trash Digger",
+  // Awarded by /wrong-attempt when wrongAttempts on any single puzzle crosses
+  // BUTTON_MASHER_THRESHOLD.
+  BUTTON_MASHER: "Button Masher",
 } as const;
+
+/** Threshold (seconds) for the Warp Speed badge — full escape must beat this. */
+export const WARP_SPEED_THRESHOLD_SECONDS = 180;
 
 export interface BadgeContext {
   credentials: Credentials;
@@ -69,6 +80,17 @@ export const checkEscapeBadges = async ({
   maybeAward("AIRLOCK_ENGINEER", (badgeKey === "AIRLOCK_ENGINEER" || badgeKey === undefined) && puzzleNumber === 6);
 
   maybeAward("STATION_SURVIVOR", (badgeKey === "STATION_SURVIVOR" || badgeKey === undefined) && puzzleNumber === 7);
+
+  // Warp Speed — full escape under the threshold. Read completionTime off
+  // the game object (set by handleSubmitPuzzle just before this is called).
+  maybeAward(
+    "WARP_SPEED",
+    (badgeKey === "WARP_SPEED" || badgeKey === undefined) &&
+      puzzleNumber === 7 &&
+      typeof game.completionTime === "number" &&
+      game.completionTime > 0 &&
+      game.completionTime < WARP_SPEED_THRESHOLD_SECONDS,
+  );
 
   if (promises.length > 0) {
     await Promise.all(promises);

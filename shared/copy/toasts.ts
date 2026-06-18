@@ -25,6 +25,11 @@ export const toasts = {
     title: "Artifact Acquired",
     textTemplate: "Added to inventory: {item}. Find the rest on the Artifacts tab.",
   },
+  badgeAwarded: {
+    groupId: "badgeAwarded",
+    title: "Badge Awarded",
+    textTemplate: "You earned the {badge} badge!",
+  },
   roomCleared: {
     groupId: "roomCleared",
     title: "Door Unlocked",

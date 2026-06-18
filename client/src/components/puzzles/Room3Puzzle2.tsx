@@ -2,7 +2,14 @@ import { useContext, useState } from "react";
 import { content } from "@/constants";
 import { GlobalDispatchContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
-import { backendAPI, setErrorMessage, setGameState, useInitialPuzzleDraft, usePuzzleDraft } from "@/utils";
+import {
+  backendAPI,
+  reportWrongAttempt,
+  setErrorMessage,
+  setGameState,
+  useInitialPuzzleDraft,
+  usePuzzleDraft,
+} from "@/utils";
 import { PuzzleHeader } from "./PuzzleHeader";
 
 const c = content.puzzles[7];
@@ -38,6 +45,7 @@ export const Room3Puzzle2 = ({ refreshGameState }: Room3Puzzle2Props) => {
     }
     if (code !== EXPECTED_CODE) {
       setFeedback(c.errors.wrongCode);
+      reportWrongAttempt(7);
       return;
     }
 

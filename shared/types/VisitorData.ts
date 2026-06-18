@@ -37,6 +37,14 @@ export interface VisitorData {
    * is opaque to the type system — each puzzle component knows its own draft.
    */
   puzzleDrafts?: { [puzzleNumber: number]: unknown };
+
+  /**
+   * Wrong-interaction counter per puzzle. Bumped by `/wrong-attempt` when a
+   * puzzle reports a wrong submit/click. Used to award the **Button Masher**
+   * badge when any single puzzle's counter crosses the threshold. Keyed by
+   * puzzle number; missing keys = 0.
+   */
+  wrongAttempts?: { [puzzleNumber: number]: number };
 }
 
 /**

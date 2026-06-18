@@ -1,5 +1,6 @@
 export * from "./ArtifactGrantCard.js";
 export * from "./BadgesTab.js";
+export * from "./DecoyCard.js";
 export * from "./ExitCongratsCard.js";
 export * from "./InfoCard.js";
 export * from "./InventoryPanel.js";

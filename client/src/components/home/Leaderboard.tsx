@@ -11,7 +11,7 @@ const { leaderboard: leaderboardCopy } = content;
 export const Leaderboard = ({ leaderboard }: LeaderboardProps) => (
   <div>
     {!leaderboard || leaderboard.length === 0 ? (
-      <p className="p2">{leaderboardCopy.emptyState}</p>
+      <p className="pt-3 text-center">{leaderboardCopy.emptyState}</p>
     ) : (
       <table className="table p-0">
         <thead>

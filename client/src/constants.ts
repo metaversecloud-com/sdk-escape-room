@@ -131,6 +131,25 @@ export const content = {
     },
   },
 
+  /* ─── Decoy / trash discovery (`?screen=decoy`) ───────────────────────
+     Shown when a player investigates a decoy/trash asset. Awards the
+     **Trash Digger** badge on first discovery.
+  */
+
+  decoy: {
+    loading: { title: "Sifting through the debris…", message: "Looking for anything useful." },
+    newDiscovery: {
+      eyebrow: "Just Trash",
+      title: "Nothing useful here.",
+      message: "Burnt wires, snack wrappers, a busted clipboard. But you did earn the Trash Digger badge.",
+    },
+    alreadyHad: {
+      eyebrow: "Already Picked Over",
+      title: "Same trash, different day.",
+      message: "You've sifted through this junk before. Trash Digger badge is already yours.",
+    },
+  },
+
   /* ─── Pre-game briefing (StartGameCard) ────────────────────────────── */
 
   briefing: {

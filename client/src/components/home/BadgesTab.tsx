@@ -20,7 +20,7 @@ export const BadgesTab = ({ badges, earned }: BadgesTabProps) => {
   const all = Object.values(badges || {});
 
   if (all.length === 0) {
-    return <p className="p2 er-text-muted">{badgesTab.emptyState}</p>;
+    return <p className="pt-3 text-center">{badgesTab.emptyState}</p>;
   }
 
   return (

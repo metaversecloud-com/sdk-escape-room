@@ -19,5 +19,6 @@ export const getDefaultVisitorData = (): VisitorData => {
     },
     completionTime: null,
     puzzleDrafts: {},
+    wrongAttempts: {},
   };
 };

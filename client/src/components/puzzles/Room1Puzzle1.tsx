@@ -2,7 +2,14 @@ import { useContext, useMemo, useState } from "react";
 import { content } from "@/constants";
 import { GlobalDispatchContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
-import { backendAPI, setErrorMessage, setGameState, useInitialPuzzleDraft, usePuzzleDraft } from "@/utils";
+import {
+  backendAPI,
+  reportWrongAttempt,
+  setErrorMessage,
+  setGameState,
+  useInitialPuzzleDraft,
+  usePuzzleDraft,
+} from "@/utils";
 import { PuzzleHeader } from "./PuzzleHeader";
 
 interface Draft {
@@ -106,6 +113,7 @@ export const Room1Puzzle1 = ({ refreshGameState }: Room1Puzzle1Props) => {
       setLocalError(c.errors.wrongSequence);
       setWrongFlash(true);
       window.setTimeout(() => setWrongFlash(false), 600);
+      reportWrongAttempt(1);
       return;
     }
 

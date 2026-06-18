@@ -54,7 +54,12 @@ export const ArtifactGrantCard = ({ itemName, state }: Props) => {
       <div aria-hidden className="er-card__glow er-card__glow--violet" />
       <div className="flex flex-col gap-4 er-card items-center text-center">
         <p className="p2 er-eyebrow er-text--violet">{copy.title}</p>
-        <h3 className="card-title er-title-gold">{displayName}</h3>
+        <h3
+          className="card-title er-title-gold w-full break-words"
+          style={{ whiteSpace: "normal", overflow: "visible", textOverflow: "clip" }}
+        >
+          {displayName}
+        </h3>
         {item?.imageUrl ? (
           <img src={item.imageUrl} alt={displayName} style={{ maxWidth: "100%", maxHeight: 240, display: "block" }} />
         ) : null}

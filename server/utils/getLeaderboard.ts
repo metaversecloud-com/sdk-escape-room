@@ -5,44 +5,26 @@ export type ParsedLeaderboardEntry = {
   attempts: number;
 };
 
+/**
+ * Parses the leaderboard data object into a sorted list.
+ *
+ * Storage shape: `{ [profileId]: "name|bestCompletionTime|attempts" }` — one
+ * row per profile, written by handleSubmitPuzzle on each escape. Sorted by
+ * fastest completion time ascending.
+ */
 export const getLeaderboard = (leaderboardData?: Record<string, string>): ParsedLeaderboardEntry[] => {
   if (!leaderboardData) return [];
 
-  const byProfile: Record<string, ParsedLeaderboardEntry> = {};
-  const attemptCounts: Record<string, number> = {};
-
-  for (const profileKey in leaderboardData) {
-    const value = leaderboardData[profileKey];
-    const [name, completionTimeText] = value.split("|");
-    const completionTime = parseInt(completionTimeText || "0", 10) || 0;
-    const profileId = profileKey.split("-")[0];
-
-    attemptCounts[profileId] = (attemptCounts[profileId] || 0) + 1;
-
-    const existing = byProfile[profileId];
-    if (!existing) {
-      byProfile[profileId] = {
-        profileId,
-        name,
-        completionTime,
-        attempts: attemptCounts[profileId],
-      };
-      continue;
-    }
-
-    if (completionTime > 0 && (existing.completionTime === 0 || completionTime < existing.completionTime)) {
-      existing.completionTime = completionTime;
-      existing.name = name;
-    }
-
-    existing.attempts = attemptCounts[profileId];
+  const entries: ParsedLeaderboardEntry[] = [];
+  for (const profileId in leaderboardData) {
+    const [name = "", timeText = "0", attemptsText = "1"] = (leaderboardData[profileId] || "").split("|");
+    entries.push({
+      profileId,
+      name,
+      completionTime: parseInt(timeText, 10) || 0,
+      attempts: parseInt(attemptsText, 10) || 1,
+    });
   }
 
-  const entries = Object.values(byProfile);
-
-  entries.sort((a, b) => {
-    return a.completionTime - b.completionTime;
-  });
-
-  return entries;
+  return entries.sort((a, b) => a.completionTime - b.completionTime);
 };

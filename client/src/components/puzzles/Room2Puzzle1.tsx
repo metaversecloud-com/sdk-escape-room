@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { content } from "@/constants";
 import { backendAPI } from "@/utils/backendAPI";
-import { useInitialPuzzleDraft, usePuzzleDraft } from "@/utils";
+import { reportWrongAttempt, useInitialPuzzleDraft, usePuzzleDraft } from "@/utils";
 import { PuzzleHeader } from "./PuzzleHeader";
 
 const c = content.puzzles[3];
@@ -74,6 +74,7 @@ export const Room2Puzzle1 = ({ onSuccess, sessionKey, refreshGameState }: Room2P
       }
     } else {
       setError(c.errors.wrongAlignment);
+      reportWrongAttempt(3);
     }
 
     setIsSubmitting(false);

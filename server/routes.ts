@@ -2,6 +2,7 @@ import express from "express";
 import { getVersion } from "./utils/getVersion.js";
 import {
   handleCheckSession,
+  handleDiscoverDecoy,
   handleExitGame,
   handleGetGameState,
   handleGrantItem,
@@ -10,6 +11,7 @@ import {
   handleSubmitPuzzle,
   handleTeleport,
   handleWalkToAsset,
+  handleWrongAttempt,
 } from "./controllers/index.js";
 
 const router = express.Router();
@@ -41,6 +43,8 @@ router.post("/start-game", handleStartGame);
 router.post("/submit-puzzle", handleSubmitPuzzle);
 router.post("/puzzle-draft", handleSavePuzzleDraft);
 router.post("/grant-item", handleGrantItem);
+router.post("/discover-decoy", handleDiscoverDecoy);
+router.post("/wrong-attempt", handleWrongAttempt);
 router.post("/exit", handleExitGame);
 
 export default router;

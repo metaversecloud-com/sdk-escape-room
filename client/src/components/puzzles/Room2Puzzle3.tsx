@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { content } from "@/constants";
 import { backendAPI } from "@/utils/backendAPI";
-import { useInitialPuzzleDraft, usePuzzleDraft } from "@/utils";
+import { reportWrongAttempt, useInitialPuzzleDraft, usePuzzleDraft } from "@/utils";
 import { PuzzleHeader } from "./PuzzleHeader";
 
 interface Draft {
@@ -115,6 +115,7 @@ export const Room2Puzzle3 = ({ onSuccess, sessionKey, refreshGameState }: Room2P
     }
     if (!isValveOrderCorrect()) {
       setError(c.errors.wrongValveOrder);
+      reportWrongAttempt(5);
       return;
     }
     setIsSubmitting(true);

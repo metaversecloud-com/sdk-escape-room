@@ -2,7 +2,14 @@ import { useContext, useEffect, useState } from "react";
 import { content } from "@/constants";
 import { GlobalDispatchContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
-import { backendAPI, setErrorMessage, setGameState, useInitialPuzzleDraft, usePuzzleDraft } from "@/utils";
+import {
+  backendAPI,
+  reportWrongAttempt,
+  setErrorMessage,
+  setGameState,
+  useInitialPuzzleDraft,
+  usePuzzleDraft,
+} from "@/utils";
 import { PuzzleHeader } from "./PuzzleHeader";
 
 const c = content.puzzles[6];
@@ -108,6 +115,7 @@ export const Room3Puzzle1 = ({ refreshGameState, isCompleted }: Room3Puzzle1Prop
         setConnections([]);
         setIsCorrect(null);
       }, 2000);
+      reportWrongAttempt(6);
       return;
     }
 

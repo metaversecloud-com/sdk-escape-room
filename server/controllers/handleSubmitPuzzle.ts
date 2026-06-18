@@ -229,6 +229,20 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         }),
       );
 
+      // Warp Speed — fires only if the escape beat the threshold. The check
+      // itself reads completionTime off `game` (set just above), so this just
+      // gates the lookup.
+      collectBadges(
+        await checkEscapeBadges({
+          credentials,
+          visitor,
+          visitorInventory,
+          game,
+          puzzleNumber,
+          badgeKey: "WARP_SPEED",
+        }),
+      );
+
       await fireToast({
         visitor,
         groupId: toasts.escaped.groupId,
@@ -236,10 +250,29 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         text: toasts.escaped.text,
       });
 
+      // One entry per profileId. Each escape: take min(existing best, new)
+      // as the leaderboard time and increment the attempt counter. Format:
+      //   { [profileId]: "displayName|bestCompletionTime|attempts" }
+      const existingLeaderboard = (keyAssetDataObject?.leaderboard || {}) as Record<string, string>;
+      const existing = existingLeaderboard[profileId];
+      const newTime = game.completionTime ?? 0;
+      let bestTime = newTime;
+      let attempts = 1;
+      if (existing) {
+        const [, prevTimeText, prevAttemptsText] = existing.split("|");
+        const prevTime = parseInt(prevTimeText || "0", 10) || 0;
+        const prevAttempts = parseInt(prevAttemptsText || "0", 10) || 0;
+        attempts = prevAttempts + 1;
+        if (prevTime > 0 && (newTime === 0 || prevTime < newTime)) {
+          bestTime = prevTime;
+        }
+      }
+
       const updatedLeaderboard = {
-        ...(keyAssetDataObject?.leaderboard || {}),
-        [`${profileId}-${Date.now()}`]: `${displayName}|${game.completionTime ?? 0}`,
+        ...existingLeaderboard,
+        [profileId]: `${displayName}|${bestTime}|${attempts}`,
       };
+
       await keyAsset.updateDataObject(
         { leaderboard: updatedLeaderboard },
         { lock: { lockId: `leaderboard-${profileId}`, releaseLock: true } },
