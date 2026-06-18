@@ -74,7 +74,7 @@ const worldMock = {
     },
   }),
   updateDataObject: jest.fn().mockResolvedValue(undefined),
-  fetchDroppedAssetsWithUniqueName: jest.fn().mockResolvedValue([{ id: "spawn", position: { x: 100, y: 200 } }]),
+  fetchDroppedAssetsBySceneDropId: jest.fn().mockResolvedValue([{ id: "spawn", position: { x: 100, y: 200 } }]),
 };
 
 jest.mock("@utils/index.js", () => ({
