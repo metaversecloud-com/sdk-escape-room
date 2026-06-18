@@ -98,21 +98,36 @@ export const handleTeleport = async (req: Request, res: Response) => {
       });
     }
 
-    // Prerequisites satisfied — fire the teleport. We deliberately don't
-    // mutate visitor data here; `currentRoom` is advanced by handleSubmitPuzzle
-    // when the player finishes the room's puzzles. This route is pure
-    // navigation.
+    // Prerequisites satisfied — fire the teleport. `currentRoom` (progression)
+    // is advanced by handleSubmitPuzzle on puzzle completion. `physicalRoom`
+    // (where the avatar actually is) is the responsibility of this route: we
+    // bump it whenever the player successfully teleports into a new room.
+    // The walk-to-asset gate keys off physicalRoom so we never drag the
+    // avatar to a different-room asset.
+    let teleportSucceeded = true;
     try {
       await teleportPlayer(urlSlug, visitorId, credentials, def.spawnUniqueName);
     } catch (err) {
+      teleportSucceeded = false;
       console.warn(`teleportPlayer to "${def.spawnUniqueName}" failed`, err);
+    }
+
+    const updatedSession: VisitorData = teleportSucceeded
+      ? { ...session, physicalRoom: def.targetRoom }
+      : session;
+
+    if (teleportSucceeded && session.physicalRoom !== def.targetRoom) {
+      await visitor.updateDataObject(
+        { [sessionKey]: updatedSession },
+        { lock: { lockId: `${sessionKey}-${Date.now()}-visitor-teleport`, releaseLock: true } },
+      );
     }
 
     return res.json({
       success: true,
       teleported: true,
       targetRoom: def.targetRoom,
-      visitorData: session,
+      visitorData: updatedSession,
     });
   } catch (error) {
     return errorHandler({

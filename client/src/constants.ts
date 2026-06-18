@@ -49,6 +49,13 @@ export const content = {
     emptyState: "Nothing in your inventory yet. Solve puzzles to collect mission items.",
     noPreview: "No preview",
     noLargerImage: "No larger image available for this item.",
+    tabs: { keyItems: "Key Items", artifacts: "Artifacts" },
+    keyItemsEmpty: "No key items yet. Solve puzzles to earn them.",
+    artifactsEmpty: "No artifacts yet. Explore the station to find them.",
+    artifactsEmptyForRoom: "No artifacts from this room yet.",
+    roomFilterLabel: "Filter by room",
+    roomFilterAll: "All",
+    roomFilterTemplate: "Room {room}",
   },
 
   /* ─── Leaderboard (standalone leaderboard screen) ──────────────────── */
@@ -104,6 +111,23 @@ export const content = {
     invalidTarget: {
       title: "Nowhere to go",
       message: "There's no next room from here.",
+    },
+  },
+
+  /* ─── Artifact / collectible screens ─────────────────────────────────
+     Shown when a player clicks an in-world artifact asset. The item is
+     granted (if not already owned) and shown to the player on a card.
+  */
+
+  artifactGrant: {
+    loading: { title: "Examining artifact…", message: "Adding it to your inventory." },
+    newGrant: { title: "Artifact Acquired", message: "Added to your inventory. Check the Artifacts tab to revisit it." },
+    alreadyHad: { title: "Already in Your Inventory", message: "You've already picked this one up." },
+    notFound: { title: "Artifact Unavailable", message: "This artifact isn't configured in the ecosystem yet." },
+    locked: {
+      title: "Out of Reach",
+      // `{room}` replaced with the artifact's required room number.
+      messageTemplate: "You need to make it to Room {room} before you can pick this artifact up.",
     },
   },
 

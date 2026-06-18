@@ -1,6 +1,8 @@
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import {
+  ArtifactGrantCard,
+  ArtifactGrantState,
   BadgesTab,
   ExitCongratsCard,
   InfoCard,
@@ -38,6 +40,25 @@ import {
 
 const { states, exitConfirmation, exitButton, teleport } = content;
 
+/**
+ * Artifact / collectible screens. Each maps to an inventory item with the
+ * same name minus spaces — e.g. `Room1Artifact` → item "Room 1 Artifact".
+ * Clicking the asset grants the matching item (idempotently) and shows it
+ * to the player.
+ */
+const ARTIFACT_SCREENS = [
+  "Room1Artifact",
+  "CrewPortrait1",
+  "CrewPortrait2",
+  "CrewPortrait3",
+  "AlphaStation",
+  "BetaStation",
+  "OmegaStation",
+  "Room3Artifact",
+] as const;
+
+type ArtifactScreen = (typeof ARTIFACT_SCREENS)[number];
+
 type ScreenType =
   | "start"
   | "exit"
@@ -53,6 +74,7 @@ type ScreenType =
   | "puzzle5"
   | "puzzle6"
   | "puzzle7"
+  | ArtifactScreen
   | "null";
 
 const SCREENS: ScreenType[] = [
@@ -70,7 +92,24 @@ const SCREENS: ScreenType[] = [
   "puzzle5",
   "puzzle6",
   "puzzle7",
+  ...ARTIFACT_SCREENS,
 ];
+
+const isArtifactScreen = (screen: ScreenType): screen is ArtifactScreen =>
+  (ARTIFACT_SCREENS as readonly string[]).includes(screen);
+
+/**
+ * Derives the ecosystem inventory item name from a `?screen=` value by
+ * inserting spaces around camelCase boundaries and digit boundaries:
+ *   Room1Artifact   → "Room 1 Artifact"
+ *   CrewPortrait1   → "Crew Portrait 1"
+ *   AlphaStation    → "Alpha Station"
+ */
+const screenToItemName = (screen: string): string =>
+  screen
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/([a-zA-Z])(\d)/g, "$1 $2")
+    .replace(/(\d)([a-zA-Z])/g, "$1 $2");
 
 /** Result of a /teleport call. `checking` is the local pre-response state. */
 type TeleportState =
@@ -134,6 +173,11 @@ export const Home = () => {
   const [showInventory, setShowInventory] = useState(false);
   const [leaderboardTab, setLeaderboardTab] = useState<"leaderboard" | "badges">("leaderboard");
   const [teleportState, setTeleportState] = useState<TeleportState>({ state: "checking" });
+  // Local state superset — `ArtifactGrantCard` itself doesn't render a locked
+  // variant (we render `LockedState` for that case below), but the server can
+  // still return `locked: true` which we track here.
+  type ArtifactLocalState = ArtifactGrantState | { state: "locked"; requiredRoom: number };
+  const [artifactState, setArtifactState] = useState<ArtifactLocalState>({ state: "loading" });
 
   const hasStarted = visitorSession?.sessionActive === true;
   const isFinished = puzzlesCompleted?.[7] === true;
@@ -228,6 +272,43 @@ export const Home = () => {
       .catch((error) => setErrorMessage(dispatch, error as ErrorType));
   }, [screen, hasInteractiveParams, dispatch]);
 
+  // Artifact / collectible screen — derives the item name from `?screen=`,
+  // posts to /grant-item (idempotent — server returns alreadyHad: true on
+  // repeat clicks), and dispatches the fresh visitorInventory so the panel
+  // shows the new item immediately.
+  useEffect(() => {
+    if (!hasInteractiveParams) return;
+    if (!isArtifactScreen(screen)) return;
+    setArtifactState({ state: "loading" });
+    const itemName = screenToItemName(screen);
+    backendAPI
+      .post("/grant-item", { itemName })
+      .then((res) => {
+        if (res.data?.locked === true) {
+          setArtifactState({ state: "locked", requiredRoom: Number(res.data.requiredRoom) || 0 });
+          return;
+        }
+        if (res.data?.visitorInventory) {
+          setGameState(dispatch, { visitorInventory: res.data.visitorInventory });
+        }
+        setArtifactState({
+          state: "granted",
+          item: res.data?.item ?? null,
+          alreadyHad: res.data?.alreadyHad === true,
+        });
+      })
+      .catch((err: unknown) => {
+        // 404 (item missing from ecosystem) is the most common case — surface
+        // it cleanly. Other errors fall through to the global error handler.
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status === 404) {
+          setArtifactState({ state: "notFound" });
+        } else {
+          setErrorMessage(dispatch, err as ErrorType);
+        }
+      });
+  }, [screen, hasInteractiveParams, dispatch]);
+
   // Initial game-state fetch
   useEffect(() => {
     if (!hasInteractiveParams) {
@@ -246,19 +327,28 @@ export const Home = () => {
   //
   // Fires once per Home mount, gated on:
   //   1. hasInteractiveParams — credentials available.
-  //   2. visitorData loaded — we need to know currentRoom before deciding.
-  //   3. The asset's required room is reachable by the visitor's
-  //      progression (SCREEN_REQUIRED_ROOM[screen] ≤ visitor.currentRoom).
-  //      Prevents yanking a player across room boundaries to an asset
-  //      they haven't unlocked yet.
+  //   2. visitorData loaded — we need to know physicalRoom before deciding.
+  //   3. The asset's required room matches the visitor's *physical* room
+  //      (SCREEN_REQUIRED_ROOM[screen] === visitor.physicalRoom). Strict
+  //      equality — we don't walk forward to an unreached room, AND we
+  //      don't walk backward to a cleared room (e.g. clicking a Room 2
+  //      asset while standing in Room 3 should NOT yank the avatar back).
   // The walkedRef pin makes this idempotent — once we've made the decision
-  // (walk or skip), we don't re-fire on subsequent currentRoom transitions.
+  // (walk or skip), we don't re-fire on subsequent visitor-data updates.
   // Fire-and-forget — the walk happens in the world independently of any UI.
   const walkedRef = useRef(false);
   useEffect(() => {
     if (walkedRef.current) return;
     if (!hasInteractiveParams) return;
     if (!visitorData) return;
+
+    // Session timed out — checkSessionExpiration already teleported the
+    // player back to the start terminal. Walking them BACK to the asset
+    // they clicked would fight that teleport.
+    if (visitorData.timedOut === true || hasSessionExpired === true) {
+      walkedRef.current = true;
+      return;
+    }
 
     // Some screens (exit terminal) intentionally don't walk the player —
     // they're standalone confirmation pages where moving the avatar would
@@ -268,19 +358,25 @@ export const Home = () => {
       return;
     }
 
+    // Use physicalRoom (set on teleport) as source of truth — falls back to
+    // currentRoom for legacy sessions that pre-date physicalRoom.
     const requiredRoom = SCREEN_REQUIRED_ROOM[screen];
-    const currentRoom = visitorData.currentRoom ?? 0;
-    if (requiredRoom && requiredRoom > currentRoom) {
+    const playerRoom = visitorData.physicalRoom ?? visitorData.currentRoom ?? 0;
+    if (requiredRoom && requiredRoom !== playerRoom) {
       walkedRef.current = true;
       return;
     }
 
     walkedRef.current = true;
-    backendAPI.post("/walk-to-asset").catch(() => {
+    // Pass the current screen so the server can apply its own gate — that's
+    // how artifact screens (whose required-room lives in ecosystem metadata,
+    // not the client) get walk-refused if the visitor's progression is below
+    // the artifact's room.
+    backendAPI.post("/walk-to-asset", { screen }).catch(() => {
       // Swallow errors silently — failing to walk shouldn't surface as a
       // user-facing error. The screen content still rendered correctly.
     });
-  }, [hasInteractiveParams, visitorData, screen]);
+  }, [hasInteractiveParams, visitorData, hasSessionExpired, screen]);
 
   // ── Standalone screens (own PageContainer) ──
   if (screen === "leaderboard") {
@@ -391,6 +487,19 @@ export const Home = () => {
             <LockedState title={teleport.invalidTarget.title} message={teleport.invalidTarget.message} />
           ) : (
             <LockedState title={teleport.blocked.title} message={teleport.blocked.message} />
+          ))}
+
+        {isArtifactScreen(screen) &&
+          (artifactState.state === "locked" ? (
+            <LockedState
+              title={content.artifactGrant.locked.title}
+              message={content.artifactGrant.locked.messageTemplate.replace(
+                "{room}",
+                String(artifactState.requiredRoom),
+              )}
+            />
+          ) : (
+            <ArtifactGrantCard itemName={screenToItemName(screen)} state={artifactState} />
           ))}
 
         {/* Room intro cards: the start terminal opens room 1's intro; each

@@ -1,6 +1,7 @@
 export * from "./handleCheckSession.js";
 export * from "./handleExitGame.js";
 export * from "./handleGetGameState.js";
+export * from "./handleGrantItem.js";
 export * from "./handleStartGame.js";
 export * from "./handleSavePuzzleDraft.js";
 export * from "./handleSubmitPuzzle.js";

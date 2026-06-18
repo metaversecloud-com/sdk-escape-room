@@ -53,6 +53,7 @@ export const handleStartGame = async (req: Request, res: Response) => {
       sessionActive: true,
       startTime: new Date().toISOString(),
       currentRoom: 1 as const,
+      physicalRoom: 1 as const,
     };
 
     await visitor.updateDataObject(

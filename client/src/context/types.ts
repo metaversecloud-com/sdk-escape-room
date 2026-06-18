@@ -73,4 +73,16 @@ export type InventoryItemSummary = {
   description?: string;
   status?: string;
   quantity?: number;
+  /**
+   * Free-form metadata configured on the ecosystem item. Escape Room uses
+   * `{ room, type: "keyItem" | "artifact", sortOrder }`; the index signature
+   * keeps the shape open so other categories can ride along without a type
+   * change here.
+   */
+  metadata?: {
+    room?: number;
+    type?: string;
+    sortOrder?: number;
+    [key: string]: unknown;
+  };
 };

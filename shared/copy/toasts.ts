@@ -20,6 +20,11 @@ export const toasts = {
     title: "Item Acquired",
     textTemplate: "Added to inventory: {item}",
   },
+  artifactAcquired: {
+    groupId: "artifactAcquired",
+    title: "Artifact Acquired",
+    textTemplate: "Added to inventory: {item}. Find the rest on the Artifacts tab.",
+  },
   roomCleared: {
     groupId: "roomCleared",
     title: "Door Unlocked",

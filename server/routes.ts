@@ -4,6 +4,7 @@ import {
   handleCheckSession,
   handleExitGame,
   handleGetGameState,
+  handleGrantItem,
   handleSavePuzzleDraft,
   handleStartGame,
   handleSubmitPuzzle,
@@ -39,6 +40,7 @@ router.post("/walk-to-asset", handleWalkToAsset);
 router.post("/start-game", handleStartGame);
 router.post("/submit-puzzle", handleSubmitPuzzle);
 router.post("/puzzle-draft", handleSavePuzzleDraft);
+router.post("/grant-item", handleGrantItem);
 router.post("/exit", handleExitGame);
 
 export default router;

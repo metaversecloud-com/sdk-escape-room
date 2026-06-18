@@ -9,8 +9,13 @@ export interface VisitorData {
   sessionActive: boolean;
   timedOut: boolean;
 
-  // Progression
+  // Progression — highest unlocked room (advances on puzzle completion).
   currentRoom: 1 | 2 | 3 | null;
+  // Physical location — where the avatar actually is (updated on teleport).
+  // Used to gate walk-to-asset so we don't drag a player across rooms to an
+  // asset they're not standing near. Optional for legacy sessions that
+  // pre-date this field.
+  physicalRoom?: 1 | 2 | 3 | null;
   puzzlesCompleted: {
     1: boolean;
     2: boolean;

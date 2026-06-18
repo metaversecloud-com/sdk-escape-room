@@ -1,3 +1,4 @@
+export * from "./ArtifactGrantCard.js";
 export * from "./BadgesTab.js";
 export * from "./ExitCongratsCard.js";
 export * from "./InfoCard.js";
