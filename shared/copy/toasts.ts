@@ -33,7 +33,7 @@ export const toasts = {
   roomCleared: {
     groupId: "roomCleared",
     title: "Door Unlocked",
-    textTemplate: "All puzzles cleared. The door to Room {room} is open.",
+    textTemplate: "All puzzles cleared. The teleporter to Room {room} is now active.",
   },
   escaped: {
     groupId: "escaped",
