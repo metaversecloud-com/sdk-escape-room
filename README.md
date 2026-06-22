@@ -16,13 +16,13 @@ A multi-room escape-room game for [Topia](https://topia.io) worlds. Players have
 
 Every interactive station asset opens the same drawer iframe; each asset's drawer is parameterized by a `?screen=` query string. The supported screens are:
 
-| `?screen=`            | Drawer content                                                                           |
-| --------------------- | ---------------------------------------------------------------------------------------- |
-| `start`               | Briefing card + **Start the Game** button (or "session running" card if already started) |
-| `puzzle1` … `puzzle7` | The matching puzzle, or its complete-state card if already solved                        |
-| `leaderboard`         | Standalone leaderboard view                                                              |
-| `exit`                | Exit confirmation                                                                        |
-| `decoy`               | Trash-discovery card; awards the **Trash Digger** badge on first click                   |
+| `?screen=`            | Drawer content                                                                                                                             |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `start`               | Briefing card + **Start the Game** button (or "session running" card if already started)                                                   |
+| `puzzle1` … `puzzle7` | The matching puzzle, or its complete-state card if already solved                                                                          |
+| `leaderboard`         | Standalone leaderboard view                                                                                                                |
+| `exit`                | Exit confirmation                                                                                                                          |
+| `decoy`               | Trash-discovery card; awards the **Trash Digger** badge on first click                                                                     |
 | Artifact screens      | `Room1Artifact`, `CrewPortrait1`-`3`, `AlphaStation`, `BetaStation`, `OmegaStation`, `Room3Artifact` — grant the matching collectible item |
 
 Required dropped-asset unique names (see "Required Assets" below) define the rooms' physical spawn points and the leaderboard's host asset.
@@ -40,15 +40,16 @@ Required dropped-asset unique names (see "Required Assets" below) define the roo
 
 Granted via `visitor.grantInventoryItem` from the ecosystem inventory:
 
-| Badge name         | When awarded                                                                      |
-| ------------------ | --------------------------------------------------------------------------------- |
-| `Power Restored`   | After solving Puzzle 1 + Puzzle 2 (Room A complete)                               |
-| `Signal Recovered` | After solving Puzzle 3 + 4 + 5 (Room B complete)                                  |
-| `Airlock Engineer` | After solving Puzzle 6                                                            |
-| `Station Survivor` | After solving Puzzle 7 (full escape)                                              |
-| `Warp Speed`       | Full escape in under 3 minutes (awarded alongside Station Survivor)               |
-| `Trash Digger`     | Investigate a decoy / trash asset (`?screen=decoy`)                               |
-| `Button Masher`    | 4 wrong submissions on any single puzzle's control panel (counted per-puzzle)     |
+| Badge name         | When awarded                                                                  |
+| ------------------ | ----------------------------------------------------------------------------- |
+| `Power Restored`   | After solving Puzzle 1 + Puzzle 2 (Room A complete)                           |
+| `Signal Recovered` | After solving Puzzle 3 + 4 + 5 (Room B complete)                              |
+| `Airlock Engineer` | After solving Puzzle 6                                                        |
+| `Station Survivor` | After solving Puzzle 7 (full escape)                                          |
+| `Warp Speed`       | Full escape in under 3 minutes (awarded alongside Station Survivor)           |
+| `Trash Digger`     | Investigate a decoy / trash asset (`?screen=decoy`)                           |
+| `Trash Panda`      | Collect every ecosystem ITEM (all puzzle rewards + every artifact)            |
+| `Button Masher`    | 4 wrong submissions on any single puzzle's control panel (counted per-puzzle) |
 
 ## Required Assets with Unique Names
 
@@ -68,18 +69,19 @@ The world must contain dropped assets with the following `uniqueName` values for
 
 Created in the [Topia dashboard](https://topia.io/t/dashboard/integrations) under the same public key the app uses. Items are looked up by **exact name** (case-insensitive); badges by name + `type === "BADGE"`; mission items by name + `type === "ITEM"`.
 
-| Item name          | Type  | When granted                                                |
-| ------------------ | ----- | ----------------------------------------------------------- |
-| `Fuse`             | ITEM  | Puzzle 1 complete                                           |
-| `Wrench`           | ITEM  | Puzzle 2 complete                                           |
-| `Access Card`      | ITEM  | Puzzle 5 complete                                           |
-| `Power Restored`   | BADGE | Room A complete                                             |
-| `Signal Recovered` | BADGE | Room B complete                                             |
-| `Airlock Engineer` | BADGE | Puzzle 6 complete                                           |
-| `Station Survivor` | BADGE | Puzzle 7 complete (escape)                                  |
-| `Warp Speed`       | BADGE | Puzzle 7 complete with `completionTime < 180s`              |
-| `Trash Digger`     | BADGE | First click on a `?screen=decoy` asset                      |
-| `Button Masher`    | BADGE | 4 wrong attempts on any single puzzle (per-puzzle counter)  |
+| Item name          | Type  | When granted                                               |
+| ------------------ | ----- | ---------------------------------------------------------- |
+| `Fuse`             | ITEM  | Puzzle 1 complete                                          |
+| `Wrench`           | ITEM  | Puzzle 2 complete                                          |
+| `Access Card`      | ITEM  | Puzzle 5 complete                                          |
+| `Power Restored`   | BADGE | Room A complete                                            |
+| `Signal Recovered` | BADGE | Room B complete                                            |
+| `Airlock Engineer` | BADGE | Puzzle 6 complete                                          |
+| `Station Survivor` | BADGE | Puzzle 7 complete (escape)                                 |
+| `Warp Speed`       | BADGE | Puzzle 7 complete with `completionTime < 180s`             |
+| `Trash Digger`     | BADGE | First click on a `?screen=decoy` asset                     |
+| `Trash Panda`      | BADGE | Visitor owns every ecosystem ITEM (rewards + all artifacts) |
+| `Button Masher`    | BADGE | 4 wrong attempts on any single puzzle (per-puzzle counter) |
 
 The ecosystem item's `image_path` is rendered inside the puzzle complete cards and the inventory modal.
 

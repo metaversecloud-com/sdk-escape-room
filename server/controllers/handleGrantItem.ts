@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import {
+  checkTrashPandaBadge,
   errorHandler,
   fireToast,
   getCachedInventoryItems,
@@ -79,7 +80,19 @@ export const handleGrantItem = async (req: Request, res: Response) => {
       });
     }
 
-    const updatedInventory = getVisitorInventory(visitor.inventoryItems || []);
+    let updatedInventory = getVisitorInventory(visitor.inventoryItems || []);
+
+    // After a fresh grant, check whether the player now owns every ecosystem
+    // ITEM — that's the trigger for the **Trash Panda** badge. Skip on
+    // re-clicks (alreadyHad) since the inventory didn't change.
+    if (!alreadyHad) {
+      const awarded = await checkTrashPandaBadge({ credentials, visitor, visitorInventory: updatedInventory });
+      if (awarded) {
+        await visitor.fetchInventoryItems();
+        updatedInventory = getVisitorInventory(visitor.inventoryItems || []);
+      }
+    }
+
     const item = updatedInventory.items.find((i) => i.name === itemName) || null;
 
     return res.json({

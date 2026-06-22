@@ -6,11 +6,13 @@ import {
   World,
   checkEscapeBadges,
   checkSessionExpiration,
+  checkTrashPandaBadge,
   errorHandler,
   fireToast,
   getCachedInventoryItems,
   getCredentials,
   getVisitor,
+  getVisitorInventory,
   teleportPlayer,
 } from "@utils/index.js";
 import { toasts } from "@shared/copy/toasts.js";
@@ -59,19 +61,20 @@ const ROOM_TRANSITIONS: RoomTransition[] = [
   },
 ];
 
+/** Returns true if a new item was granted (caller may want to refresh inventory). */
 const applyInventoryReward = async (
   credentials: Credentials,
   visitor: VisitorInterface,
   visitorInventory: VisitorInventory,
   puzzleNumber: PuzzleNumber,
-) => {
+): Promise<boolean> => {
   const itemName = PUZZLE_REWARDS[puzzleNumber];
-  if (!itemName) return;
-  if (visitorInventory.items.some((i) => i.name === itemName)) return;
+  if (!itemName) return false;
+  if (visitorInventory.items.some((i) => i.name === itemName)) return false;
 
   const inventoryItems = await getCachedInventoryItems({ credentials });
   const match = inventoryItems.find((item: any) => item.name === itemName && item.type === "ITEM");
-  if (!match) return;
+  if (!match) return false;
 
   await visitor.grantInventoryItem(match, 1);
   await fireToast({
@@ -80,6 +83,7 @@ const applyInventoryReward = async (
     title: toasts.itemEarned.title,
     text: toasts.itemEarned.textTemplate.replace("{item}", itemName),
   });
+  return true;
 };
 
 export const handleSubmitPuzzle = async (req: Request, res: Response) => {
@@ -125,7 +129,17 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     game.puzzlesCompleted[puzzleNumber] = true;
     // Drop the in-progress draft for this puzzle — it's no longer "in progress".
     if (game.puzzleDrafts) delete game.puzzleDrafts[puzzleNumber];
-    await applyInventoryReward(credentials, visitor, visitorInventory, puzzleNumber);
+    const granted = await applyInventoryReward(credentials, visitor, visitorInventory, puzzleNumber);
+
+    // If a fresh item just landed (puzzles 1/2/5 grant Fuse/Wrench/Access
+    // Card), check whether the player now owns every ecosystem ITEM — that's
+    // the **Trash Panda** trigger. Needs a fresh inventory snapshot because
+    // `visitorInventory` above is from before applyInventoryReward.
+    if (granted) {
+      await visitor.fetchInventoryItems();
+      const freshInventory = getVisitorInventory(visitor.inventoryItems || []);
+      await checkTrashPandaBadge({ credentials, visitor, visitorInventory: freshInventory });
+    }
 
     // Generic puzzle-solved toast. Puzzle 7 gets the "escaped" toast below
     // instead — that beat is more meaningful as the game-end moment.

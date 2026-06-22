@@ -14,6 +14,10 @@ export const BADGES = {
   WARP_SPEED: "Warp Speed",
   // Awarded by /discover-decoy when a player investigates a decoy/trash asset.
   TRASH_DIGGER: "Trash Digger",
+  // Awarded by `checkTrashPandaBadge` once the player owns every ecosystem
+  // ITEM (puzzle rewards + artifacts). Checked after each successful item
+  // grant in /grant-item and /submit-puzzle.
+  TRASH_PANDA: "Trash Panda",
   // Awarded by /wrong-attempt when wrongAttempts on any single puzzle crosses
   // BUTTON_MASHER_THRESHOLD.
   BUTTON_MASHER: "Button Masher",
