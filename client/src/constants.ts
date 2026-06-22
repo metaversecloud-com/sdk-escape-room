@@ -121,7 +121,10 @@ export const content = {
 
   artifactGrant: {
     loading: { title: "Examining artifact…", message: "Adding it to your inventory." },
-    newGrant: { title: "Artifact Acquired", message: "Added to your inventory. Check the Artifacts tab to revisit it." },
+    newGrant: {
+      title: "Artifact Acquired",
+      message: "Added to your inventory. Check the Artifacts tab to revisit it.",
+    },
     alreadyHad: { title: "Already in Your Inventory", message: "You've already picked this one up." },
     notFound: { title: "Artifact Unavailable", message: "This artifact isn't configured in the ecosystem yet." },
     locked: {
@@ -167,6 +170,24 @@ export const content = {
       { label: "Airlock", detail: "Override to escape", color: "#9b7bff" },
     ],
     startButton: "Start the Game",
+  },
+
+  /* ─── Mid-game start terminal (SessionInProgressCard) ────────────────
+     Shown when the player clicks the start terminal AFTER they've already
+     started a run. Lets them restart (wipes progress + new session) or
+     teleport back to the room they should currently be in.
+  */
+
+  sessionInProgress: {
+    eyebrow: "Mission Underway",
+    title: "Session in Progress",
+    message: "You're already running. Jump back to where you should be, or wipe your progress and start over.",
+    currentRoomLabel: "Current room",
+    teleportButton: "Teleport me back",
+    restartButton: "Restart from scratch",
+    // Confirmation modal copy gating the destructive restart.
+    restartConfirmTitle: "Restart Game?",
+    restartConfirmMessage: "Your current progress will be wiped and you'll be sent back to Room 1.",
   },
 
   /* ─── Post-game exit / congrats screen (ExitCongratsCard) ──────────── */
@@ -393,7 +414,7 @@ export const content = {
         itemNotification: "Access card added to your inventory!",
         codeLabel: "Partial Airlock Code Revealed:",
         codeDisplay: "7 _ 3 _",
-        teaser: "Check your inventory to see the Access Card. Proceed to Room 3!",
+        teaser: "Check your inventory to see the Access Card.",
       },
     },
 

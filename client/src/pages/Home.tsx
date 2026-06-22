@@ -26,6 +26,7 @@ import {
   Room3Puzzle1,
   Room3Puzzle2,
   RoomIntroCard,
+  SessionInProgressCard,
   StartGameCard,
   StatusBar,
 } from "@/components";
@@ -234,11 +235,19 @@ export const Home = () => {
     setGameState(dispatch, response.data);
   };
 
+  // Sticky for the lifetime of this iframe — flips true the first time the
+  // player hits the Start button so the post-click render shows the Room 1
+  // intro instead of the SessionInProgressCard. A separate click on the
+  // start terminal later opens a fresh iframe (justStarted starts false
+  // again), which is when we want the in-progress restart/teleport options.
+  const [justStarted, setJustStarted] = useState(false);
+
   const startGame = async () => {
     setIsLoading(true);
     try {
       const res = await backendAPI.post("/start-game");
       setGameState(dispatch, res.data);
+      setJustStarted(true);
     } catch (error) {
       setErrorMessage(dispatch, error as ErrorType);
     }
@@ -250,6 +259,23 @@ export const Home = () => {
     try {
       const res = await backendAPI.post("/exit");
       setGameState(dispatch, res.data);
+    } catch (error) {
+      setErrorMessage(dispatch, error as ErrorType);
+    }
+    setIsLoading(false);
+  };
+
+  // Teleport the player back to the room they should currently be in
+  // (`currentRoom` = progression). Reuses the same /teleport endpoint the
+  // in-world teleport pads use; the server checks isReady (always true for
+  // the player's own currentRoom) and updates physicalRoom on success.
+  const teleportToCurrentRoom = async () => {
+    const target = visitorSession?.currentRoom;
+    if (!target) return;
+    setIsLoading(true);
+    try {
+      const res = await backendAPI.get("/teleport", { params: { room: target } });
+      setGameState(dispatch, { ...res.data, hasSessionExpired: res.data?.hasSessionExpired === true });
     } catch (error) {
       setErrorMessage(dispatch, error as ErrorType);
     }
@@ -530,12 +556,28 @@ export const Home = () => {
 
         {screen === "decoy" && <DecoyCard state={decoyState} />}
 
-        {/* Room intro cards: the start terminal opens room 1's intro; each
-            room has its own in-world intro terminal at `?screen=roomN` that
-            opens the matching card. Room 2 and 3 intros also fire when a
-            teleport call to that room succeeds (handled in the teleport
-            branch above). */}
-        {(screen === "start" || screen === "room1") && <RoomIntroCard roomId={1} />}
+        {/* Start terminal mid-game. Right after the player hits Start in this
+            iframe we keep showing the Room 1 intro (justStarted). A fresh
+            click on the start terminal later opens a new iframe with
+            justStarted=false → SessionInProgressCard with restart + teleport
+            options. */}
+        {screen === "start" &&
+          (justStarted ? (
+            <RoomIntroCard roomId={1} />
+          ) : (
+            <SessionInProgressCard
+              currentRoom={visitorSession?.currentRoom}
+              isLoading={isLoading}
+              onTeleportBack={teleportToCurrentRoom}
+              onRestart={startGame}
+            />
+          ))}
+
+        {/* Room intro cards: each room has its own in-world intro terminal at
+            `?screen=roomN` that opens the matching card. Room 2 and 3 intros
+            also fire when a teleport call to that room succeeds (handled in
+            the teleport branch above). */}
+        {screen === "room1" && <RoomIntroCard roomId={1} />}
         {screen === "room2" && <RoomIntroCard roomId={2} />}
         {screen === "room3" && <RoomIntroCard roomId={3} />}
 

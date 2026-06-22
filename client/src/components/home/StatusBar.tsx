@@ -15,7 +15,7 @@ export const StatusBar = ({ timer, currentRoom, onOpenInventory, hasStarted }: S
     <div className="card-details">
       <div className="flex items-center justify-between">
         <div className="flex-col">
-          <p className="p2">
+          <p className="p2 er-text--red">
             {statusBar.timerLabel} {timer}
           </p>
           <p className="p2">

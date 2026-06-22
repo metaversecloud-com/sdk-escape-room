@@ -7,6 +7,7 @@ export * from "./InventoryPanel.js";
 export * from "./Leaderboard.js";
 export * from "./RefRow.js";
 export * from "./RoomIntroCard.js";
+export * from "./SessionInProgressCard.js";
 export * from "./StartGameCard.js";
 export * from "./StatusBar.js";
 export * from "./StatusPill.js";
