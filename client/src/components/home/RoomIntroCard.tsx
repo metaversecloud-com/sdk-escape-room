@@ -1,5 +1,6 @@
 import { content } from "@/constants";
 import { StatusPill } from "./StatusPill";
+import commanderVegaImg from "@/assets/CommanderVega.png";
 
 export const RoomIntroCard = ({ children, roomId }: { children?: React.ReactNode; roomId: number }) => {
   const room = content.rooms[roomId as keyof typeof content.rooms];
@@ -14,7 +15,15 @@ export const RoomIntroCard = ({ children, roomId }: { children?: React.ReactNode
         <h3 className="card-title er-title-gold">
           Room {roomId}: {room?.title}
         </h3>
-        <p className="p2 er-text">{room?.description}</p>
+        <div className="flex items-start gap-3">
+          <img
+            src={commanderVegaImg}
+            alt="Commander Vega"
+            className="flex-shrink-0 rounded-lg"
+            style={{ width: 96, height: 96, objectFit: "cover" }}
+          />
+          <p className="p2 er-text">{room?.description}</p>
+        </div>
         {pills && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {pills.map((pill) => (

@@ -23,9 +23,21 @@ interface Draft {
   codeInput: string;
 }
 
-const EXPECTED_CODE = "7435";
+const EXPECTED_CODE = "3967";
 
 const KEYPAD_DIGITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
+
+/**
+ * Per-slot color hints. Each Key Item granted along the way is themed to one
+ * of these — the player matches the marked digit on the item to its slot.
+ * Order is left → right: blue, orange, green, pink.
+ */
+const SLOT_STYLES: Array<{ border: string; bg: string; text: string; glow: string }> = [
+  { border: "#60a5fa", bg: "rgba(96,165,250,0.12)", text: "#bfdbfe", glow: "0 0 18px rgba(96,165,250,0.55)" },
+  { border: "#fb923c", bg: "rgba(251,146,60,0.12)", text: "#fed7aa", glow: "0 0 18px rgba(251,146,60,0.55)" },
+  { border: "#4ade80", bg: "rgba(74,222,128,0.12)", text: "#bbf7d0", glow: "0 0 18px rgba(74,222,128,0.55)" },
+  { border: "#f472b6", bg: "rgba(244,114,182,0.12)", text: "#fbcfe8", glow: "0 0 18px rgba(244,114,182,0.55)" },
+];
 
 export const Room3Puzzle2 = ({ refreshGameState }: Room3Puzzle2Props) => {
   const dispatch = useContext(GlobalDispatchContext);
@@ -84,16 +96,31 @@ export const Room3Puzzle2 = ({ refreshGameState }: Room3Puzzle2Props) => {
         </div>
       )}
 
-      <input
-        id="final-code"
-        className="w-full text-center text-2xl tracking-widest bg-black text-green-400 border border-zinc-600 rounded-lg py-2"
-        style={{ textShadow: "0 0 8px rgba(34,197,94,0.7)" }}
-        type="text"
-        maxLength={4}
-        value={codeInput}
-        placeholder={c.placeholder}
-        onChange={(e) => setCodeInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
-      />
+      {/* Four color-coded slots. Each Key Item is themed to one color; the
+          player matches the item's marked digit to its slot. */}
+      <div className="flex justify-center gap-3 my-2" aria-label="Airlock code entry">
+        {SLOT_STYLES.map((s, i) => {
+          const digit = codeInput[i];
+          return (
+            <div
+              key={i}
+              className="flex items-center justify-center rounded-lg font-mono font-bold"
+              style={{
+                width: 64,
+                height: 80,
+                border: `2px solid ${s.border}`,
+                background: s.bg,
+                color: s.text,
+                fontSize: "2.5rem",
+                textShadow: digit ? s.glow : undefined,
+                boxShadow: digit ? `inset 0 0 14px ${s.bg}` : undefined,
+              }}
+            >
+              {digit ?? ""}
+            </div>
+          );
+        })}
+      </div>
 
       <div className="my-2 grid grid-cols-3 gap-3 mx-auto">
         {KEYPAD_DIGITS.map((num) => (

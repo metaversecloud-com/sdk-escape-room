@@ -17,9 +17,10 @@ interface Args {
  * ecosystem entry (puzzle rewards + artifacts). Ignores BADGE-typed entries.
  *
  * Call after any item grant — handleGrantItem (artifact pickup) and
- * handleSubmitPuzzle (Fuse / Wrench / Access Card rewards). Safe to call
- * on every submit; short-circuits cheaply if the badge is already owned
- * or the player hasn't collected the full set yet.
+ * handleSubmitPuzzle (Battery / Fuse / Wrench / Circuit Chip rewards from
+ * puzzles 1/2/3/5). Safe to call on every submit; short-circuits cheaply
+ * if the badge is already owned or the player hasn't collected the full
+ * set yet.
  *
  * `awardBadge` itself short-circuits on already-owned, so the toast fires
  * exactly once.

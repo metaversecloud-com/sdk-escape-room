@@ -285,7 +285,7 @@ export const content = {
     1: {
       title: "Power Console",
       description:
-        "Set the three dials to the correct color sequence. Use the crew and reference panels to determine the correct sequence.",
+        "Main power is down. Set the three dials to the crew’s restart sequence — check the records and reference panel.",
       howToPlay: "Click each control to cycle through available colors.",
       controlLabelPrefix: "Control", // → "Control 1", "Control 2", ...
       currentPrefix: "Current:",
@@ -296,15 +296,12 @@ export const content = {
       },
       complete: {
         title: "Power Bay Secure",
+        heading: "BATTERY ACQUIRED",
         flavor: "Electrical cabinet unlocked.",
         dialogueSpeaker: "Commander Vega",
         dialogue: "“Nice work, crew. Keep momentum!”",
-        itemHtml: "You obtained a <strong>Fuse</strong>! (Serial: 74A1)",
-        inventoryHint:
-          "Check your inventory to view details about this item and how it might be used in upcoming puzzles.",
-        // `itemName` is used both to look up the inventory image and as the <img alt>.
-        itemName: "Fuse",
-        artFrameClass: "er-art-frame--fuse",
+        body: "A Battery has been added to your inventory",
+        itemName: "Battery",
       },
     },
 
@@ -332,9 +329,9 @@ export const content = {
       },
       complete: {
         title: "Reactor Online",
-        body: "Reactor sequence locked. Wrench (26B5) added to your inventory.”",
-        itemName: "Wrench",
-        artFrameClass: "er-art-frame--wrench",
+        heading: "FUSE ACQUIRED",
+        body: "Reactor sequence locked. Fuse added to your inventory.",
+        itemName: "Fuse",
       },
     },
 
@@ -353,7 +350,9 @@ export const content = {
       },
       complete: {
         title: "Communication Signal Aligned",
-        body: "The satellites are now in perfect alignment. Communication restored!",
+        heading: "WRENCH ACQUIRED",
+        body: "The satellites are now in perfect alignment. Communication restored! Wrench added to your inventory.",
+        itemName: "Wrench",
       },
     },
 
@@ -410,11 +409,9 @@ export const content = {
       },
       complete: {
         title: "Communications Stabilized",
-        heading: "ACCESS CARD ACQUIRED",
-        itemNotification: "Access card added to your inventory!",
-        codeLabel: "Partial Airlock Code Revealed:",
-        codeDisplay: "7 _ 3 _",
-        teaser: "Check your inventory to see the Access Card.",
+        heading: "CIRCUIT CHIP ACQUIRED",
+        body: "A Circuit Chip has been added to your inventory!",
+        itemName: "Circuit Chip",
       },
     },
 
@@ -444,8 +441,7 @@ export const content = {
     7: {
       title: "Final Airlock Code",
       description: "Enter final 4-digit code",
-      hint: "Check your Key Inventory items. For each missing number, try using the number at the corresponding spot on the items.",
-      placeholder: "7 _ 3 _",
+      hint: "Each Key Item has one marked digit — enter it in the slot that matches that item's color.",
       submitLabel: "Submit Code",
       clearLabel: "C",
       backspaceLabel: "⌫",

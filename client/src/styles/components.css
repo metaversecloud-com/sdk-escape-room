@@ -260,15 +260,6 @@ body {
   border-radius: 12px;
   padding: 1rem;
   border: 1px solid;
-}
-
-.er-art-frame--fuse {
-  background: radial-gradient(circle at 40% 30%, rgba(108, 210, 255, 0.12), transparent 50%), rgba(14, 24, 44, 0.9);
-  border-color: rgba(108, 240, 190, 0.45);
-  box-shadow: 0 10px 22px rgba(108, 240, 190, 0.18);
-}
-
-.er-art-frame--wrench {
   background: radial-gradient(circle at 40% 30%, rgba(255, 200, 120, 0.12), transparent 50%), rgba(14, 24, 44, 0.9);
   border-color: rgba(255, 200, 120, 0.45);
   box-shadow: 0 10px 22px rgba(255, 200, 120, 0.18);
@@ -911,41 +902,6 @@ body {
 .er-clue-text {
   color: var(--er-text-muted);
   font-style: italic;
-}
-
-.er-signal-bars {
-  display: flex;
-  justify-content: center;
-  gap: 5px;
-  margin: 1.2rem 0;
-}
-
-.er-signal-bar {
-  width: 10px;
-  height: 30px;
-  background: #333;
-  border-radius: 3px;
-  animation: erSignalRise 0.5s ease-out forwards;
-}
-
-.er-signal-bar.active {
-  background: var(--er-green);
-}
-
-.er-signal-bar:nth-child(1) {
-  animation-delay: 0.1s;
-}
-.er-signal-bar:nth-child(2) {
-  animation-delay: 0.2s;
-}
-.er-signal-bar:nth-child(3) {
-  animation-delay: 0.3s;
-}
-.er-signal-bar:nth-child(4) {
-  animation-delay: 0.4s;
-}
-.er-signal-bar:nth-child(5) {
-  animation-delay: 0.5s;
 }
 
 @keyframes erPulse {

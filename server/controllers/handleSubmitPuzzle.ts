@@ -29,9 +29,10 @@ const isPuzzleNumber = (value: unknown): value is PuzzleNumber =>
 // solving it. The item is looked up by name and granted via the SDK; the
 // visitor's actual inventory is the source of truth.
 const PUZZLE_REWARDS: Partial<Record<PuzzleNumber, string>> = {
-  1: "Fuse",
-  2: "Wrench",
-  5: "Access Card",
+  1: "Battery",
+  2: "Fuse",
+  3: "Wrench",
+  5: "Circuit Chip",
 };
 
 interface RoomTransition {
@@ -131,10 +132,11 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     if (game.puzzleDrafts) delete game.puzzleDrafts[puzzleNumber];
     const granted = await applyInventoryReward(credentials, visitor, visitorInventory, puzzleNumber);
 
-    // If a fresh item just landed (puzzles 1/2/5 grant Fuse/Wrench/Access
-    // Card), check whether the player now owns every ecosystem ITEM — that's
-    // the **Trash Panda** trigger. Needs a fresh inventory snapshot because
-    // `visitorInventory` above is from before applyInventoryReward.
+    // If a fresh item just landed (puzzles 1/2/3/5 grant Battery / Fuse /
+    // Wrench / Circuit Chip), check whether the player now owns every
+    // ecosystem ITEM — that's the **Trash Panda** trigger. Needs a fresh
+    // inventory snapshot because `visitorInventory` above is from before
+    // applyInventoryReward.
     if (granted) {
       await visitor.fetchInventoryItems();
       const freshInventory = getVisitorInventory(visitor.inventoryItems || []);

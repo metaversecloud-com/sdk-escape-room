@@ -5,8 +5,8 @@ A multi-room escape-room game for [Topia](https://topia.io) worlds. Players have
 ## How a session flows
 
 1. The player clicks the **Start Terminal** asset (drawer with `?screen=start`) and hits **Start the Game**. The server records `startTime`, sets `currentRoom: "A"`, and teleports them to **Room A**.
-2. **Room A — Power Bay**: solve **Puzzle 1** (color-sequence panel, grants the **Fuse** inventory item) and **Puzzle 2** (timed switch order, grants the **Wrench**). Completing both auto-advances the player to **Room B** and awards the **Power Restored** badge.
-3. **Room B — Comms Deck**: **Puzzle 3** (satellite alignment), **Puzzle 4** (transmission fragments — sliding-tile puzzle), **Puzzle 5** (decode the scrambled words and operate the valves in order, grants the **Access Card**). Completing all three advances to **Room C** and awards **Signal Recovered**.
+2. **Room A — Power Bay**: solve **Puzzle 1** (color-sequence panel, grants the **Battery** inventory item) and **Puzzle 2** (timed switch order, grants the **Fuse**). Completing both auto-advances the player to **Room B** and awards the **Power Restored** badge.
+3. **Room B — Comms Deck**: **Puzzle 3** (satellite alignment, grants the **Wrench**), **Puzzle 4** (transmission fragments — sliding-tile puzzle), **Puzzle 5** (decode the scrambled words and operate the valves in order, grants the **Circuit Chip**). Completing all three advances to **Room C** and awards **Signal Recovered**.
 4. **Room C — Airlock Control**: **Puzzle 6** (circuit-restoration node graph, awards **Airlock Engineer**) and **Puzzle 7** (the final 4-digit airlock code, derived from inventory items, awards **Station Survivor** and writes a leaderboard entry).
 5. If the 30-minute timer expires before the player escapes, the session is marked `timedOut`, the player is teleported back to the start, and the UI surfaces a "Time has run out" state.
 
@@ -71,9 +71,10 @@ Created in the [Topia dashboard](https://topia.io/t/dashboard/integrations) unde
 
 | Item name          | Type  | When granted                                               |
 | ------------------ | ----- | ---------------------------------------------------------- |
-| `Fuse`             | ITEM  | Puzzle 1 complete                                          |
-| `Wrench`           | ITEM  | Puzzle 2 complete                                          |
-| `Access Card`      | ITEM  | Puzzle 5 complete                                          |
+| `Battery`          | ITEM  | Puzzle 1 complete                                          |
+| `Fuse`             | ITEM  | Puzzle 2 complete                                          |
+| `Wrench`           | ITEM  | Puzzle 3 complete                                          |
+| `Circuit Chip`     | ITEM  | Puzzle 5 complete                                          |
 | `Power Restored`   | BADGE | Room A complete                                            |
 | `Signal Recovered` | BADGE | Room B complete                                            |
 | `Airlock Engineer` | BADGE | Puzzle 6 complete                                          |

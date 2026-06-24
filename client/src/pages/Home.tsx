@@ -12,12 +12,8 @@ import {
   Leaderboard,
   LockedState,
   PageContainer,
-  Room1Puzzle1Complete,
-  Room1Puzzle2Complete,
-  Room2Puzzle1Complete,
+  PuzzleCompleteCard,
   Room2Puzzle2Complete,
-  Room2Puzzle3Complete,
-  Room3Puzzle1Complete,
   Room1Puzzle1,
   Room1Puzzle2,
   Room2Puzzle1,
@@ -583,17 +579,25 @@ export const Home = () => {
 
         {/* Room 1 — Puzzles 1 & 2 */}
         {screen === "puzzle1" &&
-          (puzzlesCompleted?.[1] ? <Room1Puzzle1Complete /> : <Room1Puzzle1 refreshGameState={refreshGameState} />)}
+          (puzzlesCompleted?.[1] ? (
+            <PuzzleCompleteCard {...content.puzzles[1].complete} />
+          ) : (
+            <Room1Puzzle1 refreshGameState={refreshGameState} />
+          ))}
 
         {screen === "puzzle2" &&
-          (puzzlesCompleted?.[2] ? <Room1Puzzle2Complete /> : <Room1Puzzle2 refreshGameState={refreshGameState} />)}
+          (puzzlesCompleted?.[2] ? (
+            <PuzzleCompleteCard {...content.puzzles[2].complete} />
+          ) : (
+            <Room1Puzzle2 refreshGameState={refreshGameState} />
+          ))}
 
         {/* Room 2 — Puzzles 3, 4, 5 */}
         {screen === "puzzle3" &&
           (!room1Done ? (
             <LockedState title={states.room2Locked.title} message={states.room2Locked.message} />
           ) : puzzlesCompleted?.[3] ? (
-            <Room2Puzzle1Complete />
+            <PuzzleCompleteCard {...content.puzzles[3].complete} />
           ) : (
             <Room2Puzzle1 refreshGameState={refreshGameState} />
           ))}
@@ -611,7 +615,7 @@ export const Home = () => {
           (!puzzlesCompleted?.[4] ? (
             <LockedState title={states.puzzle5Locked.title} message={states.puzzle5Locked.message} />
           ) : puzzlesCompleted?.[5] ? (
-            <Room2Puzzle3Complete />
+            <PuzzleCompleteCard {...content.puzzles[5].complete} />
           ) : (
             <Room2Puzzle3 refreshGameState={refreshGameState} />
           ))}
@@ -621,7 +625,7 @@ export const Home = () => {
           (!room2Done ? (
             <LockedState title={states.room3Locked.title} message={states.room3Locked.message} />
           ) : puzzlesCompleted?.[6] ? (
-            <Room3Puzzle1Complete />
+            <PuzzleCompleteCard {...content.puzzles[6].complete} />
           ) : (
             <Room3Puzzle1 refreshGameState={refreshGameState} />
           ))}

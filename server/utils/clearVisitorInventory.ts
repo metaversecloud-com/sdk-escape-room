@@ -6,9 +6,10 @@ import { getVisitorInventory } from "./getVisitorInventory.js";
 /**
  * Wipe all non-badge inventory items from the visitor.
  *
- * Called from handleStartGame so puzzle rewards (Fuse / Wrench / Access Card)
- * from a previous run don't leak into the new session. Badges are persistent
- * achievements and are deliberately skipped.
+ * Called from handleStartGame so puzzle rewards (Battery / Fuse / Wrench /
+ * Circuit Chip) and any collected artifacts from a previous run don't leak
+ * into the new session. Badges are persistent achievements and are
+ * deliberately skipped.
  *
  * Approach: count ACTIVE instances per ecosystem item name from the visitor's
  * current inventory, look up the matching ecosystem item, then call

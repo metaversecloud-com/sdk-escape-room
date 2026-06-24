@@ -1,5 +1,6 @@
 import { content } from "@/constants";
 import { StatusPill } from "./StatusPill";
+import commanderVegaImg from "@/assets/CommanderVega.png";
 
 interface StartGameCardProps {
   onStart: () => Promise<void>;
@@ -18,7 +19,15 @@ export const StartGameCard = ({ onStart, isLoading }: StartGameCardProps) => (
         </h3>
       </div>
 
-      <p className="p2 er-text">{briefing.intro}</p>
+      <div className="flex items-start gap-3">
+        <img
+          src={commanderVegaImg}
+          alt="Commander Vega"
+          className="flex-shrink-0 rounded-lg"
+          style={{ width: 96, height: 96, objectFit: "cover" }}
+        />
+        <p className="p2 er-text">{briefing.intro}</p>
+      </div>
 
       <div className="er-inset-panel">
         <p className="p2 er-text-muted" style={{ lineHeight: 1.6 }}>
