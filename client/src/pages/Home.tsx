@@ -41,12 +41,13 @@ const { states, exitConfirmation, exitButton, teleport } = content;
 
 /**
  * Artifact / collectible screens. Each maps to an inventory item with the
- * same name minus spaces — e.g. `Room1Artifact` → item "Room 1 Artifact".
+ * same name minus spaces — e.g. `Room1Artifact1` → item "Room 1 Artifact 1".
  * Clicking the asset grants the matching item (idempotently) and shows it
  * to the player.
  */
 const ARTIFACT_SCREENS = [
-  "Room1Artifact",
+  "Room1Artifact1",
+  "Room1Artifact2",
   "CrewPortrait1",
   "CrewPortrait2",
   "CrewPortrait3",
@@ -102,7 +103,7 @@ const isArtifactScreen = (screen: ScreenType): screen is ArtifactScreen =>
 /**
  * Derives the ecosystem inventory item name from a `?screen=` value by
  * inserting spaces around camelCase boundaries and digit boundaries:
- *   Room1Artifact   → "Room 1 Artifact"
+ *   Room1Artifact1  → "Room 1 Artifact 1"
  *   CrewPortrait1   → "Crew Portrait 1"
  *   AlphaStation    → "Alpha Station"
  */

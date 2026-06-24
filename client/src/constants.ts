@@ -309,7 +309,7 @@ export const content = {
     2: {
       title: "Reactor Switch Array",
       description:
-        "Reactor priming follows crew priority order. Translate crew priority to channel numbers, then run the remaining switch for the system check. Flip the breaker switches in the correct sequence before the system lockout.",
+        "Reactor priming follows a fixed safety order. Flip the four breakers in the only sequence that satisfies the Priming Protocol. Sequence them before lockout.",
       timerPrefix: "Time Left:", // → "Time Left: 8s"
       currentOrderLabel: "Current Order:",
       noneLabel: "None",

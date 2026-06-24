@@ -23,7 +23,7 @@ Every interactive station asset opens the same drawer iframe; each asset's drawe
 | `leaderboard`         | Standalone leaderboard view                                                                                                                |
 | `exit`                | Exit confirmation                                                                                                                          |
 | `decoy`               | Trash-discovery card; awards the **Trash Digger** badge on first click                                                                     |
-| Artifact screens      | `Room1Artifact`, `CrewPortrait1`-`3`, `AlphaStation`, `BetaStation`, `OmegaStation`, `Room3Artifact` — grant the matching collectible item |
+| Artifact screens      | `Room1Artifact1`, `Room1Artifact2`, `CrewPortrait1`-`3`, `AlphaStation`, `BetaStation`, `OmegaStation`, `Room3Artifact` — grant the matching collectible item |
 
 Required dropped-asset unique names (see "Required Assets" below) define the rooms' physical spawn points and the leaderboard's host asset.
 

@@ -22,7 +22,7 @@ interface Draft {
   selectedOrder: number[];
 }
 
-const CORRECT_ORDER = [3, 1, 4, 2];
+const CORRECT_ORDER = [3, 4, 1, 2];
 const TIME_LIMIT_SECONDS = 8;
 
 const SWITCH_BASE_BG = "linear-gradient(180deg, #151f33 0%, #0f1726 100%)";
@@ -112,8 +112,7 @@ export const Room1Puzzle2 = ({ refreshGameState }: Room1Puzzle2Props) => {
       const owned = response.data?.badgesOwned as string[] | undefined;
       const failed = response.data?.badgesFailed as string[] | undefined;
       if (badges?.length) setSuccessMessage(c.messages.badgeAwardedTemplate.replace("{badge}", badges.join(", ")));
-      else if (owned?.length)
-        setSuccessMessage(c.messages.badgeAlreadyTemplate.replace("{badge}", owned.join(", ")));
+      else if (owned?.length) setSuccessMessage(c.messages.badgeAlreadyTemplate.replace("{badge}", owned.join(", ")));
       else if (failed?.length) setSuccessMessage(c.messages.badgeNotAwarded);
       else setSuccessMessage(c.messages.primedFallback);
       await refreshGameState();

@@ -34,7 +34,8 @@ const SCREEN_REQUIRED_ROOM: Record<string, number> = {
 };
 
 const ARTIFACT_SCREENS = new Set([
-  "Room1Artifact",
+  "Room1Artifact1",
+  "Room1Artifact2",
   "CrewPortrait1",
   "CrewPortrait2",
   "CrewPortrait3",
