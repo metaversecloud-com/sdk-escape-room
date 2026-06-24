@@ -22,7 +22,7 @@ interface Draft {
   selectedOrder: number[];
 }
 
-const CORRECT_ORDER = [3, 4, 1, 2];
+const CORRECT_ORDER = [4, 3, 1, 2];
 const TIME_LIMIT_SECONDS = 8;
 
 const SWITCH_BASE_BG = "linear-gradient(180deg, #151f33 0%, #0f1726 100%)";
