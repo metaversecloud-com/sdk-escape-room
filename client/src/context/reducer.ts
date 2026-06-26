@@ -14,7 +14,6 @@ const globalReducer = (state: InitialState, action: ActionType) => {
         isAdmin: payload.isAdmin,
         visitorData: payload.visitorData,
         droppedAsset: payload.droppedAsset,
-        worldConfig: payload.worldConfig,
         leaderboard: payload.leaderboard,
         sessionKey: payload.sessionKey,
         uniqueName: payload.uniqueName,

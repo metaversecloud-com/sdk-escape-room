@@ -211,10 +211,6 @@ export const content = {
       title: "Time has run out",
       message: "Click on the start terminal to start a new game.",
     },
-    noActiveSession: {
-      title: "No Active Session",
-      message: "Start the game first before using the exit terminal.",
-    },
     gameNotStarted: {
       title: "Game Not Started",
       message: "You must begin at the start terminal before accessing any puzzle.",

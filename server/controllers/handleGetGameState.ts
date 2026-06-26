@@ -1,16 +1,15 @@
 import { Request, Response } from "express";
 import {
-  DroppedAsset,
-  World,
   checkSessionExpiration,
   errorHandler,
   getBadges,
   getCredentials,
   getDroppedAsset,
+  getKeyAsset,
   getLeaderboard,
   getVisitor,
 } from "@utils/index.js";
-import { KeyAssetDataObject, WorldDataObject } from "../types/index.js";
+import { KeyAssetDataObject } from "../types/index.js";
 
 export const handleGetGameState = async (req: Request, res: Response) => {
   try {
@@ -21,25 +20,9 @@ export const handleGetGameState = async (req: Request, res: Response) => {
 
     const droppedAsset = await getDroppedAsset(credentials);
 
-    // World config (per-scene). Tolerate missing data — first run of an asset.
-    const world = World.create(urlSlug, { credentials });
-    let worldData: WorldDataObject | null = null;
-    try {
-      worldData = (await world.fetchDataObject()) as WorldDataObject;
-    } catch {
-      // No world config yet — handleStartGame writes it on first start.
-    }
-
-    // Leaderboard lives on the key asset, which is registered in the world config.
-    const keyAssetId = worldData?.[sceneDropId]?.keyAssetId;
-    let leaderboard: ReturnType<typeof getLeaderboard> = [];
-    if (keyAssetId) {
-      const keyAsset = DroppedAsset.create(keyAssetId, urlSlug, {
-        credentials: { ...credentials, assetId: keyAssetId },
-      });
-      await keyAsset.fetchDataObject();
-      leaderboard = getLeaderboard((keyAsset.dataObject as KeyAssetDataObject | null)?.leaderboard);
-    }
+    // Leaderboard lives on the key asset (start terminal). Look it up by uniqueName within the scene
+    const keyAsset = await getKeyAsset(credentials);
+    const leaderboard = getLeaderboard((keyAsset?.dataObject as KeyAssetDataObject | null)?.leaderboard);
 
     // Visitor (data + inventory). getVisitor guarantees session defaults exist
     // and builds visitorInventory with both badges and items.
@@ -63,7 +46,6 @@ export const handleGetGameState = async (req: Request, res: Response) => {
       droppedAsset,
       sessionKey,
       visitorData: updatedVisitorDataObject?.[sessionKey] || session,
-      worldConfig: worldData?.[sceneDropId] || {},
       uniqueName: droppedAsset?.uniqueName || null,
       badges,
       visitorInventory,

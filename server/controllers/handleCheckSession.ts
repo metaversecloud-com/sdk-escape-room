@@ -30,7 +30,6 @@ export const handleCheckSession = async (req: Request, res: Response) => {
       timedOut: result.session.timedOut,
       remainingMs: result.remainingMs,
       visitorData: result.session,
-      worldConfig: result.worldConfig,
     });
   } catch (error) {
     return errorHandler({

@@ -164,7 +164,7 @@ const getForceRefreshInventoryFromSearch = () =>
 
 export const Home = () => {
   const dispatch = useContext(GlobalDispatchContext);
-  const { hasInteractiveParams, visitorData, visitorInventory, leaderboard, badges, hasSessionExpired, worldConfig } =
+  const { hasInteractiveParams, visitorData, visitorInventory, leaderboard, badges, hasSessionExpired } =
     useContext(GlobalStateContext);
   const visitorSession = visitorData || null;
   const puzzlesCompleted = visitorSession?.puzzlesCompleted;
@@ -189,7 +189,10 @@ export const Home = () => {
   const room1Done = !!(puzzlesCompleted?.[1] && puzzlesCompleted?.[2]);
   const room2Done = !!(puzzlesCompleted?.[3] && puzzlesCompleted?.[4] && puzzlesCompleted?.[5]);
 
-  const maxSessionMinutes = worldConfig?.maxSessionMinutes ?? 30;
+  // Hardcoded: no admin surface to configure it yet. Server uses the same
+  // value (see `MAX_SESSION_MINUTES` in checkSessionExpiration.ts) — keep
+  // the two in sync if either changes.
+  const maxSessionMinutes = 30;
 
   // Verifies session state with the server (hits the same expiration check
   // /game-state runs), then dispatches the result. We translate `timedOut`
@@ -484,11 +487,9 @@ export const Home = () => {
     return (
       <PageContainer isLoading={isLoading}>
         <div className="flex flex-col w-full items-start gap-4">
-          {screen === "start" && <StartGameCard onStart={startGame} isLoading={isLoading || !hasInteractiveParams} />}
-          {screen === "exit" && (
-            <InfoCard title={states.noActiveSession.title} message={states.noActiveSession.message} />
-          )}
-          {screen !== "start" && screen !== "exit" && (
+          {screen === "start" ? (
+            <StartGameCard onStart={startGame} isLoading={isLoading || !hasInteractiveParams} />
+          ) : (
             <LockedState title={states.gameNotStarted.title} message={states.gameNotStarted.message} />
           )}
         </div>

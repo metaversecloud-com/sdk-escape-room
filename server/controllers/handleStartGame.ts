@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import {
-  World,
   clearVisitorInventory,
   errorHandler,
   getCredentials,
@@ -9,28 +8,12 @@ import {
   getVisitorInventory,
   teleportPlayer,
 } from "@utils/index.js";
-import { WorldConfig } from "@shared/types/VisitorData.js";
-
-const DEFAULT_MAX_SESSION_MINUTES = 30;
 
 export const handleStartGame = async (req: Request, res: Response) => {
   try {
     const credentials = getCredentials(req.query);
-    const { sceneDropId, urlSlug, assetId, visitorId, profileId } = credentials;
+    const { sceneDropId, urlSlug, visitorId, profileId } = credentials;
     const sessionKey = `${urlSlug}-${sceneDropId}`;
-
-    // Ensure the world data object has an entry for this scene keyed by sceneDropId.
-    const world = World.create(urlSlug, { credentials });
-    const worldDataObject = ((await world.fetchDataObject()) as Record<string, WorldConfig> | null) || {};
-    const existingSceneConfig = worldDataObject[sceneDropId];
-    const mergedSceneConfig: WorldConfig = {
-      keyAssetId: existingSceneConfig?.keyAssetId || assetId || "",
-      maxSessionMinutes: existingSceneConfig?.maxSessionMinutes ?? DEFAULT_MAX_SESSION_MINUTES,
-    };
-    if (!existingSceneConfig) {
-      const lockId = `${sceneDropId}-${Date.now()}-world`;
-      await world.updateDataObject({ [sceneDropId]: mergedSceneConfig }, { lock: { lockId, releaseLock: true } });
-    }
 
     // getVisitor (with details=true) populates visitor.inventoryItems so we can
     // count what they're carrying before wiping it below.
@@ -86,7 +69,6 @@ export const handleStartGame = async (req: Request, res: Response) => {
       message: "Game started",
       visitorData: newSession,
       visitorInventory,
-      worldConfig: mergedSceneConfig,
       sessionKey,
     });
   } catch (error) {

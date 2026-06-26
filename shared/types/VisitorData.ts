@@ -47,15 +47,4 @@ export interface VisitorData {
   wrongAttempts?: { [puzzleNumber: number]: number };
 }
 
-/**
- * Per-scene world config, stored at `worldData[sceneDropId]` and also sent
- * as-is to the client via `/game-state` and `/session` responses.
- */
-export interface WorldConfig {
-  keyAssetId: string;
-  maxSessionMinutes: number;
-}
-
-export type WorldDataObject = Record<string, WorldConfig>;
-
 export type VisitorDataObject = Record<string, VisitorData>;

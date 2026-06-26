@@ -5,7 +5,6 @@ export const initialState = {
   isAdmin: false,
   visitorData: undefined,
   droppedAsset: undefined,
-  worldConfig: undefined,
   leaderboard: [],
   badges: {},
   visitorInventory: { badges: {}, items: [] },

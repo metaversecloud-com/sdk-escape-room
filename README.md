@@ -55,13 +55,13 @@ Granted via `visitor.grantInventoryItem` from the ecosystem inventory:
 
 The world must contain dropped assets with the following `uniqueName` values for the escape-room flow to work. Each is found at runtime via `World.fetchDroppedAssetsBySceneDropId({ sceneDropId, uniqueName })`.
 
-| Unique Name Pattern         | Purpose                                                                                                    |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `keyAsset`                  | The leaderboard host asset. Each session writes its completion entry to `keyAsset.dataObject.leaderboard`. |
-| `EscapeRoom_start_teleport` | Teleport target after **Start Game**, after **Exit**, and after a session timeout.                         |
-| `EscapeRoom_room1_teleport` | Teleport target on game start (Room A spawn).                                                              |
-| `EscapeRoom_room2_teleport` | Teleport target after Room A → B transition.                                                               |
-| `EscapeRoom_room3_teleport` | Teleport target after Room B → C transition.                                                               |
+| Unique Name Pattern         | Purpose                                                                                                                                                          |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `EscapeRoom_start`          | Start Terminal — opens the briefing iframe AND hosts the leaderboard on its `dataObject.leaderboard`. Looked up by uniqueName per-scene; no world data required. |
+| `EscapeRoom_start_teleport` | Teleport target after **Start Game**, after **Exit**, and after a session timeout.                                                                               |
+| `EscapeRoom_room1_teleport` | Teleport target on game start (Room A spawn).                                                                                                                    |
+| `EscapeRoom_room2_teleport` | Teleport target after Room A → B transition.                                                                                                                     |
+| `EscapeRoom_room3_teleport` | Teleport target after Room B → C transition.                                                                                                                     |
 
 > **Note:** All five must be placed in the world manually by an admin. Teleport calls are best-effort — if a spawn asset is missing the server logs a warning, persists puzzle completion as normal, and the player can walk to the next room manually.
 

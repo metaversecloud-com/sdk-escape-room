@@ -10,6 +10,7 @@ export * from "./fireToast.js";
 export * from "./getBadges.js";
 export * from "./getCredentials.js";
 export * from "./getDefaultVisitorData.js";
+export * from "./getKeyAsset.js";
 export * from "./getLeaderboard.js";
 export * from "./getVersion.js";
 export * from "./getVisitor.js";

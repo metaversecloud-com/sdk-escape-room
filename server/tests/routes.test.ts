@@ -67,13 +67,6 @@ const droppedAssetMock = {
 };
 
 const worldMock = {
-  fetchDataObject: jest.fn().mockResolvedValue({
-    [baseCreds.sceneDropId]: {
-      keyAssetId: "key-asset",
-      maxSessionMinutes: 30,
-    },
-  }),
-  updateDataObject: jest.fn().mockResolvedValue(undefined),
   fetchDroppedAssetsBySceneDropId: jest.fn().mockResolvedValue([{ id: "spawn", position: { x: 100, y: 200 } }]),
 };
 
@@ -84,12 +77,14 @@ jest.mock("@utils/index.js", () => ({
   }),
   getCredentials: jest.fn(),
   getDroppedAsset: jest.fn(),
+  getKeyAsset: jest.fn(),
   getVisitor: jest.fn(),
   getBadges: jest.fn().mockResolvedValue({}),
   getLeaderboard: jest.fn().mockReturnValue([]),
   getVisitorInventory: jest.fn().mockReturnValue({ badges: {}, items: [] }),
   checkSessionExpiration: jest.fn(),
   checkEscapeBadges: jest.fn().mockResolvedValue({ awarded: [], alreadyOwned: [], failed: [] }),
+  checkTrashPandaBadge: jest.fn().mockResolvedValue(false),
   fireToast: jest.fn().mockResolvedValue(undefined),
   clearVisitorInventory: jest.fn().mockResolvedValue(undefined),
   getCachedInventoryItems: jest.fn().mockResolvedValue([]),
@@ -184,7 +179,6 @@ describe("escape-room routes", () => {
       visitorDataObject: {},
       session,
       remainingMs: 1000,
-      worldConfig: {},
     });
 
     const res = await request(makeApp()).post("/api/submit-puzzle").query(baseCreds).send({ puzzleNumber: 99 });
@@ -209,7 +203,6 @@ describe("escape-room routes", () => {
       visitorDataObject: {},
       session,
       remainingMs: 1000,
-      worldConfig: { keyAssetId: "key-asset", maxSessionMinutes: 30 },
     });
 
     const res = await request(makeApp()).post("/api/submit-puzzle").query(baseCreds).send({ puzzleNumber: 1 });
@@ -234,7 +227,6 @@ describe("escape-room routes", () => {
       visitorDataObject: {},
       session,
       remainingMs: 0,
-      worldConfig: {},
     });
 
     const res = await request(makeApp()).post("/api/submit-puzzle").query(baseCreds).send({ puzzleNumber: 1 });
@@ -297,7 +289,6 @@ describe("escape-room routes", () => {
       visitorDataObject: {},
       session,
       remainingMs: 12345,
-      worldConfig: {},
     });
 
     const res = await request(makeApp()).get("/api/session").query(baseCreds);

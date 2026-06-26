@@ -1,9 +1,7 @@
 import { Request, Response } from "express";
 import { VisitorInterface } from "@rtsdk/topia";
 import {
-  DroppedAsset,
   VisitorInventory,
-  World,
   checkEscapeBadges,
   checkSessionExpiration,
   checkTrashPandaBadge,
@@ -11,12 +9,13 @@ import {
   fireToast,
   getCachedInventoryItems,
   getCredentials,
+  getKeyAsset,
   getVisitor,
   getVisitorInventory,
   teleportPlayer,
 } from "@utils/index.js";
 import { toasts } from "@shared/copy/toasts.js";
-import { Credentials, KeyAssetDataObject, VisitorData, WorldConfig } from "../types/index.js";
+import { Credentials, KeyAssetDataObject, VisitorData } from "../types/index.js";
 
 type PuzzleNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
@@ -112,19 +111,12 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     }
     const game = expirationResult.session;
 
-    // Look up world config and key asset (where the leaderboard lives).
-    const world = World.create(urlSlug, { credentials });
-    const worldDataObject = (await world.fetchDataObject()) as Record<string, WorldConfig> | null;
-    const sceneConfig = worldDataObject?.[sceneDropId];
-    if (!sceneConfig) throw new Error("World config not found for this scene");
-    const keyAssetId = sceneConfig.keyAssetId;
-    if (!keyAssetId) throw new Error("Missing keyAssetId in world config");
-
-    const keyAsset = DroppedAsset.create(keyAssetId, urlSlug, {
-      credentials: { ...credentials, assetId: keyAssetId },
-    });
-    await keyAsset.fetchDataObject();
-    const keyAssetDataObject = keyAsset.dataObject as KeyAssetDataObject | null;
+    // Look up the key asset (start terminal) where the leaderboard lives.
+    // Found by uniqueName within the scene — no world data needed. For
+    // pre-puzzle-7 submissions this just gets us the asset handle in case
+    // we end up writing the leaderboard below.
+    const keyAsset = await getKeyAsset(credentials);
+    const keyAssetDataObject = (keyAsset?.dataObject as KeyAssetDataObject | null) || null;
 
     // Mutate the in-memory session.
     game.puzzlesCompleted[puzzleNumber] = true;
@@ -289,10 +281,17 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         [profileId]: `${displayName}|${bestTime}|${attempts}`,
       };
 
-      await keyAsset.updateDataObject(
-        { leaderboard: updatedLeaderboard },
-        { lock: { lockId: `leaderboard-${profileId}`, releaseLock: true } },
-      );
+      // Skip the leaderboard write if the key asset isn't placed in the world.
+      // Puzzle completion + badges still persist below; the run just won't
+      // make it onto the board until the asset exists.
+      if (keyAsset) {
+        await keyAsset.updateDataObject(
+          { leaderboard: updatedLeaderboard },
+          { lock: { lockId: `leaderboard-${profileId}`, releaseLock: true } },
+        );
+      } else {
+        console.warn(`Key asset not found for scene ${sceneDropId}; skipping leaderboard write.`);
+      }
 
       teleport = "EscapeRoom_start_teleport";
 
@@ -354,7 +353,6 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     return res.json({
       success: true,
       visitorData: game,
-      worldConfig: sceneConfig,
       badgesAwarded,
       badgesOwned,
       badgesFailed,

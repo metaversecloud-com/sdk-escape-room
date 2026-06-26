@@ -1,5 +1,5 @@
 import { DroppedAssetInterface } from "@rtsdk/topia";
-import { WorldConfig, VisitorData } from "@shared/types/VisitorData";
+import { VisitorData } from "@shared/types/VisitorData";
 
 export const SET_HAS_INTERACTIVE_PARAMS = "SET_HAS_INTERACTIVE_PARAMS";
 export const SET_GAME_STATE = "SET_GAME_STATE";
@@ -25,7 +25,6 @@ export interface InitialState {
   hasInteractiveParams?: boolean;
   visitorData?: VisitorData;
   droppedAsset?: DroppedAssetInterface;
-  worldConfig?: WorldConfig;
   leaderboard?: LeaderboardRowType[];
   badges?: { [name: string]: BadgeType };
   visitorInventory?: VisitorInventoryType;
