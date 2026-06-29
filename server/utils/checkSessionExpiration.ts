@@ -3,7 +3,7 @@ import { VisitorData, VisitorDataObject } from "@shared/types/VisitorData.js";
 import { toasts } from "@shared/copy/toasts.js";
 import { Credentials } from "../types/Credentials.js";
 import { fireToast } from "./fireToast.js";
-import { teleportPlayer } from "./teleportPlayer.js";
+import { moveVisitorToAsset } from "./moveVisitorToAsset.js";
 
 /**
  * Hard session limit in minutes. Hardcoded because there's no admin surface
@@ -82,7 +82,7 @@ export const checkSessionExpiration = async ({
     text: toasts.timeExpired.text,
   });
 
-  await teleportPlayer(urlSlug, visitorId, credentials, "EscapeRoom_start_teleport");
+  await moveVisitorToAsset(credentials, "EscapeRoom_start_teleport");
 
   return { expired: true, visitorDataObject, session, remainingMs: 0 };
 };

@@ -23,7 +23,7 @@ Every interactive station asset opens the same drawer iframe; each asset's drawe
 | `leaderboard`         | Standalone leaderboard view                                                                                                                |
 | `exit`                | Exit confirmation                                                                                                                          |
 | `decoy`               | Trash-discovery card; awards the **Trash Digger** badge on first click                                                                     |
-| Artifact screens      | `Room1Artifact1`, `Room1Artifact2`, `CrewPortrait1`-`3`, `AlphaStation`, `BetaStation`, `OmegaStation`, `Room3Artifact` — grant the matching collectible item |
+| Artifact screens      | `Room1Artifact`, `CrewPortrait1`-`3`, `AlphaStation`, `BetaStation`, `OmegaStation`, `Room3Artifact` — grant the matching collectible item |
 
 Required dropped-asset unique names (see "Required Assets" below) define the rooms' physical spawn points and the leaderboard's host asset.
 
@@ -69,20 +69,20 @@ The world must contain dropped assets with the following `uniqueName` values for
 
 Created in the [Topia dashboard](https://topia.io/t/dashboard/integrations) under the same public key the app uses. Items are looked up by **exact name** (case-insensitive); badges by name + `type === "BADGE"`; mission items by name + `type === "ITEM"`.
 
-| Item name          | Type  | When granted                                               |
-| ------------------ | ----- | ---------------------------------------------------------- |
-| `Battery`          | ITEM  | Puzzle 1 complete                                          |
-| `Fuse`             | ITEM  | Puzzle 2 complete                                          |
-| `Wrench`           | ITEM  | Puzzle 3 complete                                          |
-| `Circuit Chip`     | ITEM  | Puzzle 5 complete                                          |
-| `Power Restored`   | BADGE | Room A complete                                            |
-| `Signal Recovered` | BADGE | Room B complete                                            |
-| `Airlock Engineer` | BADGE | Puzzle 6 complete                                          |
-| `Station Survivor` | BADGE | Puzzle 7 complete (escape)                                 |
-| `Warp Speed`       | BADGE | Puzzle 7 complete with `completionTime < 180s`             |
-| `Trash Digger`     | BADGE | First click on a `?screen=decoy` asset                     |
+| Item name          | Type  | When granted                                                |
+| ------------------ | ----- | ----------------------------------------------------------- |
+| `Battery`          | ITEM  | Puzzle 1 complete                                           |
+| `Fuse`             | ITEM  | Puzzle 2 complete                                           |
+| `Wrench`           | ITEM  | Puzzle 3 complete                                           |
+| `Circuit Chip`     | ITEM  | Puzzle 5 complete                                           |
+| `Power Restored`   | BADGE | Room A complete                                             |
+| `Signal Recovered` | BADGE | Room B complete                                             |
+| `Airlock Engineer` | BADGE | Puzzle 6 complete                                           |
+| `Station Survivor` | BADGE | Puzzle 7 complete (escape)                                  |
+| `Warp Speed`       | BADGE | Puzzle 7 complete with `completionTime < 180s`              |
+| `Trash Digger`     | BADGE | First click on a `?screen=decoy` asset                      |
 | `Trash Panda`      | BADGE | Visitor owns every ecosystem ITEM (rewards + all artifacts) |
-| `Button Masher`    | BADGE | 4 wrong attempts on any single puzzle (per-puzzle counter) |
+| `Button Masher`    | BADGE | 4 wrong attempts on any single puzzle (per-puzzle counter)  |
 
 The ecosystem item's `image_path` is rendered inside the puzzle complete cards and the inventory modal.
 

@@ -22,7 +22,12 @@ export const StatusBar = ({ timer, currentRoom, onOpenInventory, hasStarted }: S
             {statusBar.roomLabel} {currentRoom || statusBar.roomPlaceholder}
           </p>
         </div>
-        <button className="btn btn-outline max-w-[100px]" onClick={onOpenInventory} disabled={!hasStarted}>
+        <button
+          className="btn btn-outline max-w-[100px]"
+          onClick={onOpenInventory}
+          disabled={!hasStarted}
+          data-inventory-target
+        >
           {statusBar.inventoryButton}
         </button>
       </div>

@@ -5,14 +5,14 @@ import {
   errorHandler,
   getCredentials,
   getVisitor,
-  teleportPlayer,
+  moveVisitorToAsset,
 } from "@utils/index.js";
 
 /**
  * Per-room teleport definitions.
  *
- * - `spawnUniqueName` — the dropped asset's unique name that `teleportPlayer`
- *   moves the visitor onto. Must match the unique name set on the spawn
+ * - `spawnUniqueName` — the dropped asset's unique name that `moveVisitorToAsset`
+ *   teleports the visitor onto. Must match the unique name set on the spawn
  *   asset in the scene (the room intro pad).
  * - `isReady` — gates whether the player has completed enough puzzles to
  *   be allowed into this room. Mirrors what the auto-teleport logic in
@@ -55,7 +55,7 @@ const inferTargetRoomKey = (currentRoom: VisitorData["currentRoom"]): string | n
 export const handleTeleport = async (req: Request, res: Response) => {
   try {
     const credentials = getCredentials(req.query);
-    const { sceneDropId, urlSlug, visitorId } = credentials;
+    const { sceneDropId, urlSlug } = credentials;
     const sessionKey = `${urlSlug}-${sceneDropId}`;
 
     const { visitor } = await getVisitor(credentials, true);
@@ -106,10 +106,10 @@ export const handleTeleport = async (req: Request, res: Response) => {
     // avatar to a different-room asset.
     let teleportSucceeded = true;
     try {
-      await teleportPlayer(urlSlug, visitorId, credentials, def.spawnUniqueName);
+      await moveVisitorToAsset(credentials, def.spawnUniqueName);
     } catch (err) {
       teleportSucceeded = false;
-      console.warn(`teleportPlayer to "${def.spawnUniqueName}" failed`, err);
+      console.warn(`moveVisitorToAsset to "${def.spawnUniqueName}" failed`, err);
     }
 
     const updatedSession: VisitorData = teleportSucceeded

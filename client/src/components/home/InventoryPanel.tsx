@@ -81,119 +81,126 @@ export const InventoryPanel = ({ onClose, inventoryItems }: InventoryPanelProps)
     return () => window.removeEventListener("keydown", onKey);
   }, [selectedItem, onClose]);
 
-  if (selectedItem) {
-    return (
+  return (
+    <>
       <div
         className="modal-container"
-        onClick={() => setSelectedItem(null)}
+        onClick={onClose}
         role="dialog"
         aria-modal="true"
         aria-label={inventory.panelTitle}
       >
         <div className="modal" onClick={(e) => e.stopPropagation()}>
-          <div className="modal-header flex gap-2 grid-cols-2 justify-between">
-            <h3 className="flex-grow">{selectedItem.name}</h3>
-            <button className="er-button-text" onClick={() => setSelectedItem(null)}>
+          <div className="modal-header flex gap-2 grid-cols-2 justify-between sticky top-[-10px] ">
+            <h3 className="flex-grow">{inventory.panelTitle}</h3>
+            <button className="er-button-text" onClick={onClose}>
               <img src="https://sdk-style.s3.amazonaws.com/icons/x.svg" style={{ width: "10px" }} />
             </button>
           </div>
 
-          {selectedItem.imageUrl ? (
-            <img src={selectedItem.imageUrl} alt={selectedItem.name || selectedItem.id} />
-          ) : (
-            <div className="er-inventory-fullsize-placeholder">
-              <p className="p2">{inventory.noLargerImage}</p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className="modal-container"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label={inventory.panelTitle}
-    >
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header flex gap-2 grid-cols-2 justify-between">
-          <h3 className="flex-grow">{inventory.panelTitle}</h3>
-          <button className="er-button-text" onClick={onClose}>
-            <img src="https://sdk-style.s3.amazonaws.com/icons/x.svg" style={{ width: "10px" }} />
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-2 mb-2" role="tablist">
-          {(["keyItems", "artifacts"] as TabId[]).map((id) => {
-            const active = activeTab === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                className={active ? "btn" : "btn btn-outline"}
-                onClick={() => setActiveTab(id)}
-              >
-                {tabCopy[id]}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Room filter, artifacts tab only. Hidden when there are no artifacts
-            or only one room — the dropdown would be a single option. */}
-        {activeTab === "artifacts" && artifactRooms.length > 1 && (
-          <div className="flex items-center gap-2 mb-2">
-            <label className="p2 min-w-[100px]" htmlFor="artifact-room-filter">
-              {inventory.roomFilterLabel}:
-            </label>
-            <select
-              id="artifact-room-filter"
-              className="input"
-              value={artifactRoomFilter === null ? "" : String(artifactRoomFilter)}
-              onChange={(e) => setArtifactRoomFilter(e.target.value === "" ? null : Number(e.target.value))}
-            >
-              <option value="">{inventory.roomFilterAll}</option>
-              {artifactRooms.map((room) => (
-                <option key={room} value={room}>
-                  {inventory.roomFilterTemplate.replace("{room}", String(room))}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        <div className="grid gap-4">
-          {tabItems.length > 0 ? (
-            <div className="grid gap-3">
-              <p className="p2 er-inventory-tile__hint">{inventory.clickHint}</p>
-              {tabItems.map((item) => (
-                <button key={item.id} type="button" className="er-inventory-tile" onClick={() => setSelectedItem(item)}>
-                  {item.imageUrl ? (
-                    <img className="er-inventory-tile__thumb" src={item.imageUrl} alt={item.name || item.id} />
-                  ) : (
-                    <div className="er-inventory-tile__placeholder">
-                      <span className="p3">{inventory.noPreview}</span>
-                    </div>
-                  )}
-                  <div className="flex flex-col">
-                    <p className="er-inventory-tile__title">{item.name || item.id}</p>
-                    {item.description && <p className="p3">{item.description}</p>}
-                  </div>
+          {/* Tabs */}
+          <div className="flex gap-2 my-2" role="tablist">
+            {(["keyItems", "artifacts"] as TabId[]).map((id) => {
+              const active = activeTab === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  className={active ? "btn" : "btn btn-outline"}
+                  onClick={() => setActiveTab(id)}
+                >
+                  {tabCopy[id]}
                 </button>
-              ))}
+              );
+            })}
+          </div>
+
+          {/* Room filter, artifacts tab only. Hidden when there are no artifacts
+            or only one room — the dropdown would be a single option. */}
+          {activeTab === "artifacts" && artifactRooms.length > 1 && (
+            <div className="flex items-center gap-2 mb-2">
+              <label className="p2 min-w-[100px]" htmlFor="artifact-room-filter">
+                {inventory.roomFilterLabel}:
+              </label>
+              <select
+                id="artifact-room-filter"
+                className="input"
+                value={artifactRoomFilter === null ? "" : String(artifactRoomFilter)}
+                onChange={(e) => setArtifactRoomFilter(e.target.value === "" ? null : Number(e.target.value))}
+              >
+                <option value="">{inventory.roomFilterAll}</option>
+                {artifactRooms.map((room) => (
+                  <option key={room} value={room}>
+                    {inventory.roomFilterTemplate.replace("{room}", String(room))}
+                  </option>
+                ))}
+              </select>
             </div>
-          ) : (
-            <p className="p2 mt-2">{emptyMessage}</p>
           )}
+
+          <div className="grid gap-4">
+            {tabItems.length > 0 ? (
+              <div className="grid gap-3">
+                <p className="p2 er-inventory-tile__hint">{inventory.clickHint}</p>
+                {tabItems.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="er-inventory-tile"
+                    onClick={() => setSelectedItem(item)}
+                  >
+                    {item.imageUrl ? (
+                      <img className="er-inventory-tile__thumb" src={item.imageUrl} alt={item.name || item.id} />
+                    ) : (
+                      <div className="er-inventory-tile__placeholder">
+                        <span className="p3">{inventory.noPreview}</span>
+                      </div>
+                    )}
+                    <div className="flex flex-col">
+                      <p className="er-inventory-tile__title">{item.name || item.id}</p>
+                      {item.description && <p className="p3">{item.description}</p>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="p2 mt-2">{emptyMessage}</p>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Item detail modal — rendered as a sibling overlay so the underlying
+          inventory panel stays mounted */}
+      {selectedItem && (
+        <div
+          className="modal-container"
+          onClick={() => setSelectedItem(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={selectedItem.name || inventory.panelTitle}
+        >
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="flex-grow">{selectedItem.name}</h3>
+              <button className="er-button-text" onClick={() => setSelectedItem(null)}>
+                <img src="https://sdk-style.s3.amazonaws.com/icons/x.svg" style={{ width: "10px" }} />
+              </button>
+            </div>
+
+            {selectedItem.imageUrl ? (
+              <img src={selectedItem.imageUrl} alt={selectedItem.name || selectedItem.id} />
+            ) : (
+              <div className="er-inventory-fullsize-placeholder">
+                <p className="p2">{inventory.noLargerImage}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

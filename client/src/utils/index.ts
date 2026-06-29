@@ -1,5 +1,6 @@
 export * from "./backendAPI.js";
 export * from "./findInventoryItem.js";
+export * from "./flyItemToInventory.js";
 export * from "./formatTime.js";
 export * from "./reportWrongAttempt.js";
 export * from "./setErrorMessage.js";

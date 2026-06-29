@@ -34,8 +34,7 @@ const SCREEN_REQUIRED_ROOM: Record<string, number> = {
 };
 
 const ARTIFACT_SCREENS = new Set([
-  "Room1Artifact1",
-  "Room1Artifact2",
+  "Room1Artifact",
   "CrewPortrait1",
   "CrewPortrait2",
   "CrewPortrait3",
@@ -53,10 +52,7 @@ const ARTIFACT_SCREENS = new Set([
  *   gate stays in sync with the dashboard (no double bookkeeping).
  * - Anything else returns `null` (no gate).
  */
-const resolveRequiredRoom = async (
-  screen: string | undefined,
-  credentials: any,
-): Promise<number | null> => {
+const resolveRequiredRoom = async (screen: string | undefined, credentials: any): Promise<number | null> => {
   if (!screen) return null;
   if (SCREEN_REQUIRED_ROOM[screen] != null) return SCREEN_REQUIRED_ROOM[screen];
   if (!ARTIFACT_SCREENS.has(screen)) return null;
@@ -81,11 +77,6 @@ const resolveRequiredRoom = async (
  * unlocked yet, AND walking *backward* to an already-cleared room (e.g.
  * clicking a Room 2 artifact in the inventory list while standing in Room 3).
  * Screens without a required room (start/exit/leaderboard/etc.) fall through.
- *
- * Legacy sessions that pre-date `physicalRoom` fall back to `currentRoom`.
- *
- * `shouldTeleportVisitor: false` makes this a walk (smooth pathing) rather
- * than an instant snap.
  */
 export const handleWalkToAsset = async (req: Request, res: Response) => {
   try {

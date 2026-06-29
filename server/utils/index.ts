@@ -17,5 +17,5 @@ export * from "./getVisitor.js";
 export * from "./getVisitorInventory.js";
 export * from "./inventoryCache.js";
 export * from "./standardizeError.js";
-export * from "./teleportPlayer.js";
+export * from "./moveVisitorToAsset.js";
 export * from "./topiaInit.js";

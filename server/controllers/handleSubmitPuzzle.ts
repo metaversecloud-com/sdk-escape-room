@@ -12,7 +12,7 @@ import {
   getKeyAsset,
   getVisitor,
   getVisitorInventory,
-  teleportPlayer,
+  moveVisitorToAsset,
 } from "@utils/index.js";
 import { toasts } from "@shared/copy/toasts.js";
 import { Credentials, KeyAssetDataObject, VisitorData } from "../types/index.js";
@@ -89,7 +89,7 @@ const applyInventoryReward = async (
 export const handleSubmitPuzzle = async (req: Request, res: Response) => {
   try {
     const credentials = getCredentials(req.query);
-    const { urlSlug, sceneDropId, profileId, displayName, visitorId } = credentials;
+    const { urlSlug, sceneDropId, profileId, displayName } = credentials;
     const sessionKey = `${urlSlug}-${sceneDropId}`;
 
     const puzzleNumber = req.body?.puzzleNumber;
@@ -200,6 +200,18 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         title: toasts.roomCleared.title,
         text: toasts.roomCleared.textTemplate.replace("{room}", String(transition.toRoom)),
       });
+
+      // Walk the player onto the next-room teleport pad so they don't have
+      // to hunt for it after solving the last puzzle in the room. Asset
+      // naming convention: `EscapeRoom_room{from}_teleportRoom{to}` — the
+      // pad sitting in the current room that, when stepped on, sends the
+      // player to the next. Best-effort; missing pad just no-ops.
+      const padUniqueName = `EscapeRoom_room${transition.fromRoom}_teleportRoom${transition.toRoom}`;
+      try {
+        await moveVisitorToAsset(credentials, padUniqueName, { shouldTeleportVisitor: false });
+      } catch (err) {
+        console.warn(`Walk to "${padUniqueName}" failed`, err);
+      }
     }
 
     // Puzzle 6 — last puzzle in Room 3; awards the engineering badge but doesn't end the game.
@@ -344,9 +356,9 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
 
     if (teleport) {
       try {
-        await teleportPlayer(urlSlug, visitorId, credentials, teleport);
+        await moveVisitorToAsset(credentials, teleport);
       } catch (err) {
-        console.warn(`teleportPlayer to "${teleport}" failed`, err);
+        console.warn(`moveVisitorToAsset to "${teleport}" failed`, err);
       }
     }
 

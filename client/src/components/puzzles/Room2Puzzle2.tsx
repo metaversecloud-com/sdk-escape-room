@@ -3,6 +3,23 @@ import { content } from "@/constants";
 import { backendAPI } from "@/utils/backendAPI";
 import { useInitialPuzzleDraft, usePuzzleDraft } from "@/utils";
 import { PuzzleHeader } from "./PuzzleHeader";
+import paper0 from "@/assets/paper0.png";
+import paper1 from "@/assets/paper1.png";
+import paper2 from "@/assets/paper2.png";
+import paper3 from "@/assets/paper3.png";
+import paper4 from "@/assets/paper4.png";
+import paper5 from "@/assets/paper5.png";
+import paper6 from "@/assets/paper6.png";
+import paper7 from "@/assets/paper7.png";
+import paper8 from "@/assets/paper8.png";
+
+/**
+ * Paper-piece images indexed by `correctPosition` — i.e. paper0.png belongs
+ * in grid cell 0 when the puzzle is solved. Each piece carries its image
+ * through shuffles (the image follows the piece, not the grid cell), which
+ * is how the player visually tracks where each fragment needs to land.
+ */
+const PAPER_IMAGES = [paper0, paper1, paper2, paper3, paper4, paper5, paper6, paper7, paper8];
 
 interface Draft {
   pieces: PuzzlePiece[];
@@ -165,10 +182,14 @@ export const Room2Puzzle2 = ({ onSuccess, sessionKey, refreshGameState }: Room2P
             return (
               <div key={position} className={cellClass} onClick={() => handlePieceClick(position)}>
                 {piece && (
-                  <div className="er-paper-piece">
+                  <div
+                    className="er-paper-piece"
+                    style={{
+                      background: `url(${PAPER_IMAGES[piece.correctPosition]}) center/contain no-repeat`,
+                    }}
+                  >
                     <div className="er-paper-text">{piece.pieceText}</div>
                     {isLocked && <div className="er-locked-icon">🔒</div>}
-                    <div className="er-paper-crease" />
                   </div>
                 )}
               </div>

@@ -501,7 +501,7 @@ body {
 .er-paper-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  gap: 6px;
   background: rgba(0, 0, 0, 0.3);
   padding: 20px;
   border-radius: 16px;
@@ -510,13 +510,9 @@ body {
 
 .er-paper-cell {
   aspect-ratio: 1 / 1;
-  background: linear-gradient(135deg, #f5e6c8 0%, #e8d5b7 100%);
-  border: 2px solid var(--er-border-strong);
-  border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
   position: relative;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .er-paper-cell:not(.locked):hover {
@@ -533,7 +529,7 @@ body {
 
 .er-paper-cell.locked {
   border: 3px solid var(--er-yellow);
-  background: linear-gradient(135deg, #2a2a4a 0%, #1a1a3a 100%);
+  background: linear-gradient(135deg, #48486d 0%, #343453 100%);
   cursor: not-allowed;
   opacity: 0.85;
   position: relative;
@@ -543,13 +539,6 @@ body {
   content: "";
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(
-    45deg,
-    rgba(255, 215, 0, 0.1),
-    rgba(255, 215, 0, 0.1) 10px,
-    rgba(255, 215, 0, 0.2) 10px,
-    rgba(255, 215, 0, 0.2) 20px
-  );
   border-radius: 6px;
   pointer-events: none;
 }

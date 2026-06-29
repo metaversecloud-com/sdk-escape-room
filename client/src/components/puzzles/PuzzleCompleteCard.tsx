@@ -1,6 +1,6 @@
-import { ReactNode, useContext } from "react";
+import { ReactNode, useContext, useEffect, useRef } from "react";
 import { GlobalStateContext } from "@/context/GlobalContext";
-import { findInventoryImage } from "@/utils";
+import { findInventoryImage, flyItemToInventory } from "@/utils";
 
 /**
  * Shared puzzle-complete card. All per-puzzle `RoomXPuzzleYComplete` wrappers
@@ -46,6 +46,34 @@ export const PuzzleCompleteCard = ({
   const { visitorInventory } = useContext(GlobalStateContext);
   const itemImage = itemName ? findInventoryImage(visitorInventory?.items, itemName) : undefined;
 
+  // Acquisition-flight animation: when the card mounts with a granted item
+  // image, clone it and fly it toward the Inventory button. Fires exactly
+  // once per mount via `firedRef`; waits for image `load` if not yet cached.
+  // Re-opening the same puzzle's complete card refires (each iframe click is
+  // a fresh mount) — intentional so the player gets the visual feedback
+  // every time, not just on the initial submit.
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const firedRef = useRef(false);
+  useEffect(() => {
+    if (!itemImage || !itemName) return;
+    if (firedRef.current) return;
+    const img = imgRef.current;
+    if (!img) return;
+
+    const fire = () => {
+      if (firedRef.current) return;
+      firedRef.current = true;
+      flyItemToInventory(itemImage, img);
+    };
+
+    if (img.complete && img.naturalWidth > 0) {
+      fire();
+      return;
+    }
+    img.addEventListener("load", fire, { once: true });
+    return () => img.removeEventListener("load", fire);
+  }, [itemImage, itemName]);
+
   return (
     <div className="grid gap-3">
       <div aria-hidden className="er-card__glow" />
@@ -61,7 +89,12 @@ export const PuzzleCompleteCard = ({
       )}
       {itemImage && itemName && (
         <div className="er-art-frame" style={{ minWidth: 180 }}>
-          <img src={itemImage} alt={itemName} style={{ width: "100%", height: "auto", display: "block" }} />
+          <img
+            ref={imgRef}
+            src={itemImage}
+            alt={itemName}
+            style={{ width: "100%", height: "auto", display: "block" }}
+          />
         </div>
       )}
       {children}

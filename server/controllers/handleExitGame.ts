@@ -1,10 +1,10 @@
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getVisitor, teleportPlayer } from "@utils/index.js";
+import { errorHandler, getCredentials, getVisitor, moveVisitorToAsset } from "@utils/index.js";
 
 export const handleExitGame = async (req: Request, res: Response) => {
   try {
     const credentials = getCredentials(req.query);
-    const { assetId, sceneDropId, urlSlug, visitorId, profileId } = credentials;
+    const { assetId, sceneDropId, urlSlug, profileId } = credentials;
     const sessionKey = `${urlSlug}-${sceneDropId}`;
 
     // getVisitor guarantees the session is initialized.
@@ -29,7 +29,7 @@ export const handleExitGame = async (req: Request, res: Response) => {
       },
     );
 
-    await teleportPlayer(urlSlug, visitorId, credentials, "EscapeRoom_start_teleport");
+    await moveVisitorToAsset(credentials, "EscapeRoom_start_teleport");
 
     await visitor.closeIframe(assetId);
 

@@ -6,13 +6,13 @@ import {
   getDefaultVisitorData,
   getVisitor,
   getVisitorInventory,
-  teleportPlayer,
+  moveVisitorToAsset,
 } from "@utils/index.js";
 
 export const handleStartGame = async (req: Request, res: Response) => {
   try {
     const credentials = getCredentials(req.query);
-    const { sceneDropId, urlSlug, visitorId, profileId } = credentials;
+    const { sceneDropId, urlSlug, profileId } = credentials;
     const sessionKey = `${urlSlug}-${sceneDropId}`;
 
     // getVisitor (with details=true) populates visitor.inventoryItems so we can
@@ -62,7 +62,7 @@ export const handleStartGame = async (req: Request, res: Response) => {
       },
     );
 
-    await teleportPlayer(urlSlug, visitorId, credentials, "EscapeRoom_room1_teleport");
+    await moveVisitorToAsset(credentials, "EscapeRoom_room1_teleport");
 
     return res.json({
       success: true,

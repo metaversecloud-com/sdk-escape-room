@@ -88,7 +88,7 @@ jest.mock("@utils/index.js", () => ({
   fireToast: jest.fn().mockResolvedValue(undefined),
   clearVisitorInventory: jest.fn().mockResolvedValue(undefined),
   getCachedInventoryItems: jest.fn().mockResolvedValue([]),
-  teleportPlayer: jest.fn().mockResolvedValue(undefined),
+  moveVisitorToAsset: jest.fn().mockResolvedValue(undefined),
   getDefaultVisitorData: jest.fn(() => ({
     startTime: null,
     endTime: null,
@@ -154,12 +154,7 @@ describe("escape-room routes", () => {
     expect(res.body.visitorData.sessionActive).toBe(true);
     expect(res.body.visitorData.currentRoom).toBe(1);
     expect(visitor.updateDataObject).toHaveBeenCalled();
-    expect(mockUtils.teleportPlayer).toHaveBeenCalledWith(
-      baseCreds.urlSlug,
-      baseCreds.visitorId,
-      baseCreds,
-      "EscapeRoom_room1_teleport",
-    );
+    expect(mockUtils.moveVisitorToAsset).toHaveBeenCalledWith(baseCreds, "EscapeRoom_room1_teleport");
   });
 
   test("POST /submit-puzzle rejects invalid puzzleNumber", async () => {
@@ -250,12 +245,7 @@ describe("escape-room routes", () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.visitorData.sessionActive).toBe(false);
-    expect(mockUtils.teleportPlayer).toHaveBeenCalledWith(
-      baseCreds.urlSlug,
-      baseCreds.visitorId,
-      baseCreds,
-      "EscapeRoom_start_teleport",
-    );
+    expect(mockUtils.moveVisitorToAsset).toHaveBeenCalledWith(baseCreds, "EscapeRoom_start_teleport");
   });
 
   test("GET /session returns inactive when no session has been started", async () => {

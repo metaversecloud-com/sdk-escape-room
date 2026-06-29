@@ -281,9 +281,9 @@ export const content = {
     1: {
       title: "Power Console",
       description:
-        "Main power is down. Set the three dials to the crew’s restart sequence — check the records and reference panel.",
-      howToPlay: "Click each control to cycle through available colors.",
-      controlLabelPrefix: "Control", // → "Control 1", "Control 2", ...
+        "Main power is down. See if you can find clue to the secret restart code in the crew’s service records.",
+      howToPlay: "Click each dial to cycle through its colors.",
+      controlLabelPrefix: "Dial",
       currentPrefix: "Current:",
       submitLabel: "Submit Sequence",
       resetLabel: "Reset",
