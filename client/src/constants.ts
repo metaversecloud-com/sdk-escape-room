@@ -86,6 +86,7 @@ export const content = {
   exitConfirmation: {
     title: "Exit Game",
     message: "Are you sure you want to exit the game? Your progress will NOT be saved.",
+    stayButton: "Stay Here",
   },
   exitButton: "Exit",
 
@@ -281,7 +282,7 @@ export const content = {
     1: {
       title: "Power Console",
       description:
-        "Main power is down. See if you can find clue to the secret restart code in the crew’s service records.",
+        "Main power is down. See if you can find clues to the secret restart code in the crew’s service records.",
       howToPlay: "Click each dial to cycle through its colors.",
       controlLabelPrefix: "Dial",
       currentPrefix: "Current:",
@@ -297,6 +298,12 @@ export const content = {
         dialogueSpeaker: "Commander Vega",
         dialogue: "“Nice work, crew. Keep momentum!”",
         body: "A Battery has been added to your inventory",
+        itemName: "Battery",
+      },
+      alreadyComplete: {
+        title: "Power Bay Secure",
+        heading: "BATTERY",
+        body: "Already in your inventory",
         itemName: "Battery",
       },
     },
@@ -329,6 +336,12 @@ export const content = {
         body: "Reactor sequence locked. Fuse added to your inventory.",
         itemName: "Fuse",
       },
+      alreadyComplete: {
+        title: "Reactor Online",
+        heading: "FUSE",
+        body: "Already in your inventory",
+        itemName: "Fuse",
+      },
     },
 
     /* Puzzle 3 — Satellite Alignment (Room 2) */
@@ -348,6 +361,12 @@ export const content = {
         title: "Communication Signal Aligned",
         heading: "WRENCH ACQUIRED",
         body: "The satellites are now in perfect alignment. Communication restored! Wrench added to your inventory.",
+        itemName: "Wrench",
+      },
+      alreadyComplete: {
+        title: "Communication Signal Aligned",
+        heading: "WRENCH",
+        body: "Already in your inventory",
         itemName: "Wrench",
       },
     },
@@ -409,6 +428,12 @@ export const content = {
         body: "A Circuit Chip has been added to your inventory!",
         itemName: "Circuit Chip",
       },
+      alreadyComplete: {
+        title: "Communications Stabilized",
+        heading: "CIRCUIT CHIP",
+        body: "Already in your inventory",
+        itemName: "Circuit Chip",
+      },
     },
 
     /* Puzzle 6 — Restore Circuit (Room 3) */
@@ -430,6 +455,10 @@ export const content = {
       complete: {
         title: "Airlock Systems Restored",
         body: "Commander Vega: “Circuit stabilized. The keypad is live—enter the override code to finish the escape.”",
+      },
+      alreadyComplete: {
+        title: "Airlock Systems Restored",
+        body: "Circuit already restored. Enter the override code on the keypad to finish the escape.",
       },
     },
 

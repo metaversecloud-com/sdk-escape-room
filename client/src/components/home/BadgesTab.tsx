@@ -31,7 +31,7 @@ export const BadgesTab = ({ badges, earned }: BadgesTabProps) => {
         const style = { maxWidth: "100%", filter: "none", opacity: "1" };
         if (!hasBadge) {
           style.filter = "grayscale(1)";
-          style.opacity = "0.7";
+          style.opacity = "0.4";
         }
         return (
           <div className="tooltip" key={name}>

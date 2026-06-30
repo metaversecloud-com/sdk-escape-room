@@ -29,6 +29,12 @@ interface PuzzleCompleteCardProps {
   dialogueSpeaker?: string;
   dialogue?: string;
   itemName?: string;
+  /**
+   * Fire the item-acquisition flight animation on mount. Caller passes
+   * `true` only when this render reflects a *fresh* completion (the player
+   * just submitted) — re-visits set it to `false` so no animation plays.
+   */
+  playAcquisitionAnimation?: boolean;
   children?: ReactNode;
 }
 
@@ -41,20 +47,20 @@ export const PuzzleCompleteCard = ({
   dialogueSpeaker,
   dialogue,
   itemName,
+  playAcquisitionAnimation = false,
   children,
 }: PuzzleCompleteCardProps) => {
   const { visitorInventory } = useContext(GlobalStateContext);
   const itemImage = itemName ? findInventoryImage(visitorInventory?.items, itemName) : undefined;
 
-  // Acquisition-flight animation: when the card mounts with a granted item
-  // image, clone it and fly it toward the Inventory button. Fires exactly
-  // once per mount via `firedRef`; waits for image `load` if not yet cached.
-  // Re-opening the same puzzle's complete card refires (each iframe click is
-  // a fresh mount) — intentional so the player gets the visual feedback
-  // every time, not just on the initial submit.
+  // Acquisition-flight animation. Gated by `playAcquisitionAnimation` so
+  // re-opening a completed puzzle's iframe doesn't replay the flight. Fires
+  // exactly once per mount via `firedRef`; waits for image `load` if not
+  // yet cached.
   const imgRef = useRef<HTMLImageElement | null>(null);
   const firedRef = useRef(false);
   useEffect(() => {
+    if (!playAcquisitionAnimation) return;
     if (!itemImage || !itemName) return;
     if (firedRef.current) return;
     const img = imgRef.current;
@@ -72,7 +78,7 @@ export const PuzzleCompleteCard = ({
     }
     img.addEventListener("load", fire, { once: true });
     return () => img.removeEventListener("load", fire);
-  }, [itemImage, itemName]);
+  }, [playAcquisitionAnimation, itemImage, itemName]);
 
   return (
     <div className="grid gap-3">

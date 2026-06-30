@@ -188,6 +188,25 @@ export const Home = () => {
   const room1Done = !!(puzzlesCompleted?.[1] && puzzlesCompleted?.[2]);
   const room2Done = !!(puzzlesCompleted?.[3] && puzzlesCompleted?.[4] && puzzlesCompleted?.[5]);
 
+  // Track puzzles that flipped from false → true *within this iframe session*
+  // so PuzzleCompleteCard can show the rich just-acquired copy + fire the
+  // acquisition-flight animation. On a fresh iframe load where the puzzle is
+  // already complete, this set stays empty — the card shows the trimmed
+  // `alreadyComplete` copy with no animation. Mutating a ref during render
+  // is safe because the comparison is idempotent.
+  const prevPuzzlesCompletedRef = useRef<typeof puzzlesCompleted>(undefined);
+  const justCompletedRef = useRef<Set<number>>(new Set());
+  if (puzzlesCompleted) {
+    const prev = prevPuzzlesCompletedRef.current;
+    if (prev !== undefined) {
+      ([1, 2, 3, 4, 5, 6, 7] as const).forEach((n) => {
+        if (puzzlesCompleted[n] && !prev[n]) justCompletedRef.current.add(n);
+      });
+    }
+    prevPuzzlesCompletedRef.current = puzzlesCompleted;
+  }
+  const wasJustCompleted = (n: number) => justCompletedRef.current.has(n);
+
   // Hardcoded: no admin surface to configure it yet. Server uses the same
   // value (see `MAX_SESSION_MINUTES` in checkSessionExpiration.ts) — keep
   // the two in sync if either changes.
@@ -258,6 +277,18 @@ export const Home = () => {
     try {
       const res = await backendAPI.post("/exit");
       setGameState(dispatch, res.data);
+    } catch (error) {
+      setErrorMessage(dispatch, error as ErrorType);
+    }
+    setIsLoading(false);
+  };
+
+  // Closes the iframe without ending the session — the "Stay Here" path off
+  // the exit confirmation. Server-side calls visitor.closeIframe(assetId).
+  const stayHere = async () => {
+    setIsLoading(true);
+    try {
+      await backendAPI.post("/close-iframe");
     } catch (error) {
       setErrorMessage(dispatch, error as ErrorType);
     }
@@ -514,15 +545,20 @@ export const Home = () => {
 
         {screen === "exit" && (
           // Exit terminal — its own in-world asset. Clicking it brings the
-          // player here; the page is the confirmation. There's no Cancel —
-          // walking away or clicking a different in-world asset is "no".
+          // player here; the page is the confirmation. "Stay Here" closes
+          // the iframe without ending the session; "Exit" ends the run.
           <div className="card w-full">
             <div className="card-details">
               <h3 className="card-title">{exitConfirmation.title}</h3>
               <p className="card-description p2 pt-2">{exitConfirmation.message}</p>
-              <button className="btn btn-danger" onClick={exitGame} disabled={isLoading}>
-                {exitButton}
-              </button>
+              <div className="card-actions mt-2 flex flex-col sm:flex-row gap-3">
+                <button className="btn btn-outline" onClick={stayHere} disabled={isLoading}>
+                  {exitConfirmation.stayButton}
+                </button>
+                <button className="btn btn-danger" onClick={exitGame} disabled={isLoading}>
+                  {exitButton}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -581,14 +617,20 @@ export const Home = () => {
         {/* Room 1 — Puzzles 1 & 2 */}
         {screen === "puzzle1" &&
           (puzzlesCompleted?.[1] ? (
-            <PuzzleCompleteCard {...content.puzzles[1].complete} />
+            <PuzzleCompleteCard
+              {...(wasJustCompleted(1) ? content.puzzles[1].complete : content.puzzles[1].alreadyComplete)}
+              playAcquisitionAnimation={wasJustCompleted(1)}
+            />
           ) : (
             <Room1Puzzle1 refreshGameState={refreshGameState} />
           ))}
 
         {screen === "puzzle2" &&
           (puzzlesCompleted?.[2] ? (
-            <PuzzleCompleteCard {...content.puzzles[2].complete} />
+            <PuzzleCompleteCard
+              {...(wasJustCompleted(2) ? content.puzzles[2].complete : content.puzzles[2].alreadyComplete)}
+              playAcquisitionAnimation={wasJustCompleted(2)}
+            />
           ) : (
             <Room1Puzzle2 refreshGameState={refreshGameState} />
           ))}
@@ -598,7 +640,10 @@ export const Home = () => {
           (!room1Done ? (
             <LockedState title={states.room2Locked.title} message={states.room2Locked.message} />
           ) : puzzlesCompleted?.[3] ? (
-            <PuzzleCompleteCard {...content.puzzles[3].complete} />
+            <PuzzleCompleteCard
+              {...(wasJustCompleted(3) ? content.puzzles[3].complete : content.puzzles[3].alreadyComplete)}
+              playAcquisitionAnimation={wasJustCompleted(3)}
+            />
           ) : (
             <Room2Puzzle1 refreshGameState={refreshGameState} />
           ))}
@@ -616,7 +661,10 @@ export const Home = () => {
           (!puzzlesCompleted?.[4] ? (
             <LockedState title={states.puzzle5Locked.title} message={states.puzzle5Locked.message} />
           ) : puzzlesCompleted?.[5] ? (
-            <PuzzleCompleteCard {...content.puzzles[5].complete} />
+            <PuzzleCompleteCard
+              {...(wasJustCompleted(5) ? content.puzzles[5].complete : content.puzzles[5].alreadyComplete)}
+              playAcquisitionAnimation={wasJustCompleted(5)}
+            />
           ) : (
             <Room2Puzzle3 refreshGameState={refreshGameState} />
           ))}
@@ -626,7 +674,10 @@ export const Home = () => {
           (!room2Done ? (
             <LockedState title={states.room3Locked.title} message={states.room3Locked.message} />
           ) : puzzlesCompleted?.[6] ? (
-            <PuzzleCompleteCard {...content.puzzles[6].complete} />
+            <PuzzleCompleteCard
+              {...(wasJustCompleted(6) ? content.puzzles[6].complete : content.puzzles[6].alreadyComplete)}
+              playAcquisitionAnimation={wasJustCompleted(6)}
+            />
           ) : (
             <Room3Puzzle1 refreshGameState={refreshGameState} />
           ))}

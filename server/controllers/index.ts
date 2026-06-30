@@ -1,4 +1,5 @@
 export * from "./handleCheckSession.js";
+export * from "./handleCloseIframe.js";
 export * from "./handleDiscoverDecoy.js";
 export * from "./handleExitGame.js";
 export * from "./handleGetGameState.js";

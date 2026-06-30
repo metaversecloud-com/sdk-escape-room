@@ -91,7 +91,7 @@ export const InventoryPanel = ({ onClose, inventoryItems }: InventoryPanelProps)
         aria-label={inventory.panelTitle}
       >
         <div className="modal" onClick={(e) => e.stopPropagation()}>
-          <div className="modal-header flex gap-2 grid-cols-2 justify-between sticky top-[-10px] ">
+          <div className="modal-header flex gap-2 grid-cols-2 justify-between sticky top-[-26px] bg-white py-2">
             <h3 className="flex-grow">{inventory.panelTitle}</h3>
             <button className="er-button-text" onClick={onClose}>
               <img src="https://sdk-style.s3.amazonaws.com/icons/x.svg" style={{ width: "10px" }} />

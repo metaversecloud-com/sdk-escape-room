@@ -2,6 +2,7 @@ import express from "express";
 import { getVersion } from "./utils/getVersion.js";
 import {
   handleCheckSession,
+  handleCloseIframe,
   handleDiscoverDecoy,
   handleExitGame,
   handleGetGameState,
@@ -46,5 +47,6 @@ router.post("/grant-item", handleGrantItem);
 router.post("/discover-decoy", handleDiscoverDecoy);
 router.post("/wrong-attempt", handleWrongAttempt);
 router.post("/exit", handleExitGame);
+router.post("/close-iframe", handleCloseIframe);
 
 export default router;
