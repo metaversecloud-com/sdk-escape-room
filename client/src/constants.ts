@@ -27,9 +27,9 @@
  *   2 → Reactor Switch Array     (Room 1)
  *   3 → Satellite Alignment      (Room 2)
  *   4 → Reconstruct Transmission (Room 2)
- *   5 → Decode + Valve Order     (Room 2)
+ *   5 → Unscramble Transmission + Comms System Order     (Room 2)
  *   6 → Restore Circuit          (Room 3)
- *   7 → Final Airlock Code       (Room 3)
+ *   7 → Final Escape Hatch Code       (Room 3)
  */
 export const content = {
   /* ─── Reusable chrome strings ───────────────────────────────────────── */
@@ -106,8 +106,8 @@ export const content = {
     // `RoomIntroCard` is rendered instead (title + description live under
     // `content.rooms[N]`).
     blocked: {
-      title: "Door Locked",
-      message: "You must complete all puzzles in the room before proceeding.",
+      title: "Teleporter Locked",
+      message: "Finish all the puzzles in this room to unlock the teleporter.",
     },
     invalidTarget: {
       title: "Nowhere to go",
@@ -159,16 +159,30 @@ export const content = {
   briefing: {
     title: "Escape Room\nBriefing",
     intro:
-      "“Welcome crew. This is Commander Vega. The station’s failing—your team has 30 minutes to bring Power, Comms, and the Airlock back online. Tap station assets for clues, crack the puzzles, and get us out.”",
-    bullets: [
-      "Repair route: Power Bay → Comms Deck → Airlock Control.",
-      "Countdown: 30:00; if it hits zero, the station locks you out.",
-      "Playstyle: Click assets in-world to pull up clues and puzzles. Solve to advance.",
-    ],
+      "“Welcome, Crew. This is Commander Vega. The station is failing and we have only 30 MINUTES of oxygen left. You must bring Power, Comms, and the Airlock back online and get us out before the air runs out! Click around the station for clues and crack the puzzles to escape!”",
     pills: [
-      { label: "Power", detail: "Restore systems", color: "#1be0f2" },
-      { label: "Comms", detail: "Align + decode", color: "#f6b300" },
-      { label: "Airlock", detail: "Override to escape", color: "#9b7bff" },
+      {
+        label: "How to Play",
+        detail: "Click machines, posters, and other items to collect clues and find puzzles.",
+        color: "#1be0f2",
+      },
+      {
+        label: "Inventory",
+        detail: "Inventory items contain information that you will need to solve puzzles.",
+        color: "#f6b300",
+      },
+      { label: "The Station", detail: "Three Rooms: Power, Comms, and Airlock.", color: "#1be0f2" },
+      {
+        label: "How to Progress",
+        detail: "Clear every puzzle in a room to unlock the next room's teleporter.",
+        color: "#9b7bff",
+      },
+      { label: "Tip #1", detail: "Taking notes may help you!", color: "#3fe0a0" },
+      {
+        label: "Tip #2",
+        detail: "You can right-click to open inventory images in a new browser tab if needed.",
+        color: "#3fe0a0",
+      },
     ],
     startButton: "Start the Game",
   },
@@ -182,13 +196,13 @@ export const content = {
   sessionInProgress: {
     eyebrow: "Mission Underway",
     title: "Session in Progress",
-    message: "You're already running. Jump back to where you should be, or wipe your progress and start over.",
+    message: "You already started. Jump back to where you were, or erase your progress and start over.",
     currentRoomLabel: "Current room",
     teleportButton: "Teleport me back",
     restartButton: "Restart from scratch",
     // Confirmation modal copy gating the destructive restart.
     restartConfirmTitle: "Restart Game?",
-    restartConfirmMessage: "Your current progress will be wiped and you'll be sent back to Room 1.",
+    restartConfirmMessage: "Your current progress will be erased and you'll be sent back to Room 1.",
   },
 
   /* ─── Post-game exit / congrats screen (ExitCongratsCard) ──────────── */
@@ -197,9 +211,9 @@ export const content = {
     eyebrow: "Mission Complete",
     title: "Congratulations — Airlock Opened",
     message:
-      "Commander Vega: “Great work, crew. You restored Power, Comms, and Airlock. Grab your stats and see how you rank.”",
+      "Commander Vega: “Great work, Crew. You restored the Power, Comms, and Airlock. And you escaped just in time! Grab your stats and see how you rank.”",
     yourTimeLabel: "Your Time",
-    projectedRankPrefix: "Projected rank: #",
+    projectedRankPrefix: "Current rank: #",
     topTimesLabel: "Top Escape Times",
     emptyLeaderboard: "No leaderboard entries yet.",
     tableHeaders: { rank: "Rank", crew: "Crew", time: "Time", attempts: "Attempts" },
@@ -210,11 +224,11 @@ export const content = {
   states: {
     sessionExpired: {
       title: "Time has run out",
-      message: "Click on the start terminal to start a new game.",
+      message: "Click on the Start button to start a new game.",
     },
     gameNotStarted: {
       title: "Game Not Started",
-      message: "You must begin at the start terminal before accessing any puzzle.",
+      message: "You must begin at the Start button before accessing any puzzle.",
     },
     noScreenSelected: {
       title: "No Screen Selected",
@@ -223,19 +237,19 @@ export const content = {
     },
     room2Locked: {
       title: "Room 2 Locked",
-      message: "You must restore power in Room 1 before accessing the Comms Deck.",
+      message: "You must restore power in Room 1 before accessing Room 2.",
     },
     room3Locked: {
       title: "Room 3 Locked",
-      message: "You must complete Room 2 before accessing the reactor control room.",
+      message: "You must complete Room 2 before accessing Room 3.",
     },
     puzzle5Locked: {
       title: "Puzzle Locked",
-      message: "You must reconstruct the transmission first before decoding it.",
+      message: "Reconstruct the transmission first, and then you can decode it here.",
     },
     finalPuzzleLocked: {
       title: "Final Puzzle Locked",
-      message: "Complete Puzzle 6 before attempting the final escape sequence.",
+      message: "Finish the Airlock Circuit puzzle before attempting your final escape!",
     },
   },
 
@@ -251,27 +265,86 @@ export const content = {
   rooms: {
     1: {
       title: "Power Bay",
-      description: `“Crew, this is Commander Vega. You're live inside the Power Bay. Start interacting with station assets to
-        reroute power and get this room online.”`,
+      description: `“Crew, this is Commander Vega. You're live inside the Power Bay. You need to figure out how to start up the reactor and reroute power to get this room online.”`,
+      // Optional pills displayed below the description on the room intro.
+      pills: [
+        {
+          label: "How to Play",
+          detail: "Click machines, posters, and other items to collect clues and find puzzles.",
+          color: "#1be0f2",
+        },
+        {
+          label: "Inventory",
+          detail: "Inventory items contain information that you will need to solve puzzles.",
+          color: "#f6b300",
+        },
+        {
+          label: "How to Progress",
+          detail: "Clear every puzzle in this room to unlock the teleporter to the next room.",
+          color: "#9b7bff",
+        },
+        { label: "Tip #1", detail: "Taking notes may help you!", color: "#3fe0a0" },
+        {
+          label: "Tip #2",
+          detail: "You can right-click to open inventory images in a new browser tab, if needed.",
+          color: "#3fe0a0",
+        },
+      ],
     },
     2: {
       title: "Comms Deck",
-      description: `“Crew, welcome to the Comms Deck. Align the satellites, rebuild the transmission, and decode the valve order to
-        stabilize the signal.”`,
+      description: `“Crew, welcome to the Comms Deck. Align the satellites, reconstruct the torn-up transmission, and decode the system activation order to stabilize the signal.”`,
       // Optional pills displayed below the description on the room intro.
       pills: [
-        { label: "Satellite Alignment", detail: "Count the stars", color: "#1be0f2" },
-        { label: "Retrieve the Transmission", detail: "Assemble the message", color: "#f6b300" },
         {
-          label: "Decode the Transmission",
-          detail: "Figure out what the message is and determine the correct valve order",
+          label: "How to Play",
+          detail: "Click machines, posters, and other items to collect clues and find puzzles.",
+          color: "#1be0f2",
+        },
+        {
+          label: "Inventory",
+          detail: "Inventory items contain information that you will need to solve puzzles.",
+          color: "#f6b300",
+        },
+        {
+          label: "How to Progress",
+          detail: "Clear every puzzle in this room to unlock the teleporter to the next room.",
           color: "#9b7bff",
+        },
+        { label: "Tip #1", detail: "Taking notes may help you!", color: "#3fe0a0" },
+        {
+          label: "Tip #2",
+          detail: "You can right-click to open inventory images in a new browser tab, if needed.",
+          color: "#3fe0a0",
         },
       ],
     },
     3: {
-      title: "Airlock Control",
-      description: `“Crew, this is Commander Vega. You've made your way inside the Airlock Control. Restore the airlock circuit so that the keypad becomes operational.”`,
+      title: "Airlock",
+      description: `“Crew, this is Commander Vega. You've made your way inside the Airlock Control. Restore the airlock circuit, then unlock the escape hatch to get out of here!”`,
+      pills: [
+        {
+          label: "How to Play",
+          detail: "Click machines, posters, and other items to collect clues and find puzzles.",
+          color: "#1be0f2",
+        },
+        {
+          label: "Inventory",
+          detail: "Inventory items contain information that you will need to solve puzzles.",
+          color: "#f6b300",
+        },
+        {
+          label: "How to Progress",
+          detail: "Clear every puzzle in this room to unlock the teleporter to the next room.",
+          color: "#9b7bff",
+        },
+        { label: "Tip #1", detail: "Taking notes may help you!", color: "#3fe0a0" },
+        {
+          label: "Tip #2",
+          detail: "You can right-click to open inventory images in a new browser tab, if needed.",
+          color: "#3fe0a0",
+        },
+      ],
     },
   },
 
@@ -280,9 +353,8 @@ export const content = {
   puzzles: {
     /* Puzzle 1 — Power Console (Room 1) */
     1: {
-      title: "Power Console",
-      description:
-        "Main power is down. See if you can find clues to the secret restart code in the crew’s service records.",
+      title: "Main Power Panel",
+      description: "Main power is down. See if you can find clues to the secret restart code in the crew portraits.",
       howToPlay: "Click each dial to cycle through its colors.",
       controlLabelPrefix: "Dial",
       currentPrefix: "Current:",
@@ -292,16 +364,16 @@ export const content = {
         wrongSequence: "That sequence is not correct. Try again.",
       },
       complete: {
-        title: "Power Bay Secure",
+        title: "Main Power Restarted",
         heading: "BATTERY ACQUIRED",
-        flavor: "Electrical cabinet unlocked.",
+        flavor: "Main power has been restarted.",
         dialogueSpeaker: "Commander Vega",
-        dialogue: "“Nice work, crew. Keep momentum!”",
+        dialogue: "“Nice work, crew. Keep it up!”",
         body: "A Battery has been added to your inventory",
         itemName: "Battery",
       },
       alreadyComplete: {
-        title: "Power Bay Secure",
+        title: "Main Power Restarted",
         heading: "BATTERY",
         body: "Already in your inventory",
         itemName: "Battery",
@@ -310,9 +382,9 @@ export const content = {
 
     /* Puzzle 2 — Reactor Switch Array (Room 1) */
     2: {
-      title: "Reactor Switch Array",
+      title: "Reactor Switches",
       description:
-        "Reactor priming follows a fixed safety order. Flip the four breakers in the only sequence that satisfies the Priming Protocol. Sequence them before lockout.",
+        "The Reactor can only be started up safely by flipping the four breakers in the correct order. You must do it quickly before the system locks you out.",
       timerPrefix: "Time Left:", // → "Time Left: 8s"
       currentOrderLabel: "Current Order:",
       noneLabel: "None",
@@ -324,16 +396,16 @@ export const content = {
         incorrect: "Incorrect sequence. Switches have been reset.",
       },
       messages: {
-        correctSequenceReady: "Correct sequence entered. Submit to prime the reactor.",
-        primedFallback: "Reactor primed.",
-        badgeAwardedTemplate: "Reactor primed. Badge awarded: {badge}.",
+        correctSequenceReady: "Correct order! Submit to bring the reactor online.",
+        primedFallback: "Reactor online.",
+        badgeAwardedTemplate: "Reactor online. Badge awarded: {badge}.",
         badgeAlreadyTemplate: "Badge already earned: {badge}.",
         badgeNotAwarded: "Badge could not be awarded.",
       },
       complete: {
         title: "Reactor Online",
         heading: "FUSE ACQUIRED",
-        body: "Reactor sequence locked. Fuse added to your inventory.",
+        body: "The reactor is ready to go. Fuse added to your inventory.",
         itemName: "Fuse",
       },
       alreadyComplete: {
@@ -360,7 +432,7 @@ export const content = {
       complete: {
         title: "Communication Signal Aligned",
         heading: "WRENCH ACQUIRED",
-        body: "The satellites are now in perfect alignment. Communication restored! Wrench added to your inventory.",
+        body: "The satellites are now lined up perfectly. Communication restored! Wrench added to your inventory.",
         itemName: "Wrench",
       },
       alreadyComplete: {
@@ -374,53 +446,54 @@ export const content = {
     /* Puzzle 4 — Reconstruct Transmission (Room 2) */
     4: {
       title: "Reconstruct the Transmission",
-      description: "Piece together the torn fragments to reveal the hidden message.",
+      description: "Put the torn piece back together to reveal the hidden message.",
       howToPlay:
-        "Click a fragment to select it, then click another fragment to swap their positions. Correctly placed fragments will show a 🔒 icon and cannot be moved further.",
+        "Click a piece to select it, then click another piece to swap them. Correctly placed pieces will show a 🔒 icon and cannot be moved further.",
       submitIdleLabel: "Reconstruct Transmission",
       submitBusyLabel: "Reconstructing...",
       shuffleLabel: "Reset",
-      progressTemplate: "Progress: {locked}/{total} fragments correctly placed",
+      progressTemplate: "Progress: {locked}/{total} pieces correctly placed",
       errors: {
-        cannotSwapLocked: "🔒 Cannot swap with a locked fragment!",
+        cannotSwapLocked: "🔒 Cannot swap with a locked piece!",
         notAllLocked:
-          "Not all fragments are in their correct positions! Keep rearranging until all fragments lock into place.",
+          "Not all pieces are in their correct positions! Keep rearranging until all pieces lock into place.",
       },
       complete: {
-        title: "Communication Signal Aligned",
-        heading: "The torn fragments reveal a scrambled transmission:",
+        title: "Transmission Reconstructed",
+        heading: "The torn pieces reveal a scrambled transmission:",
         scrambled: ["EVLAV", "KLCO", "EURSSRPE"],
         teaser: "These scrambled words hold the key to the next puzzle...",
       },
     },
 
-    /* Puzzle 5 — Transmission Decode + Valve Order (Room 2) */
+    /* Puzzle 5 — Unscramble Transmission + Comms System Order (Room 2) */
     5: {
-      title: "Transmission Decode & Valve Order",
-      description: "Decode the scrambled transmission to reveal the system stabilization order.",
+      title: "Unscramble & Activate Comms Systems",
+      description: "Decode the scrambled transmission to reveal the comms system activation order.",
       hints: [
         "EVLAV → Rearrange these letters to form a device that controls flow (5 letters)",
         "KLCO → Rearrange these letters to form something that secures a door (4 letters)",
-        "EURSSPE → Rearrange these letters to form something that pushes or exerts force (8 letters)",
+        "EURSSRPE → Rearrange these letters to form something that pushes or exerts force (8 letters)",
       ],
       sections: {
         scrambled: "Scrambled Transmission",
         decoded: "Decoded Transmission",
-        stabilization: "System Stabilization Order",
-        valves: "Valve Control Panel",
-        valveOrder: "Current Valve Activation Order",
+        stabilization: "System Activation Order",
+        valves: "System Control Panel",
+        valveOrder: "Current System Activation Order",
       },
-      scrambledWords: ["EVLAV", "KLCO", "EURSSPE"],
+      scrambledWords: ["EVLAV", "KLCO", "EURSSRPE"],
       wordInputLabels: ["Word 1:", "Word 2:", "Word 3:"],
       wordInputPlaceholder: "Enter decoded word",
-      valveInstructions: "Click valves in the correct order according to the system stabilization order above.",
-      emptyOrderMessage: "No valves activated yet. Click valves in the correct order!",
+      valveInstructions: "Click the buttons in the correct order according to the comms system activation order above.",
+      emptyOrderMessage: "No comms systems activated yet. Click the buttons in the correct order!",
       submitIdleLabel: "Stabilize Communications",
       submitBusyLabel: "Stabilizing...",
       resetLabel: "Reset All",
       errors: {
-        wordsNotDecoded: "The transmission words are not correctly unscrambled. Decode the scrambled message first!",
-        wrongValveOrder: "The valve activation order is incorrect. Follow the system stabilization order!",
+        wordsNotDecoded: "The words are not unscrambled yet. Decode the scrambled message first!",
+        wrongValveOrder:
+          "The comms system activation order is incorrect. Follow the order decoded from the transmission!",
       },
       complete: {
         title: "Communications Stabilized",
@@ -439,7 +512,7 @@ export const content = {
     /* Puzzle 6 — Restore Circuit (Room 3) */
     6: {
       title: "Restore Circuit",
-      description: "Connect all nodes correctly",
+      description: "Connect all nodes and wires correctly",
       nodeLabels: {
         comms: "Comms",
         powerCore: "Power Core",
@@ -453,18 +526,18 @@ export const content = {
         success: "System Online ✔",
       },
       complete: {
-        title: "Airlock Systems Restored",
-        body: "Commander Vega: “Circuit stabilized. The keypad is live—enter the override code to finish the escape.”",
+        title: "Airlock Circuit Restored",
+        body: "Commander Vega: “Circuit stabilized. The keypad is live! Enter the override code to unlock the hatch and escape!”",
       },
       alreadyComplete: {
-        title: "Airlock Systems Restored",
-        body: "Circuit already restored. Enter the override code on the keypad to finish the escape.",
+        title: "Airlock Circuit Restored",
+        body: "Circuit already restored. Enter the override code on the keypad to unlock the hatch and escape!",
       },
     },
 
     /* Puzzle 7 — Final Airlock Code (Room 3) */
     7: {
-      title: "Final Airlock Code",
+      title: "Final Escape Hatch Code",
       description: "Enter final 4-digit code",
       hint: "Each Key Item has one marked digit — enter it in the slot that matches that item's color.",
       submitLabel: "Submit Code",
@@ -476,7 +549,7 @@ export const content = {
         unexpected: "Unexpected error while submitting code.",
       },
       messages: {
-        success: "Correct code! Airlock escape sequence activated.",
+        success: "Correct code! Hatch unlocked. Escape sequence activated!",
       },
     },
   },

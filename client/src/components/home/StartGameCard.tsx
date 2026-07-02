@@ -29,17 +29,6 @@ export const StartGameCard = ({ onStart, isLoading }: StartGameCardProps) => (
         <p className="p2 er-text">{briefing.intro}</p>
       </div>
 
-      <div className="er-inset-panel">
-        <p className="p2 er-text-muted" style={{ lineHeight: 1.6 }}>
-          {briefing.bullets.map((b, i) => (
-            <span key={i}>
-              • {b}
-              {i < briefing.bullets.length - 1 && <br />}
-            </span>
-          ))}
-        </p>
-      </div>
-
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {briefing.pills.map((pill) => (
           <StatusPill key={pill.label} label={pill.label} detail={pill.detail} color={pill.color} />
