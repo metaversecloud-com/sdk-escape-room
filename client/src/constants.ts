@@ -162,20 +162,24 @@ export const content = {
       "“Welcome, Crew. This is Commander Vega. The station is failing and we have only 30 MINUTES of oxygen left. You must bring Power, Comms, and the Airlock back online and get us out before the air runs out! Click around the station for clues and crack the puzzles to escape!”",
     pills: [
       {
+        label: "The Station",
+        detail: "Three Rooms: Power, Comms, and Airlock.",
+        color: "#1be0f2",
+      },
+      {
+        label: "How to Progress",
+        detail: "Clear every puzzle in a room to unlock the next room's teleporter.",
+        color: "#f6b300",
+      },
+      {
         label: "How to Play",
         detail: "Click machines, posters, and other items to collect clues and find puzzles.",
-        color: "#1be0f2",
+        color: "#9b7bff",
       },
       {
         label: "Inventory",
         detail: "Inventory items contain information that you will need to solve puzzles.",
-        color: "#f6b300",
-      },
-      { label: "The Station", detail: "Three Rooms: Power, Comms, and Airlock.", color: "#1be0f2" },
-      {
-        label: "How to Progress",
-        detail: "Clear every puzzle in a room to unlock the next room's teleporter.",
-        color: "#9b7bff",
+        color: "#ff6ec7",
       },
       { label: "Tip #1", detail: "Taking notes may help you!", color: "#3fe0a0" },
       {
@@ -209,7 +213,7 @@ export const content = {
 
   exitScreen: {
     eyebrow: "Mission Complete",
-    title: "Congratulations — Airlock Opened",
+    title: "Congratulations, escape hatch unlocked!",
     message:
       "Commander Vega: “Great work, Crew. You restored the Power, Comms, and Airlock. And you escaped just in time! Grab your stats and see how you rank.”",
     yourTimeLabel: "Your Time",
@@ -280,13 +284,13 @@ export const content = {
         },
         {
           label: "How to Progress",
-          detail: "Clear every puzzle in this room to unlock the teleporter to the next room.",
+          detail: "After you clear every puzzle in this room, click the blue teleporter to progress to the next room.",
           color: "#9b7bff",
         },
         { label: "Tip #1", detail: "Taking notes may help you!", color: "#3fe0a0" },
         {
           label: "Tip #2",
-          detail: "You can right-click to open inventory images in a new browser tab, if needed.",
+          detail: "You can right-click to open inventory images in a new browser tab if needed.",
           color: "#3fe0a0",
         },
       ],
@@ -308,13 +312,13 @@ export const content = {
         },
         {
           label: "How to Progress",
-          detail: "Clear every puzzle in this room to unlock the teleporter to the next room.",
+          detail: "After you clear every puzzle in this room, click the blue teleporter to progress to the next room.",
           color: "#9b7bff",
         },
         { label: "Tip #1", detail: "Taking notes may help you!", color: "#3fe0a0" },
         {
           label: "Tip #2",
-          detail: "You can right-click to open inventory images in a new browser tab, if needed.",
+          detail: "You can right-click to open inventory images in a new browser tab if needed.",
           color: "#3fe0a0",
         },
       ],
@@ -335,13 +339,14 @@ export const content = {
         },
         {
           label: "How to Progress",
-          detail: "Clear every puzzle in this room to unlock the teleporter to the next room.",
+          detail:
+            "Complete the airlock circuit puzzle and then enter the final code into the keypad to escape through the hatch!",
           color: "#9b7bff",
         },
         { label: "Tip #1", detail: "Taking notes may help you!", color: "#3fe0a0" },
         {
           label: "Tip #2",
-          detail: "You can right-click to open inventory images in a new browser tab, if needed.",
+          detail: "You can right-click to open inventory images in a new browser tab if needed.",
           color: "#3fe0a0",
         },
       ],
@@ -539,7 +544,7 @@ export const content = {
     7: {
       title: "Final Escape Hatch Code",
       description: "Enter final 4-digit code",
-      hint: "Each Key Item has one marked digit — enter it in the slot that matches that item's color.",
+      hint: "Each Key Item has one marked digit. Enter it in the slot that matches that item's color.",
       submitLabel: "Submit Code",
       clearLabel: "C",
       backspaceLabel: "⌫",
