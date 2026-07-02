@@ -304,8 +304,9 @@ export const Home = () => {
     if (!target) return;
     setIsLoading(true);
     try {
-      const res = await backendAPI.get("/teleport", { params: { room: target } });
+      const res = await backendAPI.post("/teleport", { room: target });
       setGameState(dispatch, { ...res.data, hasSessionExpired: res.data?.hasSessionExpired === true });
+      await backendAPI.post("/close-iframe");
     } catch (error) {
       setErrorMessage(dispatch, error as ErrorType);
     }
@@ -321,7 +322,7 @@ export const Home = () => {
     setTeleportState({ state: "checking" });
     const targetRoom = new URLSearchParams(window.location.search).get("room");
     backendAPI
-      .get("/teleport", { params: targetRoom ? { room: targetRoom } : {} })
+      .post("/teleport", { room: targetRoom })
       .then((res) => {
         // Dispatch so visitorData / hasSessionExpired stay in sync if the
         // server detected an expired session during the check.

@@ -38,7 +38,7 @@ router.get("/system/health", (_req, res) => {
 
 router.get("/game-state", handleGetGameState);
 router.get("/session", handleCheckSession);
-router.get("/teleport", handleTeleport);
+router.post("/teleport", handleTeleport);
 router.post("/walk-to-asset", handleWalkToAsset);
 router.post("/start-game", handleStartGame);
 router.post("/submit-puzzle", handleSubmitPuzzle);

@@ -1,12 +1,6 @@
 import { Request, Response } from "express";
 import { VisitorData } from "@shared/types/VisitorData.js";
-import {
-  checkSessionExpiration,
-  errorHandler,
-  getCredentials,
-  getVisitor,
-  moveVisitorToAsset,
-} from "@utils/index.js";
+import { checkSessionExpiration, errorHandler, getCredentials, getVisitor, moveVisitorToAsset } from "@utils/index.js";
 
 /**
  * Per-room teleport definitions.
@@ -75,7 +69,7 @@ export const handleTeleport = async (req: Request, res: Response) => {
     const session = expirationResult.session;
 
     // Target room: explicit `?room=N` wins; otherwise infer from current room.
-    const explicitRoom = typeof req.query.room === "string" ? req.query.room : null;
+    const explicitRoom = req.body.room;
     const targetRoomKey = explicitRoom ?? inferTargetRoomKey(session.currentRoom);
     const def = targetRoomKey ? ROOM_DEFS[targetRoomKey] : null;
 
@@ -112,9 +106,7 @@ export const handleTeleport = async (req: Request, res: Response) => {
       console.warn(`moveVisitorToAsset to "${def.spawnUniqueName}" failed`, err);
     }
 
-    const updatedSession: VisitorData = teleportSucceeded
-      ? { ...session, physicalRoom: def.targetRoom }
-      : session;
+    const updatedSession: VisitorData = teleportSucceeded ? { ...session, physicalRoom: def.targetRoom } : session;
 
     if (teleportSucceeded && session.physicalRoom !== def.targetRoom) {
       await visitor.updateDataObject(

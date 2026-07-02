@@ -13,7 +13,7 @@ export const toasts = {
   puzzleSolved: {
     groupId: "puzzleSolved",
     title: "Puzzle Solved",
-    text: "Great work — keep going.",
+    text: "Great work. Keep going!",
   },
   itemEarned: {
     groupId: "itemEarned",
@@ -38,7 +38,7 @@ export const toasts = {
   escaped: {
     groupId: "escaped",
     title: "You Escaped!",
-    text: "The airlock is open and you're free. Check your time on the leaderboard.",
+    text: "The airlock is open and you're free! Check your time on the leaderboard.",
   },
   timeExpired: {
     groupId: "timeExpired",
