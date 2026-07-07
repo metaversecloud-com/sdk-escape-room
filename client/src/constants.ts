@@ -39,6 +39,7 @@ export const content = {
       show: "💡 Show Hints",
       hide: "Hide Hints",
     },
+    teleportToNextRoomButton: "Teleport to Next Room",
   },
 
   /* ─── Inventory panel ───────────────────────────────────────────────── */

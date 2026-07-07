@@ -13,7 +13,6 @@ import {
   LockedState,
   PageContainer,
   PuzzleCompleteCard,
-  Room2Puzzle2Complete,
   Room1Puzzle1,
   Room1Puzzle2,
   Room2Puzzle1,
@@ -615,12 +614,16 @@ export const Home = () => {
         {screen === "room2" && <RoomIntroCard roomId={2} />}
         {screen === "room3" && <RoomIntroCard roomId={3} />}
 
-        {/* Room 1 — Puzzles 1 & 2 */}
+        {/* Room 1 — Puzzles 1 & 2. Teleport button appears on both once the
+            room is complete, since either can be the "last puzzle solved". */}
         {screen === "puzzle1" &&
           (puzzlesCompleted?.[1] ? (
             <PuzzleCompleteCard
               {...(wasJustCompleted(1) ? content.puzzles[1].complete : content.puzzles[1].alreadyComplete)}
               playAcquisitionAnimation={wasJustCompleted(1)}
+              showTeleportButton={room1Done}
+              onTeleportToNextRoom={teleportToCurrentRoom}
+              isTeleporting={isLoading}
             />
           ) : (
             <Room1Puzzle1 refreshGameState={refreshGameState} />
@@ -631,12 +634,16 @@ export const Home = () => {
             <PuzzleCompleteCard
               {...(wasJustCompleted(2) ? content.puzzles[2].complete : content.puzzles[2].alreadyComplete)}
               playAcquisitionAnimation={wasJustCompleted(2)}
+              showTeleportButton={room1Done}
+              onTeleportToNextRoom={teleportToCurrentRoom}
+              isTeleporting={isLoading}
             />
           ) : (
             <Room1Puzzle2 refreshGameState={refreshGameState} />
           ))}
 
-        {/* Room 2 — Puzzles 3, 4, 5 */}
+        {/* Room 2 — Puzzles 3, 4, 5. Teleport button appears on all three
+            once the room is complete. */}
         {screen === "puzzle3" &&
           (!room1Done ? (
             <LockedState title={states.room2Locked.title} message={states.room2Locked.message} />
@@ -644,6 +651,9 @@ export const Home = () => {
             <PuzzleCompleteCard
               {...(wasJustCompleted(3) ? content.puzzles[3].complete : content.puzzles[3].alreadyComplete)}
               playAcquisitionAnimation={wasJustCompleted(3)}
+              showTeleportButton={room2Done}
+              onTeleportToNextRoom={teleportToCurrentRoom}
+              isTeleporting={isLoading}
             />
           ) : (
             <Room2Puzzle1 refreshGameState={refreshGameState} />
@@ -653,7 +663,10 @@ export const Home = () => {
           (!room1Done ? (
             <LockedState title={states.room2Locked.title} message={states.room2Locked.message} />
           ) : puzzlesCompleted?.[4] ? (
-            <Room2Puzzle2Complete />
+            <PuzzleCompleteCard
+              {...(wasJustCompleted(4) ? content.puzzles[4].complete : content.puzzles[5].alreadyComplete)}
+              playAcquisitionAnimation={wasJustCompleted(4)}
+            />
           ) : (
             <Room2Puzzle2 refreshGameState={refreshGameState} />
           ))}
@@ -665,12 +678,17 @@ export const Home = () => {
             <PuzzleCompleteCard
               {...(wasJustCompleted(5) ? content.puzzles[5].complete : content.puzzles[5].alreadyComplete)}
               playAcquisitionAnimation={wasJustCompleted(5)}
+              showTeleportButton={room2Done}
+              onTeleportToNextRoom={teleportToCurrentRoom}
+              isTeleporting={isLoading}
             />
           ) : (
             <Room2Puzzle3 refreshGameState={refreshGameState} />
           ))}
 
-        {/* Room 3 — Puzzles 6 & 7 */}
+        {/* Room 3 — Puzzles 6 & 7. No teleport button on the puzzle 6 card;
+            Room 3 is the last room, so there's no next-room teleport to
+            offer. Puzzle 7 renders ExitCongratsCard on success. */}
         {screen === "puzzle6" &&
           (!room2Done ? (
             <LockedState title={states.room3Locked.title} message={states.room3Locked.message} />

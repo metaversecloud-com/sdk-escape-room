@@ -1,4 +1,5 @@
 import { ReactNode, useContext, useEffect, useRef } from "react";
+import { content } from "@/constants";
 import { GlobalStateContext } from "@/context/GlobalContext";
 import { findInventoryImage, flyItemToInventory } from "@/utils";
 
@@ -35,6 +36,15 @@ interface PuzzleCompleteCardProps {
    * just submitted) — re-visits set it to `false` so no animation plays.
    */
   playAcquisitionAnimation?: boolean;
+  /**
+   * When true, render a "Teleport to Next Room" button at the bottom that
+   * fires `onTeleportToNextRoom`. Home.tsx sets this only when every puzzle
+   * in the current room is complete, so the button appears alongside the
+   * final puzzle of each room.
+   */
+  showTeleportButton?: boolean;
+  onTeleportToNextRoom?: () => void;
+  isTeleporting?: boolean;
   children?: ReactNode;
 }
 
@@ -48,6 +58,9 @@ export const PuzzleCompleteCard = ({
   dialogue,
   itemName,
   playAcquisitionAnimation = false,
+  showTeleportButton = false,
+  onTeleportToNextRoom,
+  isTeleporting = false,
   children,
 }: PuzzleCompleteCardProps) => {
   const { visitorInventory } = useContext(GlobalStateContext);
@@ -104,6 +117,18 @@ export const PuzzleCompleteCard = ({
         </div>
       )}
       {children}
+      {showTeleportButton && onTeleportToNextRoom && (
+        <div className="card-actions mt-2">
+          <button
+            type="button"
+            className="btn er-btn-primary w-full sm:w-auto"
+            onClick={onTeleportToNextRoom}
+            disabled={isTeleporting}
+          >
+            {content.ui.teleportToNextRoomButton}
+          </button>
+        </div>
+      )}
     </div>
   );
 };
