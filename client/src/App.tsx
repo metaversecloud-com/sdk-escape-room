@@ -81,6 +81,15 @@ const App = () => {
     );
   }
 
+  // Avoid firing API calls before the backend client is initialized with interceptors
+  if (!hasInitBackendAPI && interactiveParams.assetId) {
+    return (
+      <div className="flex flex-col gap-4 text-center justify-center h-screen">
+        <p>Loading interactive session…</p>
+      </div>
+    );
+  }
+
   return (
     <Routes>
       <Route path="/" element={<Home />} />

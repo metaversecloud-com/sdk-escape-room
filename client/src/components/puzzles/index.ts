@@ -1,0 +1,9 @@
+export * from "./PuzzleCompleteCard.js";
+export * from "./PuzzleHeader.js";
+export * from "./Room1Puzzle1.js";
+export * from "./Room1Puzzle2.js";
+export { default as Room2Puzzle1 } from "./Room2Puzzle1";
+export { default as Room2Puzzle2 } from "./Room2Puzzle2";
+export { default as Room2Puzzle3 } from "./Room2Puzzle3";
+export * from "./Room3Puzzle1.js";
+export * from "./Room3Puzzle2.js";

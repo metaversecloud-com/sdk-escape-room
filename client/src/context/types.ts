@@ -1,5 +1,5 @@
 import { DroppedAssetInterface } from "@rtsdk/topia";
-import { VisitorDataObject } from "@shared/types/VisitorData";
+import { VisitorData } from "@shared/types/VisitorData";
 
 export const SET_HAS_INTERACTIVE_PARAMS = "SET_HAS_INTERACTIVE_PARAMS";
 export const SET_GAME_STATE = "SET_GAME_STATE";
@@ -23,8 +23,14 @@ export interface InitialState {
   isAdmin?: boolean;
   error?: string;
   hasInteractiveParams?: boolean;
-  visitorData?: VisitorDataObject;
+  visitorData?: VisitorData;
   droppedAsset?: DroppedAssetInterface;
+  leaderboard?: LeaderboardRowType[];
+  badges?: { [name: string]: BadgeType };
+  visitorInventory?: VisitorInventoryType;
+  sessionKey?: string;
+  uniqueName?: string;
+  hasSessionExpired?: boolean;
 }
 
 export type ActionType = {
@@ -38,3 +44,44 @@ export type ErrorType =
       message?: string;
       response?: { data?: { error?: { message?: string }; message?: string } };
     };
+
+export type BadgeType = {
+  id: string;
+  icon: string;
+  description?: string;
+  name: string;
+};
+
+export type VisitorInventoryType = {
+  badges: { [name: string]: BadgeType };
+  items?: InventoryItemSummary[];
+};
+
+export type LeaderboardRowType = {
+  profileId: string;
+  name: string;
+  completionTime: number;
+  attempts: number;
+};
+
+export type InventoryItemSummary = {
+  id: string;
+  name?: string;
+  type?: string;
+  imageUrl?: string | null;
+  description?: string;
+  status?: string;
+  quantity?: number;
+  /**
+   * Free-form metadata configured on the ecosystem item. Escape Room uses
+   * `{ room, type: "keyItem" | "artifact", sortOrder }`; the index signature
+   * keeps the shape open so other categories can ride along without a type
+   * change here.
+   */
+  metadata?: {
+    room?: number;
+    type?: string;
+    sortOrder?: number;
+    [key: string]: unknown;
+  };
+};

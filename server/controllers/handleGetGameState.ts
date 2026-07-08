@@ -1,59 +1,62 @@
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getDroppedAsset, getVisitor, World } from "@utils/index.js";
-import axios from "axios";
+import {
+  checkSessionExpiration,
+  errorHandler,
+  getBadges,
+  getCredentials,
+  getDroppedAsset,
+  getKeyAsset,
+  getLeaderboard,
+  getVisitor,
+} from "@utils/index.js";
+import { KeyAssetDataObject } from "../types/index.js";
 
 export const handleGetGameState = async (req: Request, res: Response) => {
   try {
     const credentials = getCredentials(req.query);
-    const { assetId, displayName, interactiveNonce, interactivePublicKey, profileId, urlSlug, visitorId } = credentials;
+    const { urlSlug, sceneDropId } = credentials;
+    const sessionKey = `${urlSlug}-${sceneDropId}`;
+    const forceRefreshInventory = req.query.forceRefreshInventory === "true";
 
     const droppedAsset = await getDroppedAsset(credentials);
 
-    const world = World.create(urlSlug, { credentials });
-    world.triggerParticle({ name: "Sparkle", duration: 3, position: droppedAsset.position }).catch((error: any) =>
-      errorHandler({
-        error,
-        functionName: "handleGetGameState",
-        message: "Error triggering particle effects",
-      }),
-    );
+    // Leaderboard lives on the key asset (start terminal). Look it up by uniqueName within the scene
+    const keyAsset = await getKeyAsset(credentials);
+    const leaderboard = getLeaderboard((keyAsset?.dataObject as KeyAssetDataObject | null)?.leaderboard);
 
-    const { visitor } = await getVisitor(credentials, true);
-    const { isAdmin } = visitor;
+    // Visitor (data + inventory). getVisitor guarantees session defaults exist
+    // and builds visitorInventory with both badges and items.
+    const { visitor, visitorDataObject, visitorInventory } = await getVisitor(credentials, true);
 
-    try {
-      await axios.post(
-        `${process.env.LEADERBOARD_BASE_URL || "http://v2lboard0-prod-topia.topia-rtsdk.com"}/api/dropped-asset/increment-player-stats?assetId=${assetId}&displayName=${displayName}&interactiveNonce=${interactiveNonce}&interactivePublicKey=${interactivePublicKey}&profileId=${profileId}&urlSlug=${urlSlug}&visitorId=${visitorId}`,
-        {
-          publicKey: interactivePublicKey,
-          secret: process.env.INTERACTIVE_SECRET,
-          profileId,
-          displayName,
-          incrementBy: 1,
-        },
-      );
-    } catch (error) {
-      errorHandler({
-        error,
-        functionName: "handleGetGameState",
-        message: "Error posting player stats to Leaderboard",
-      });
+    // If the session is active, run an expiration check (may mark it timed-out).
+    let session = visitorDataObject[sessionKey];
+    let updatedVisitorDataObject = visitorDataObject;
+    let remainingMs: number | null = null;
+    if (session.sessionActive && session.startTime) {
+      const checkResult = await checkSessionExpiration({ credentials, visitor, sessionKey });
+      session = checkResult.session;
+      updatedVisitorDataObject = checkResult.visitorDataObject;
+      remainingMs = checkResult.remainingMs;
     }
 
-    await world.fireToast({ title: "Nice Work!", text: "You've successfully completed the task!" }).catch((error) =>
-      errorHandler({
-        error,
-        functionName: "handleGetGameState",
-        message: "Error firing toast in world",
-      }),
-    );
+    const badges = await getBadges(credentials, forceRefreshInventory);
 
-    return res.json({ droppedAsset, isAdmin, success: true });
+    return res.json({
+      success: true,
+      droppedAsset,
+      sessionKey,
+      visitorData: updatedVisitorDataObject?.[sessionKey] || session,
+      uniqueName: droppedAsset?.uniqueName || null,
+      badges,
+      visitorInventory,
+      leaderboard,
+      remainingMs,
+    });
   } catch (error) {
     return errorHandler({
       error,
-      functionName: "getDroppedAssetDetails",
-      message: "Error getting dropped asset instance and data object",
+      functionName: "handleGetGameState",
+      message: "Error getting game state",
       req,
       res,
     });

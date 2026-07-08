@@ -1,15 +1,28 @@
 import express from "express";
-import { handleGetGameState } from "./controllers/index.js";
-import { getVersion } from "@utils/getVersion.js";
+import { getVersion } from "./utils/getVersion.js";
+import {
+  handleCheckSession,
+  handleCloseIframe,
+  handleDiscoverDecoy,
+  handleExitGame,
+  handleGetGameState,
+  handleGrantItem,
+  handleSavePuzzleDraft,
+  handleStartGame,
+  handleSubmitPuzzle,
+  handleTeleport,
+  handleWalkToAsset,
+  handleWrongAttempt,
+} from "./controllers/index.js";
 
 const router = express.Router();
 const SERVER_START_DATE = new Date();
 
-router.get("/", (req, res) => {
+router.get("/", (_req, res) => {
   res.json({ message: "Hello from server!" });
 });
 
-router.get("/system/health", (req, res) => {
+router.get("/system/health", (_req, res) => {
   return res.json({
     appVersion: getVersion(),
     status: "OK",
@@ -24,5 +37,16 @@ router.get("/system/health", (req, res) => {
 });
 
 router.get("/game-state", handleGetGameState);
+router.get("/session", handleCheckSession);
+router.post("/teleport", handleTeleport);
+router.post("/walk-to-asset", handleWalkToAsset);
+router.post("/start-game", handleStartGame);
+router.post("/submit-puzzle", handleSubmitPuzzle);
+router.post("/puzzle-draft", handleSavePuzzleDraft);
+router.post("/grant-item", handleGrantItem);
+router.post("/discover-decoy", handleDiscoverDecoy);
+router.post("/wrong-attempt", handleWrongAttempt);
+router.post("/exit", handleExitGame);
+router.post("/close-iframe", handleCloseIframe);
 
 export default router;
