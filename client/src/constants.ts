@@ -17,7 +17,8 @@
  *   - `exitScreen`       — post-game ExitCongratsCard (stats + leaderboard)
  *   - `states`           — locked-room / session-expired / no-screen messages
  *   - `admin`            — admin panel placeholder
- *   - `rooms`            — per-room intro card text (and optional intro pills)
+ *   - `rooms`            — per-room intro card text (title + description)
+ *   - `roomIntroPills`   — shared pill list rendered on every room intro
  *   - `puzzles`          — per-puzzle title, instructions, errors, complete
  *                          card. Each puzzle has a `complete` sub-object for
  *                          the post-solve celebration card.
@@ -181,7 +182,7 @@ export const content = {
       { label: "Tip #1", detail: "Taking notes may help you!", color: "#3fe0a0" },
       {
         label: "Tip #2",
-        detail: "You can right-click to open inventory images in a new browser tab if needed.",
+        detail: "Share clues with friends! But everyone has their own progress and solves each puzzle.",
         color: "#3fe0a0",
       },
     ],
@@ -261,91 +262,49 @@ export const content = {
     placeholder: "No admin actions are configured yet.",
   },
 
-  /* ─── Per-room intro card text ─────────────────────────────────────── */
+  /* ─── Per-room intro card text ───────────────────────────────────────
+     `roomIntroPills` is shared across all three rooms — same 5 pills
+     render below every room's description. Kept as one array so a copy
+     edit only has to happen in one place. Note: `briefing.pills` above is
+     a separate, longer list specific to the pre-game briefing screen.
+  */
+
+  roomIntroPills: [
+    {
+      label: "How to Play",
+      detail: "Click machines, posters, and other items to collect clues and find puzzles.",
+      color: "#1be0f2",
+    },
+    {
+      label: "Inventory",
+      detail: "Inventory items contain information that you will need to solve puzzles.",
+      color: "#f6b300",
+    },
+    {
+      label: "How to Progress",
+      detail: "Clear every puzzle in this room to unlock the teleporter to the next room.",
+      color: "#9b7bff",
+    },
+    { label: "Tip #1", detail: "Taking notes may help you!", color: "#3fe0a0" },
+    {
+      label: "Tip #2",
+      detail: "Share clues with friends! But everyone has their own progress and solves each puzzle.",
+      color: "#3fe0a0",
+    },
+  ],
 
   rooms: {
     1: {
       title: "Power Bay",
       description: `“Crew, this is Commander Vega. You're live inside the Power Bay. You need to figure out how to start up the reactor and reroute power to get this room online.”`,
-      // Optional pills displayed below the description on the room intro.
-      pills: [
-        {
-          label: "How to Play",
-          detail: "Click machines, posters, and other items to collect clues and find puzzles.",
-          color: "#1be0f2",
-        },
-        {
-          label: "Inventory",
-          detail: "Inventory items contain information that you will need to solve puzzles.",
-          color: "#f6b300",
-        },
-        {
-          label: "How to Progress",
-          detail: "Clear every puzzle in this room to unlock the teleporter to the next room.",
-          color: "#9b7bff",
-        },
-        { label: "Tip #1", detail: "Taking notes may help you!", color: "#3fe0a0" },
-        {
-          label: "Tip #2",
-          detail: "You can right-click to open inventory images in a new browser tab, if needed.",
-          color: "#3fe0a0",
-        },
-      ],
     },
     2: {
       title: "Comms Deck",
       description: `“Crew, welcome to the Comms Deck. Align the satellites, reconstruct the torn-up transmission, and decode the system activation order to stabilize the signal.”`,
-      // Optional pills displayed below the description on the room intro.
-      pills: [
-        {
-          label: "How to Play",
-          detail: "Click machines, posters, and other items to collect clues and find puzzles.",
-          color: "#1be0f2",
-        },
-        {
-          label: "Inventory",
-          detail: "Inventory items contain information that you will need to solve puzzles.",
-          color: "#f6b300",
-        },
-        {
-          label: "How to Progress",
-          detail: "Clear every puzzle in this room to unlock the teleporter to the next room.",
-          color: "#9b7bff",
-        },
-        { label: "Tip #1", detail: "Taking notes may help you!", color: "#3fe0a0" },
-        {
-          label: "Tip #2",
-          detail: "You can right-click to open inventory images in a new browser tab, if needed.",
-          color: "#3fe0a0",
-        },
-      ],
     },
     3: {
       title: "Airlock",
       description: `“Crew, this is Commander Vega. You've made your way inside the Airlock Control. Restore the airlock circuit, then unlock the escape hatch to get out of here!”`,
-      pills: [
-        {
-          label: "How to Play",
-          detail: "Click machines, posters, and other items to collect clues and find puzzles.",
-          color: "#1be0f2",
-        },
-        {
-          label: "Inventory",
-          detail: "Inventory items contain information that you will need to solve puzzles.",
-          color: "#f6b300",
-        },
-        {
-          label: "How to Progress",
-          detail: "Clear every puzzle in this room to unlock the teleporter to the next room.",
-          color: "#9b7bff",
-        },
-        { label: "Tip #1", detail: "Taking notes may help you!", color: "#3fe0a0" },
-        {
-          label: "Tip #2",
-          detail: "You can right-click to open inventory images in a new browser tab, if needed.",
-          color: "#3fe0a0",
-        },
-      ],
     },
   },
 
