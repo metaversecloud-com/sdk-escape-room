@@ -666,7 +666,19 @@ export const Home = () => {
             <PuzzleCompleteCard
               {...(wasJustCompleted(4) ? content.puzzles[4].complete : content.puzzles[5].alreadyComplete)}
               playAcquisitionAnimation={wasJustCompleted(4)}
-            />
+            >
+              <div className="er-reconstructed-message my-2 p-3 grid gap-3">
+                <h4>{content.puzzles[4].complete.heading}</h4>
+                <div className="er-scrambled-output my-2">
+                  {content.puzzles[4].complete.scrambled.map((line) => (
+                    <div key={line} className="er-scrambled-line">
+                      {line}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <p className="er-next-clue">{content.puzzles[4].complete.teaser}</p>
+            </PuzzleCompleteCard>
           ) : (
             <Room2Puzzle2 refreshGameState={refreshGameState} />
           ))}
