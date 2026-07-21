@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { content } from "@/constants";
+import { GlobalDispatchContext } from "@/context/GlobalContext";
+import { ErrorType } from "@/context/types";
 import { backendAPI } from "@/utils/backendAPI";
-import { useInitialPuzzleDraft, usePuzzleDraft } from "@/utils";
+import { setErrorMessage, useInitialPuzzleDraft, usePuzzleDraft } from "@/utils";
 import { PuzzleHeader } from "./PuzzleHeader";
 import paper0 from "@/assets/paper0.png";
 import paper1 from "@/assets/paper1.png";
@@ -66,6 +68,7 @@ const updateLockedStatus = (pieces: PuzzlePiece[]) =>
   pieces.map((piece) => ({ ...piece, isLocked: piece.currentPosition === piece.correctPosition }));
 
 export const Room2Puzzle2 = ({ onSuccess, sessionKey, refreshGameState }: Room2Puzzle2Props) => {
+  const dispatch = useContext(GlobalDispatchContext);
   const savedDraft = useInitialPuzzleDraft<Draft>(4);
   const [pieces, setPieces] = useState<PuzzlePiece[]>([]);
   const [selectedPiece, setSelectedPiece] = useState<number | null>(null);
@@ -82,7 +85,7 @@ export const Room2Puzzle2 = ({ onSuccess, sessionKey, refreshGameState }: Room2P
         const response = await backendAPI.get("/game-state");
         if (response.data?.visitorData?.puzzlesCompleted?.[4]) setSuccess(true);
       } catch (err) {
-        console.error("Error checking puzzle completion:", err);
+        setErrorMessage(dispatch, err as ErrorType);
       }
     };
     checkPuzzleCompletion();
@@ -159,8 +162,7 @@ export const Room2Puzzle2 = ({ onSuccess, sessionKey, refreshGameState }: Room2P
         setError(response.data.message || "Failed to submit puzzle");
       }
     } catch (err) {
-      setError("Network error. Please try again.");
-      console.error("Puzzle submission error:", err);
+      setErrorMessage(dispatch, err as ErrorType);
     }
     setIsSubmitting(false);
   };

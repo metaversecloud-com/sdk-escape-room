@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { content } from "@/constants";
+import { GlobalDispatchContext } from "@/context/GlobalContext";
+import { ErrorType } from "@/context/types";
 import { backendAPI } from "@/utils/backendAPI";
-import { reportWrongAttempt, useInitialPuzzleDraft, usePuzzleDraft } from "@/utils";
+import { reportWrongAttempt, setErrorMessage, useInitialPuzzleDraft, usePuzzleDraft } from "@/utils";
 import { PuzzleHeader } from "./PuzzleHeader";
 
 const c = content.puzzles[3];
@@ -25,6 +27,7 @@ const CORRECT_VALUES = { alpha: 7, beta: 7, gamma: 6 } as const;
 type FieldName = "alpha" | "beta" | "gamma";
 
 export const Room2Puzzle1 = ({ onSuccess, sessionKey, refreshGameState }: Room2Puzzle1Props) => {
+  const dispatch = useContext(GlobalDispatchContext);
   const savedDraft = useInitialPuzzleDraft<Draft>(3);
   const [alpha, setAlpha] = useState(savedDraft?.alpha ?? 0);
   const [beta, setBeta] = useState(savedDraft?.beta ?? 0);
@@ -69,8 +72,10 @@ export const Room2Puzzle1 = ({ onSuccess, sessionKey, refreshGameState }: Room2P
           setError(response.data.message || "Failed to submit puzzle");
         }
       } catch (err) {
-        setError("Network error. Please try again.");
-        console.error("Puzzle submission error:", err);
+        // Surface the actual server error via the global banner (PageContainer)
+        // so the player sees the real reason (e.g. missing dropped asset), not
+        // a generic "Network error".
+        setErrorMessage(dispatch, err as ErrorType);
       }
     } else {
       setError(c.errors.wrongAlignment);

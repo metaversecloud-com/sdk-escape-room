@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { content } from "@/constants";
+import { GlobalDispatchContext } from "@/context/GlobalContext";
+import { ErrorType } from "@/context/types";
 import { backendAPI } from "@/utils/backendAPI";
-import { reportWrongAttempt, useInitialPuzzleDraft, usePuzzleDraft } from "@/utils";
+import { reportWrongAttempt, setErrorMessage, useInitialPuzzleDraft, usePuzzleDraft } from "@/utils";
 import { PuzzleHeader } from "./PuzzleHeader";
 
 interface Draft {
@@ -49,6 +51,7 @@ const shuffle = <T,>(array: T[]): T[] => {
 };
 
 export const Room2Puzzle3 = ({ onSuccess, sessionKey, refreshGameState }: Room2Puzzle3Props) => {
+  const dispatch = useContext(GlobalDispatchContext);
   const savedDraft = useInitialPuzzleDraft<Draft>(5);
   const [valveOrder, setValveOrder] = useState<string[]>(savedDraft?.valveOrder ?? []);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -129,8 +132,7 @@ export const Room2Puzzle3 = ({ onSuccess, sessionKey, refreshGameState }: Room2P
         setError(response.data.message || "Failed to submit puzzle");
       }
     } catch (err) {
-      setError("Network error. Please try again.");
-      console.error("Puzzle submission error:", err);
+      setErrorMessage(dispatch, err as ErrorType);
     }
     setIsSubmitting(false);
   };
