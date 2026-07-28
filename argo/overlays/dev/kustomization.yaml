@@ -1,17 +1,14 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-
 # No `namespace:` directive: the interceptor Ingress must stay in `keda`; the
 # workload resources carry no namespace and Argo injects the Application's
 # destination namespace (sdk-apps-dev).
-
 resources:
   - ../../services/esc-room0
   - esc-room0-config.yaml
   - esc-room0-sealedsecret.yaml
   - esc-room0-httpscaledobject.yaml
   - esc-room0-interceptor-ingress.yaml
-
 patches:
   # Drop the direct ALB Ingress: in dev the app is fronted through the KEDA
   # interceptor so a scaled-to-zero Deployment is woken by the first request.
@@ -24,10 +21,9 @@ patches:
       kind: Ingress
       metadata:
         name: esc-room0
-
 # Per-service image (defaults to the shared dev ECR sdk-example:<repo>; an
 # independent deployment may pin a different tag/image).
 images:
   - name: esc-room0
     newName: 368076259134.dkr.ecr.us-east-1.amazonaws.com/sdk-example
-    newTag: sdk-escape-room
+    digest: sha256:a0c4937b5571222c75035e8973aa13c1745aa1839551bac523e5cc7170f59306
