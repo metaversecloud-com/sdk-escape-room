@@ -1,229 +1,227 @@
-# Escape Room — Topia SDK App
+<div align="center">
+<img src="https://global-uploads.webflow.com/62e7004a0f9b3a63b980ac3c/62e70c84dd3aac06fb2ac2b6_topia-logo-blue-2x.png" style="width: 120px; margin-bottom: 20px" alt="Topia logo">
+</div>
 
-A multi-room escape-room game for [Topia](https://topia.io) worlds. Players have **30 minutes** to restore Power, Comms, and the Airlock by clicking interactive station assets, solving the puzzle in each one, and progressing through three rooms (A → B → C). Completion times go to a per-asset leaderboard. Built on the [Topia JavaScript SDK](https://metaversecloud-com.github.io/mc-sdk-js/index.html).
+# Escape Room
 
-## How a session flows
+## Introduction / Summary
 
-1. The player clicks the **Start Terminal** asset (drawer with `?screen=start`) and hits **Start the Game**. The server records `startTime`, sets `currentRoom: "A"`, and teleports them to **Room A**.
-2. **Room A — Power Bay**: solve **Puzzle 1** (color-sequence panel, grants the **Battery** inventory item) and **Puzzle 2** (timed switch order, grants the **Fuse**). Completing both auto-advances the player to **Room B** and awards the **Power Restored** badge.
-3. **Room B — Comms Deck**: **Puzzle 3** (satellite alignment, grants the **Wrench**), **Puzzle 4** (transmission fragments — sliding-tile puzzle), **Puzzle 5** (decode the scrambled words and operate the valves in order, grants the **Circuit Chip**). Completing all three advances to **Room C** and awards **Signal Recovered**.
-4. **Room C — Airlock Control**: **Puzzle 6** (circuit-restoration node graph, awards **Airlock Engineer**) and **Puzzle 7** (the final 4-digit airlock code, derived from inventory items, awards **Station Survivor** and writes a leaderboard entry).
-5. If the 30-minute timer expires before the player escapes, the session is marked `timedOut`, the player is teleported back to the start, and the UI surfaces a "Time has run out" state.
+Escape Room is a 30-minute, three-room, seven-puzzle escape-room game for Topia worlds. A player clicks the start terminal to begin a per-`sceneDropId` session, walks between physical rooms via teleport pads, solves puzzles one at a time (each granting an ecosystem `ITEM` reward), and wins by cracking Puzzle 7 — which stamps their completion time, writes their entry to the leaderboard, and teleports them home. If the 30-minute timer expires first, the session flips to `timedOut: true` and the player is auto-teleported back to start.
+
+The app rewards eight distinct badges across the run — including time-based (Warp Speed for sub-3-minute completions), collection-based (Trash Panda for owning every ecosystem ITEM), and behavior-based (Button Masher for spamming wrong answers, Trash Digger for finding a hidden decoy screen).
 
 ## Key Features
 
 ### Canvas elements & interactions
 
-Every interactive station asset opens the same drawer iframe; each asset's drawer is parameterized by a `?screen=` query string. The supported screens are:
-
-| `?screen=`            | Drawer content                                                                                                                             |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `start`               | Briefing card + **Start the Game** button (or "session running" card if already started)                                                   |
-| `puzzle1` … `puzzle7` | The matching puzzle, or its complete-state card if already solved                                                                          |
-| `leaderboard`         | Standalone leaderboard view                                                                                                                |
-| `exit`                | Exit confirmation                                                                                                                          |
-| `decoy`               | Trash-discovery card; awards the **Trash Digger** badge on first click                                                                     |
-| Artifact screens      | `Room1Artifact`, `CrewPortrait1`-`3`, `AlphaStation`, `BetaStation`, `OmegaStation`, `Room3Artifact` — grant the matching collectible item |
-
-Required dropped-asset unique names (see "Required Assets" below) define the rooms' physical spawn points and the leaderboard's host asset.
+- **Start terminal (`EscapeRoom_start`):** the key asset. Clicking it opens the drawer to start a run, resume an active one, or view the leaderboard.
+- **Room teleport pads:** dropped assets with unique names `EscapeRoom_room1_teleport`, `EscapeRoom_room2_teleport`, `EscapeRoom_room3_teleport`, plus best-effort walk-onto pads `EscapeRoom_room{from}_teleportRoom{to}` used at room transitions.
+- **Artifact assets on canvas:** each artifact (`Room1Artifact`, `CrewPortrait1..3`, `AlphaStation`, `BetaStation`, `OmegaStation`, `Room3Artifact`, plus the hidden Decoy screen) opens the drawer with `?screen=<name>`. Clicking an artifact walks the visitor onto it — but only if their `physicalRoom` matches the artifact's required room.
 
 ### Drawer content
 
-- **Briefing card** with mission objectives and Start CTA (`?screen=start`).
-- **Status bar** with live timer and an Inventory button (modal panel showing granted items + their ecosystem `image_path`).
-- **Per-puzzle UI** — color sequencer, timed switch panel, satellite sliders, sliding-tile reconstruction, scrambled-word decode + valve sequencer, circuit-restoration node graph, and a 4-digit keypad.
-- **Exit button** — sticky `PageFooter` confirmation modal that ends the session and teleports the player back to the start.
-- **Leaderboard** — top times rendered as `XmYs`, sorted by escape time.
-- **Admin gear icon** — placeholder; future admin actions (puzzle reset, leaderboard moderation, etc.) belong in `client/src/components/AdminView.tsx`.
+- **Start terminal:** Start Escape Room, Session-in-progress card (with "restart" and "teleport to current room" CTAs) if the player has a live run.
+- **Puzzles 1–7:** rendered via `client/src/components/puzzles/` — each puzzle has its own UI and submits to `/api/submit-puzzle`.
+- **Artifact/inventory screens:** short lore blurbs for the ecosystem `ITEM` rewards; grants the item on view via `/api/grant-item`.
+- **Decoy screen:** the hidden "Trash Digger" easter-egg screen.
+- **Countdown timer:** client-side JS ticker; server enforces on every state check.
 
-### Badges
+### Admin features
 
-Granted via `visitor.grantInventoryItem` from the ecosystem inventory:
+None gated at the route layer. `AdminView.tsx` / `AdminIconButton.tsx` are placeholders — no `isAdmin` check is enforced on any endpoint. If admin functionality is intended, it needs to be wired.
 
-| Badge name         | When awarded                                                                  |
-| ------------------ | ----------------------------------------------------------------------------- |
-| `Power Restored`   | After solving Puzzle 1 + Puzzle 2 (Room A complete)                           |
-| `Signal Recovered` | After solving Puzzle 3 + 4 + 5 (Room B complete)                              |
-| `Airlock Engineer` | After solving Puzzle 6                                                        |
-| `Station Survivor` | After solving Puzzle 7 (full escape)                                          |
-| `Warp Speed`       | Full escape in under 3 minutes (awarded alongside Station Survivor)           |
-| `Trash Digger`     | Investigate a decoy / trash asset (`?screen=decoy`)                           |
-| `Trash Panda`      | Collect every ecosystem ITEM (all puzzle rewards + every artifact)            |
-| `Button Masher`    | 4 wrong submissions on any single puzzle's control panel (counted per-puzzle) |
+### Themes
+
+No runtime theme switching. The app is a single game with a fixed narrative and visual style. `client/src/index.css` is the **canonical reference for the SDK cascade-layer CSS setup** (called out in the boilerplate's style guide).
 
 ## Required Assets with Unique Names
 
-The world must contain dropped assets with the following `uniqueName` values for the escape-room flow to work. Each is found at runtime via `World.fetchDroppedAssetsBySceneDropId({ sceneDropId, uniqueName })`.
+All are looked up via `world.fetchDroppedAssetsBySceneDropId({ sceneDropId, uniqueName })`.
 
-| Unique Name Pattern         | Purpose                                                                                                                                                          |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `EscapeRoom_start`          | Start Terminal — opens the briefing iframe AND hosts the leaderboard on its `dataObject.leaderboard`. Looked up by uniqueName per-scene; no world data required. |
-| `EscapeRoom_start_teleport` | Teleport target after **Start Game**, after **Exit**, and after a session timeout.                                                                               |
-| `EscapeRoom_room1_teleport` | Teleport target on game start (Room A spawn).                                                                                                                    |
-| `EscapeRoom_room2_teleport` | Teleport target after Room A → B transition.                                                                                                                     |
-| `EscapeRoom_room3_teleport` | Teleport target after Room B → C transition.                                                                                                                     |
+| Unique Name                              | Description                                                                                      |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `EscapeRoom_start`                       | Key asset (start terminal). Also hosts the leaderboard data object.                              |
+| `EscapeRoom_start_teleport`              | Target for `/exit`, timeout auto-return, and post-Puzzle-7 completion.                           |
+| `EscapeRoom_room1_teleport`              | Room 1 entry point (target of `/start-game` and `/teleport?room=1`).                             |
+| `EscapeRoom_room2_teleport`              | Room 2 entry point (`/teleport?room=2`).                                                         |
+| `EscapeRoom_room3_teleport`              | Room 3 entry point (`/teleport?room=3`).                                                         |
+| `EscapeRoom_room{from}_teleportRoom{to}` | Best-effort walk-onto pads placed at each room boundary (e.g. `EscapeRoom_room1_teleportRoom2`). |
 
-> **Note:** All five must be placed in the world manually by an admin. Teleport calls are best-effort — if a spawn asset is missing the server logs a warning, persists puzzle completion as normal, and the player can walk to the next room manually.
-
-### Required ecosystem inventory items
-
-Created in the [Topia dashboard](https://topia.io/t/dashboard/integrations) under the same public key the app uses. Items are looked up by **exact name** (case-insensitive); badges by name + `type === "BADGE"`; mission items by name + `type === "ITEM"`.
-
-| Item name          | Type  | When granted                                                |
-| ------------------ | ----- | ----------------------------------------------------------- |
-| `Battery`          | ITEM  | Puzzle 1 complete                                           |
-| `Fuse`             | ITEM  | Puzzle 2 complete                                           |
-| `Wrench`           | ITEM  | Puzzle 3 complete                                           |
-| `Circuit Chip`     | ITEM  | Puzzle 5 complete                                           |
-| `Power Restored`   | BADGE | Room A complete                                             |
-| `Signal Recovered` | BADGE | Room B complete                                             |
-| `Airlock Engineer` | BADGE | Puzzle 6 complete                                           |
-| `Station Survivor` | BADGE | Puzzle 7 complete (escape)                                  |
-| `Warp Speed`       | BADGE | Puzzle 7 complete with `completionTime < 180s`              |
-| `Trash Digger`     | BADGE | First click on a `?screen=decoy` asset                      |
-| `Trash Panda`      | BADGE | Visitor owns every ecosystem ITEM (rewards + all artifacts) |
-| `Button Masher`    | BADGE | 4 wrong attempts on any single puzzle (per-puzzle counter)  |
-
-The ecosystem item's `image_path` is rendered inside the puzzle complete cards and the inventory modal.
+Artifact dropped assets don't require fixed unique names — they're identified by their `clickableLink` `?screen=` query param.
 
 ## Technical Architecture
 
 ### Data Objects
 
-#### Visitor (`visitor.dataObject`)
+#### Visitor (per-session)
 
-Sessions are scoped per `sceneDropId` so a single visitor can have independent runs across multiple key-asset instances in the same world. Initialization happens automatically inside `getVisitor` so any controller call order is safe.
-
-```ts
-{
-  [`${urlSlug}-${sceneDropId}`]: {
-    startTime: string | null;        // ISO timestamp when the player started
-    endTime: string | null;          // ISO timestamp when the session ended (escape, exit, or timeout)
-    sessionActive: boolean;
-    timedOut: boolean;               // true if the 30-min timer expired
-    currentRoom: "A" | "B" | "C" | null;
-    puzzlesCompleted: { 1: boolean; 2: boolean; 3: boolean; 4: boolean; 5: boolean; 6: boolean; 7: boolean };
-    inventory: {
-      fuse: { id: "fuse"; serial: "74A1" } | null;
-      wrench: { id: "wrench"; serial: "26B5" } | null;
-      accessCard: { id: "accessCard"; partialCode: "7 _ 3 _" } | null;
-    };
-    completionTime: number | null;   // total escape time in seconds (set on Puzzle 7)
-  }
-}
-```
-
-#### World (`world.dataObject`)
-
-Per-`sceneDropId` config, written on the player's first `/start-game` call.
+Keyed by `${urlSlug}-${sceneDropId}` so multiple parallel scene drops in one world each get their own state.
 
 ```ts
 {
-  [sceneDropId]: {
-    keyAssetId: string;              // the dropped asset hosting the leaderboard
-    config: {
-      startSpawnId: "EscapeRoom_start_teleport";
-      roomASpawnId: "EscapeRoom_room1_teleport";
-      roomBSpawnId: "EscapeRoom_room2_teleport";
-      roomCSpawnId: "EscapeRoom_room3_teleport";
-      maxSessionMinutes: 30;
-    };
-  }
+  startTime: number;              // ms epoch
+  endTime?: number;
+  sessionActive: boolean;
+  timedOut: boolean;
+  currentRoom: 1 | 2 | 3 | null;      // Progression (puzzle-based)
+  physicalRoom: 1 | 2 | 3 | null;     // Where the avatar actually is
+  puzzlesCompleted: { 1: boolean, ..., 7: boolean };
+  completionTime?: number;             // seconds
+  puzzleDrafts: { [n: number]: unknown };  // Close-and-resume state per puzzle
+  wrongAttempts: { [n: number]: number };  // Per-puzzle wrong-submit counter
 }
 ```
 
-#### Key Asset (`keyAsset.dataObject`)
+#### Key Asset (leaderboard)
 
-Leaderboard entries keyed by `${profileId}-${timestamp}` (multiple attempts per profile are aggregated server-side in `getLeaderboard`).
+Attached to `EscapeRoom_start`.
 
 ```ts
 {
   leaderboard: {
-    [`${profileId}-${timestamp}`]: `${displayName}|${completionTimeSeconds}`;
-  }
+    [profileId]: `${displayName}|${bestTime}|${attempts}`;
+  };
 }
 ```
 
-### API Endpoints
+Entries are aggregated **per profile**: on new completion, `bestTime = min(existing, new)` and `attempts` increments.
 
-All routes accept the standard interactive credentials in query params (`assetId`, `interactivePublicKey`, `interactiveNonce`, `urlSlug`, `visitorId`, `profileId`, `displayName`, `sceneDropId`, …).
+#### World
 
-| Method | Path                 | Purpose                                                                                                                                                                                                                                                                                                                                 |
-| ------ | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/api/game-state`    | Returns `{ droppedAsset, visitorData, worldConfig, badges, visitorInventory, inventoryItems, leaderboard, remainingMs, ... }`. Supports `?forceRefreshInventory=true` to bust the 24-hour ecosystem-inventory cache.                                                                                                                    |
-| GET    | `/api/session`       | Lightweight session-status check. Returns `{ active, timedOut, remainingMs, visitorData }`.                                                                                                                                                                                                                                             |
-| POST   | `/api/start-game`    | Initializes a fresh `VisitorData` session, teleports the player to Room A, fires `gameStarts` + `roomAEntries` analytics.                                                                                                                                                                                                               |
-| POST   | `/api/submit-puzzle` | Body: `{ puzzleNumber: 1..7 }`. Marks the puzzle complete, grants any inventory reward, runs room transitions if conditions are met, awards badges, persists once, then runs deferred best-effort teleports. Validates puzzle number; returns 400 for invalid; returns 200 with `hasSessionExpired: true` if the session has timed out. |
-| POST   | `/api/exit`          | Marks `sessionActive: false`, fires `manualGameExits` analytic, teleports the player back to the start.                                                                                                                                                                                                                                 |
-| GET    | `/api/system/health` | Health check + selected env vars.                                                                                                                                                                                                                                                                                                       |
+Not used. `world.dataObject` is never written or read.
 
-### Server-side conventions
+## API Endpoints
 
-- **Visitor data initialization** — every controller calls `getVisitor(credentials, true)` first; it returns `{ visitor, visitorDataObject, session, visitorInventory }` and guarantees the per-session record exists with valid defaults.
-- **Single visitor write per submission** — `handleSubmitPuzzle` mutates the in-memory session, accumulates analytics, and writes once at the end so a missing spawn asset (which would throw inside `teleportPlayer`) cannot roll back puzzle completion.
-- **Best-effort teleports** — pending teleports are run in a `try/catch` after the visitor write. A failed teleport logs a warning; the puzzle still persists.
-- **Inventory cache** — `getCachedInventoryItems` caches the ecosystem inventory for 6 hours with stale-cache fallback. Pass `forceRefresh: true` (or the client's `?forceRefreshInventory=true`) to bypass.
+All routes mount under `/api`. **No admin gating — every route runs for the authenticated visitor.**
 
-### Client-side conventions
+| Method | Route             | Purpose                                                                                                                                                                                                            |
+| ------ | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET`  | `/`               | Sanity check.                                                                                                                                                                                                      |
+| `GET`  | `/system/health`  | Version + env-var status.                                                                                                                                                                                          |
+| `GET`  | `/game-state`     | Full state snapshot: `droppedAsset`, `sessionKey`, `visitorData`, `uniqueName`, `badges`, `visitorInventory`, `leaderboard`, `remainingMs`. Supports `?forceRefreshInventory=true` to bust the 6h ecosystem cache. |
+| `GET`  | `/session`        | Lightweight status: `{ active, timedOut, remainingMs, visitorData }`.                                                                                                                                              |
+| `POST` | `/start-game`     | Clears prior ecosystem ITEMs (badges preserved), teleports to Room 1, writes fresh session.                                                                                                                        |
+| `POST` | `/submit-puzzle`  | Body: `{ puzzleNumber: 1..7 }`. Marks complete, grants ITEM reward, checks room-transition + Trash Panda badges. On P7: stamps completion, writes leaderboard, teleports home.                                     |
+| `POST` | `/puzzle-draft`   | Persists a per-puzzle draft `{ puzzleNumber, draft }` into `session.puzzleDrafts` for close-and-resume.                                                                                                            |
+| `POST` | `/grant-item`     | Body: `{ itemName }`. Grants an ecosystem ITEM after room-gate check against `metadata.room`. Runs Trash Panda check.                                                                                              |
+| `POST` | `/teleport`       | Body: `{ room?: 1 \| 2 \| 3 }`. Gated on `puzzlesCompleted`; bumps `physicalRoom` and moves the visitor to the target room's teleport pad.                                                                         |
+| `POST` | `/walk-to-asset`  | Body: `{ screen }`. Walks visitor onto the artifact's asset (`y + 150`). Refuses cross-room walks with `{ walked: false, reason: "wrongRoom" }`.                                                                   |
+| `POST` | `/discover-decoy` | Idempotent: awards Trash Digger badge. No room gate.                                                                                                                                                               |
+| `POST` | `/wrong-attempt`  | Body: `{ puzzleNumber }`. Bumps `session.wrongAttempts[n]`; on `=== 4` (exact) awards Button Masher.                                                                                                               |
+| `POST` | `/exit`           | Marks session inactive, fires `manualGameExits`, teleports to start, closes iframe.                                                                                                                                |
+| `POST` | `/close-iframe`   | Just closes the iframe (used by "Stay Here" CTA).                                                                                                                                                                  |
 
-- **Server-first** — all SDK calls happen in server controllers. The client uses `backendAPI` (don't bypass) and never imports `@rtsdk/topia`.
-- **Cascade layers** — `index.html` declares `@layer tailwind, sdk;` before any stylesheet, then loads SDK CSS via `<link layer="sdk">`. Tailwind utilities go inside `@layer tailwind { ... }` and the app's own classes (`tokens.css`, `components.css`) stay unlayered. Priority order: **custom (unlayered) > SDK > Tailwind**. Tailwind preflight is disabled in `tailwind.config.js`; the `*, *::before, *::after { box-sizing: border-box }` rule is restored by hand in `tokens.css`.
-- **Design tokens** — every color, gradient, glow, and accent border lives in `client/src/styles/tokens.css` as a CSS custom property. `client/src/styles/components.css` exposes shared `.er-*` classes (cards, modals, puzzle frames, success states). No inline gradient/glow style objects in JSX.
-- **Component layout** — `Home.tsx` is orchestration only. UI lives under `client/src/components/home/`, `client/src/components/puzzles/`, and the shared SDK-style primitives under `client/src/components/`.
+## Analytics
+
+All events emitted via `analytics: [...]` on `visitor.updateDataObject`. `uniqueKey` pattern is `${profileId}-${sessionKey}[-suffix]`.
+
+| Event                 | Fired when                                        | Where                        |
+| --------------------- | ------------------------------------------------- | ---------------------------- |
+| `gameStarts`          | Player starts a new run.                          | `POST /start-game`.          |
+| `room1Entries`        | Player starts a new run.                          | `POST /start-game`.          |
+| `room2Entries`        | Puzzle 2 completed (Room A→B transition unlocks). | `POST /submit-puzzle`.       |
+| `room3Entries`        | Puzzle 5 completed (Room B→C transition unlocks). | `POST /submit-puzzle`.       |
+| `puzzle${n}Completed` | Each puzzle submit for `n = 1..7`.                | `POST /submit-puzzle`.       |
+| `gameCompleted`       | Puzzle 7 successfully submitted.                  | `POST /submit-puzzle`.       |
+| `gameTimeouts`        | Session exceeds 30 min.                           | `checkSessionExpiration.ts`. |
+| `manualGameExits`     | Player clicks Exit.                               | `POST /exit`.                |
+
+**Particles + toasts:** `firework1_gold` fires on every non-P7 puzzle submit; `explosion_float` (duration 6) fires on P7 completion. In-world toasts (`fireToast` via `shared/copy/toasts.ts`) announce item earned / puzzle solved / room cleared / escaped / time expired / artifact acquired.
+
+## Puzzles
+
+| #   | Room | Puzzle               | Mechanic                                                          | ITEM reward  |
+| --- | ---- | -------------------- | ----------------------------------------------------------------- | ------------ |
+| 1   | A    | Color-sequence panel | Cycle 3 lights `OFF → BLUE → RED → GREEN` to match `[B, R, G]`    | Battery      |
+| 2   | A    | Timed switch order   | Flip four switches in order `[4, 3, 1, 2]` within 8 s             | Fuse         |
+| 3   | B    | Satellite alignment  | Set 3 sliders to `α=7, β=7, γ=6` (range 0–10)                     | Wrench       |
+| 4   | B    | Sliding-tile puzzle  | Reconstruct a nine-tile paper image                               | _(none)_     |
+| 5   | B    | Word decode + valves | Decode `EVLAV/KLCO/EURSSPE` then operate valves `Blue→Red→Yellow` | Circuit Chip |
+| 6   | C    | Node-graph circuit   | Draw the correct connections between fixed nodes                  | _(none)_     |
+| 7   | C    | Airlock keypad       | Enter code `3967`                                                 | _(win)_      |
+
+## Badges
+
+Defined in `server/utils/checkEscapeBadges.ts` (`BADGES` catalog).
+
+| Badge              | Trigger                                                                                  |
+| ------------------ | ---------------------------------------------------------------------------------------- |
+| `Power Restored`   | P1 && P2 complete (Room A cleared).                                                      |
+| `Signal Recovered` | P3 && P4 && P5 complete (Room B cleared).                                                |
+| `Airlock Engineer` | P6 submitted.                                                                            |
+| `Station Survivor` | P7 submitted.                                                                            |
+| `Warp Speed`       | P7 with `completionTime < 180 seconds`.                                                  |
+| `Trash Digger`     | Any `?screen=decoy` asset click → `/discover-decoy`.                                     |
+| `Trash Panda`      | Visitor owns every ecosystem `ITEM`. Rechecked after `/grant-item` and `/submit-puzzle`. |
+| `Button Masher`    | `wrongAttempts[n] === 4` for any puzzle (exact threshold crossing).                      |
+
+## Session Model
+
+- **Duration:** hardcoded `MAX_SESSION_MINUTES = 30` in `checkSessionExpiration.ts` (client mirrors the value).
+- **Enforcement:** every `/game-state`, `/session`, `/submit-puzzle`, and `/teleport` call runs `checkSessionExpiration`. If expired: marks `sessionActive: false`, `timedOut: true`, fires `gameTimeouts` analytic, teleports the visitor to `EscapeRoom_start_teleport`.
+- **Physical vs. logical rooms:** `physicalRoom` (where the avatar is) is tracked separately from `currentRoom` (puzzle progression). This is what powers walk-gating — clicking an artifact from the wrong room is refused server-side.
+- **Session-in-progress card:** if the player re-opens the start terminal mid-run, `SessionInProgressCard` offers "restart" or "teleport to current room". `justStarted` sticky state hides it right after Start is pressed.
+- **Draft resume:** `session.puzzleDrafts[n]` opaquely stores the puzzle's in-progress UI state, wiped on `/start-game` and on successful `/submit-puzzle`.
+- **Exit vs Stay:** `/exit` ends session, teleports, closes iframe. `/close-iframe` just closes (used by "Stay Here").
 
 ## Environment Variables
 
-Create a `.env` file at the repo root. See `.env-example` for a template.
+Create a `.env` at the app root. See `.env-example` for a template.
 
-| Variable               | Description                                                                        | Required                 |
-| ---------------------- | ---------------------------------------------------------------------------------- | ------------------------ |
-| `INTERACTIVE_KEY`      | Topia interactive app public key.                                                  | Yes                      |
-| `INTERACTIVE_SECRET`   | Topia interactive app secret.                                                      | Yes                      |
-| `INSTANCE_DOMAIN`      | Topia API domain. `api.topia.io` for production, `api-stage.topia.io` for staging. | Yes                      |
-| `INSTANCE_PROTOCOL`    | Always `https`.                                                                    | No (defaults to `https`) |
-| `LEADERBOARD_BASE_URL` | Optional override for the standalone leaderboard service URL.                      | No                       |
-| `NODE_ENV`             | `development` or `production`.                                                     | No                       |
+| Variable             | Description                                                                          | Required |
+| -------------------- | ------------------------------------------------------------------------------------ | -------- |
+| `INTERACTIVE_KEY`    | Topia interactive app key. Verified against `interactivePublicKey` on every request. | Yes      |
+| `INTERACTIVE_SECRET` | Topia interactive app secret.                                                        | Yes      |
+| `INSTANCE_DOMAIN`    | Topia API domain (`api.topia.io` / `api-stage.topia.io`).                            | Yes      |
+| `INSTANCE_PROTOCOL`  | `https` for production/staging, `http` only for local.                               | Yes      |
+| `PORT`               | Server port (defaults to `3000`).                                                    | No       |
+| `NODE_ENV`           | Toggles dev CORS + static-file serving + verbose error logs.                         | No       |
 
-Find your `INTERACTIVE_KEY` and `INTERACTIVE_SECRET` in the Topia dashboard:
+### Where to find `INTERACTIVE_KEY` and `INTERACTIVE_SECRET`
 
-- [Dev Account Dashboard](https://dev.topia.io/t/dashboard/integrations)
-- [Production Account Dashboard](https://topia.io/t/dashboard/integrations)
+- [Topia Production Account Dashboard](https://topia.io/t/dashboard/integrations)
 
 ## Getting Started
 
 ```bash
-# install dependencies (workspaces hoist client + server)
+# from the app root
 npm install
+cd client && npm install && cd ..
 
-# create .env from the template
+# create a .env at the app root (see Environment Variables above)
 cp .env-example .env
-# then fill in INTERACTIVE_KEY and INTERACTIVE_SECRET
 
-# start the client (Vite) and server (Express) concurrently
+# run the dev server (client + server together)
 npm run dev
 ```
 
-Other scripts:
+## For Developers
 
-| Command                 | Action                                                        |
-| ----------------------- | ------------------------------------------------------------- |
-| `npm run dev`           | Concurrently runs the Vite dev server and the Express server. |
-| `npm run build`         | Type-checks + builds both workspaces.                         |
-| `npm start`             | Runs the production server (after `npm run build`).           |
-| `cd server && npm test` | Runs the Jest server tests (9 cases covering every route).    |
+### Built With
 
-## Tech Stack
+#### Client
 
-| Layer  | Technologies                                                                                       |
-| ------ | -------------------------------------------------------------------------------------------------- |
-| Client | React 18, TypeScript, Vite, Tailwind CSS (utilities only — preflight disabled), CSS Cascade Layers |
-| Server | Node 20, Express, TypeScript                                                                       |
-| SDK    | [`@rtsdk/topia`](https://www.npmjs.com/package/@rtsdk/topia)                                       |
-| Tests  | Jest + ts-jest + supertest                                                                         |
+![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)
+![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?style=for-the-badge&logo=vite&logoColor=white)
+![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)
 
-## Helpful Links
+#### Server
 
-- [Topia SDK developer docs](https://metaversecloud-com.github.io/mc-sdk-js/index.html)
-- [SDK style sheet](https://sdk-style.s3.amazonaws.com/styles-3.0.2.css)
-- [Topia dashboard (production)](https://topia.io/t/dashboard/integrations)
-- [Topia dashboard (staging)](https://dev.topia.io/t/dashboard/integrations)
+![Node.js](https://img.shields.io/badge/node.js-%2343853D.svg?style=for-the-badge&logo=node.js&logoColor=white)
+![Express](https://img.shields.io/badge/express-%23000000.svg?style=for-the-badge&logo=express&logoColor=white)
+
+### App-specific notes
+
+- **Real-time transport:** none. No SSE, no websocket, no polling. Clients call `GET /game-state` and `GET /session` after mutations and drive their own 1-second countdown JS.
+- **Ecosystem inventory cache** (`inventoryCache.ts`): 6-hour in-memory TTL with stale-fallback on error. `?forceRefreshInventory=true` on `/game-state` busts it.
+- **Physical-room walk-gating** is server-enforced (`/walk-to-asset` refuses cross-room walks) so no client-side check can be spoofed.
+- **`cleanReturnPayload` middleware** strips fields from every JSON response before send.
+- **Best-effort teleports** are wrapped in try/catch — puzzle-completion state persists even if the target pad has been deleted.
+- **CSS cascade-layer setup** in [`client/src/index.css`](client/src/index.css) is the canonical reference used by the sdk-ai-boilerplate style guide.
+
+### Helpful links
+
+- [SDK Developer docs](https://metaversecloud-com.github.io/mc-sdk-js/index.html)
+- View it in action: [Dev](https://topia.io/escape-room-dev), [Prod](https://topia.io/escape-room-prod)
+- [Notion One Pager](https://app.notion.com/p/topiaio/Escape-Room-31840e35bdb980238e4dd897179470ce?v=71f6c3828d3b4f33960326f9bde24781)
