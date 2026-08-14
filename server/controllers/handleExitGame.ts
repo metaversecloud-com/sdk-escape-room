@@ -22,7 +22,6 @@ export const handleExitGame = async (req: Request, res: Response) => {
             profileId,
             urlSlug,
             uniqueKey: `${profileId}-${sessionKey}`,
-            incrementBy: 1,
           },
         ],
         lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true },
