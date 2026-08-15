@@ -182,7 +182,6 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         profileId,
         urlSlug,
         uniqueKey: `${profileId}-${sessionKey}`,
-        incrementBy: 1,
       });
       collectBadges(
         await checkEscapeBadges({
@@ -325,7 +324,6 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         profileId,
         urlSlug,
         uniqueKey: `${profileId}-${sessionKey}-puzzle-${puzzleNumber}`,
-        incrementBy: 1,
       });
     } else {
       await visitor

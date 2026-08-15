@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: esc-room0-config
+  labels:
+    app.kubernetes.io/name: esc-room0
+data:
+  INSTANCE_DOMAIN: 'api.topia.io'
+  INSTANCE_PROTOCOL: 'https'
+  INTERACTIVE_KEY: 'HL9tylLE3b06Dhs7MUZJ'
+  NODE_ENV: 'production'
+  PORT: '3000'

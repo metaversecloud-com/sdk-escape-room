@@ -1,5 +1,5 @@
 {
-  "name": "@sdk-ai-boilerplate/client",
+  "name": "@sdk-escape-room/client",
   "private": true,
   "version": "0.0.0",
   "type": "module",

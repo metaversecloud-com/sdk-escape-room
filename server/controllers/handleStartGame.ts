@@ -30,6 +30,13 @@ export const handleStartGame = async (req: Request, res: Response) => {
     await visitor.fetchInventoryItems();
     const visitorInventory = getVisitorInventory(visitor.inventoryItems || []);
 
+    // Teleport BEFORE persisting the "session active" flag. If the Room 1
+    // spawn asset isn't placed in the world, this throws → the outer catch
+    // surfaces the error to the client and we never mark the session active,
+    // so the player can retry cleanly instead of ending up in a half-started
+    // state (session active server-side, but no teleport ever fired).
+    await moveVisitorToAsset(credentials, "EscapeRoom_room1_teleport");
+
     // Build a fresh active session from the defaults and overlay the started state.
     const newSession = {
       ...getDefaultVisitorData(),
@@ -49,20 +56,16 @@ export const handleStartGame = async (req: Request, res: Response) => {
             profileId,
             urlSlug,
             uniqueKey: `${profileId}-${sessionKey}-start`,
-            incrementBy: 1,
           },
           {
             analyticName: "room1Entries",
             profileId,
             urlSlug,
             uniqueKey: `${profileId}-${sessionKey}-start`,
-            incrementBy: 1,
           },
         ],
       },
     );
-
-    await moveVisitorToAsset(credentials, "EscapeRoom_room1_teleport");
 
     return res.json({
       success: true,

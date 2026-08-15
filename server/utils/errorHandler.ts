@@ -1,3 +1,19 @@
+/**
+ * Standard 500 handler for every controller.
+ *
+ * Historically we serialized the caught `Error` directly, which meant the
+ * player only ever saw the generic `message` context ("Error submitting
+ * puzzle") — the actual detail ("Asset X not found in scene Y") was lost
+ * because Error property names aren't enumerable and JSON.stringify drops
+ * them. Now we extract `message` (and `name`) explicitly so the response
+ * body carries the underlying reason.
+ *
+ * Response shape (matched to the client's `setErrorMessage`):
+ *   { success: false, message, error: { message, name } }
+ *
+ * `message` = the controller-supplied context. `error.message` = the actual
+ * underlying error string. The client prefers `error.message` when present.
+ */
 export const errorHandler = ({
   error,
   functionName,
@@ -32,11 +48,26 @@ export const errorHandler = ({
       }),
     );
 
-    if (res && !res.headersSent) return res.status(error.status || 500).send({ error, message, success: false });
-    return { error };
-  } catch (e) {
+    const status = error?.status || 500;
+    const errorMessage = typeof error?.message === "string" ? error.message : String(error);
+    const errorName = typeof error?.name === "string" ? error.name : undefined;
+    const responseBody = {
+      success: false,
+      message,
+      error: { message: errorMessage, name: errorName },
+    };
+
+    if (res && !res.headersSent) return res.status(status).send(responseBody);
+    return { error: responseBody.error };
+  } catch (e: any) {
     console.error("❌ Error printing the logs", e);
-    if (res && !res.headersSent) return res.status(500).send({ error: e, message, success: false });
+    if (res && !res.headersSent) {
+      return res.status(500).send({
+        success: false,
+        message,
+        error: { message: e?.message || String(e), name: e?.name },
+      });
+    }
     return { error: e };
   }
 };
