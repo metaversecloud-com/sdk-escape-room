@@ -26,5 +26,5 @@ patches:
 images:
   - name: esc-room0
     newName: 368076259134.dkr.ecr.us-east-1.amazonaws.com/sdk-example
-    digest: sha256:64e3167dc9ff235d38078801c23c143b1b9591856f9e84dc764740ff955b5168
+    digest: sha256:fff23f02216a5254dc6f14a65d78b4a871939a03786261d1b287178320d4f197
     newTag: sdk-escape-room
