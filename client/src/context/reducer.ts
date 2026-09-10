@@ -29,7 +29,6 @@ const globalReducer = (state: InitialState, action: ActionType) => {
               items: payload.visitorInventory.items || [],
             }
           : state.visitorInventory,
-        hasSessionExpired: payload.hasSessionExpired ?? state.hasSessionExpired,
       };
     case SET_ERROR:
       return {

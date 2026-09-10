@@ -6,7 +6,7 @@
 
 ## Introduction / Summary
 
-Escape Room is a 30-minute, three-room, seven-puzzle escape-room game for Topia worlds. A player clicks the start terminal to begin a per-`sceneDropId` session, walks between physical rooms via teleport pads, solves puzzles one at a time (each granting an ecosystem `ITEM` reward), and wins by cracking Puzzle 7 — which stamps their completion time, writes their entry to the leaderboard, and teleports them home. If the 30-minute timer expires first, the session flips to `timedOut: true` and the player is auto-teleported back to start.
+Escape Room is a three-room, seven-puzzle escape-room game for Topia worlds. A player clicks the start terminal to begin a per-`sceneDropId` session, walks between physical rooms via teleport pads, solves puzzles one at a time (each granting an ecosystem `ITEM` reward), and wins by cracking Puzzle 7 — which stamps their completion time, writes their entry to the leaderboard, and teleports them home.
 
 The app rewards eight distinct badges across the run — including time-based (Warp Speed for sub-3-minute completions), collection-based (Trash Panda for owning every ecosystem ITEM), and behavior-based (Button Masher for spamming wrong answers, Trash Digger for finding a hidden decoy screen).
 
@@ -24,7 +24,6 @@ The app rewards eight distinct badges across the run — including time-based (W
 - **Puzzles 1–7:** rendered via `client/src/components/puzzles/` — each puzzle has its own UI and submits to `/api/submit-puzzle`.
 - **Artifact/inventory screens:** short lore blurbs for the ecosystem `ITEM` rewards; grants the item on view via `/api/grant-item`.
 - **Decoy screen:** the hidden "Trash Digger" easter-egg screen.
-- **Countdown timer:** client-side JS ticker; server enforces on every state check.
 
 ### Admin features
 
@@ -41,7 +40,7 @@ All are looked up via `world.fetchDroppedAssetsBySceneDropId({ sceneDropId, uniq
 | Unique Name                              | Description                                                                                      |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | `EscapeRoom_start`                       | Key asset (start terminal). Also hosts the leaderboard data object.                              |
-| `EscapeRoom_start_teleport`              | Target for `/exit`, timeout auto-return, and post-Puzzle-7 completion.                           |
+| `EscapeRoom_start_teleport`              | Target for `/exit` and post-Puzzle-7 completion.                                                 |
 | `EscapeRoom_room1_teleport`              | Room 1 entry point (target of `/start-game` and `/teleport?room=1`).                             |
 | `EscapeRoom_room2_teleport`              | Room 2 entry point (`/teleport?room=2`).                                                         |
 | `EscapeRoom_room3_teleport`              | Room 3 entry point (`/teleport?room=3`).                                                         |
@@ -62,7 +61,6 @@ Keyed by `${urlSlug}-${sceneDropId}` so multiple parallel scene drops in one wor
   startTime: number;              // ms epoch
   endTime?: number;
   sessionActive: boolean;
-  timedOut: boolean;
   currentRoom: 1 | 2 | 3 | null;      // Progression (puzzle-based)
   physicalRoom: 1 | 2 | 3 | null;     // Where the avatar actually is
   puzzlesCompleted: { 1: boolean, ..., 7: boolean };
@@ -99,7 +97,7 @@ All routes mount under `/api`. **No admin gating — every route runs for the au
 | `GET`  | `/`               | Sanity check.                                                                                                                                                                                                      |
 | `GET`  | `/system/health`  | Version + env-var status.                                                                                                                                                                                          |
 | `GET`  | `/game-state`     | Full state snapshot: `droppedAsset`, `sessionKey`, `visitorData`, `uniqueName`, `badges`, `visitorInventory`, `leaderboard`, `remainingMs`. Supports `?forceRefreshInventory=true` to bust the 6h ecosystem cache. |
-| `GET`  | `/session`        | Lightweight status: `{ active, timedOut, remainingMs, visitorData }`.                                                                                                                                              |
+| `GET`  | `/session`        | Lightweight status: `{ active, remainingMs, visitorData }`.                                                                                                                                                        |
 | `POST` | `/start-game`     | Clears prior ecosystem ITEMs (badges preserved), teleports to Room 1, writes fresh session.                                                                                                                        |
 | `POST` | `/submit-puzzle`  | Body: `{ puzzleNumber: 1..7 }`. Marks complete, grants ITEM reward, checks room-transition + Trash Panda badges. On P7: stamps completion, writes leaderboard, teleports home.                                     |
 | `POST` | `/puzzle-draft`   | Persists a per-puzzle draft `{ puzzleNumber, draft }` into `session.puzzleDrafts` for close-and-resume.                                                                                                            |
@@ -115,18 +113,17 @@ All routes mount under `/api`. **No admin gating — every route runs for the au
 
 All events emitted via `analytics: [...]` on `visitor.updateDataObject`. `uniqueKey` pattern is `${profileId}-${sessionKey}[-suffix]`.
 
-| Event                 | Fired when                                        | Where                        |
-| --------------------- | ------------------------------------------------- | ---------------------------- |
-| `gameStarts`          | Player starts a new run.                          | `POST /start-game`.          |
-| `room1Entries`        | Player starts a new run.                          | `POST /start-game`.          |
-| `room2Entries`        | Puzzle 2 completed (Room A→B transition unlocks). | `POST /submit-puzzle`.       |
-| `room3Entries`        | Puzzle 5 completed (Room B→C transition unlocks). | `POST /submit-puzzle`.       |
-| `puzzle${n}Completed` | Each puzzle submit for `n = 1..7`.                | `POST /submit-puzzle`.       |
-| `gameCompleted`       | Puzzle 7 successfully submitted.                  | `POST /submit-puzzle`.       |
-| `gameTimeouts`        | Session exceeds 30 min.                           | `checkSessionExpiration.ts`. |
-| `manualGameExits`     | Player clicks Exit.                               | `POST /exit`.                |
+| Event                 | Fired when                                        | Where                  |
+| --------------------- | ------------------------------------------------- | ---------------------- |
+| `gameStarts`          | Player starts a new run.                          | `POST /start-game`.    |
+| `room1Entries`        | Player starts a new run.                          | `POST /start-game`.    |
+| `room2Entries`        | Puzzle 2 completed (Room A→B transition unlocks). | `POST /submit-puzzle`. |
+| `room3Entries`        | Puzzle 5 completed (Room B→C transition unlocks). | `POST /submit-puzzle`. |
+| `puzzle${n}Completed` | Each puzzle submit for `n = 1..7`.                | `POST /submit-puzzle`. |
+| `gameCompleted`       | Puzzle 7 successfully submitted.                  | `POST /submit-puzzle`. |
+| `manualGameExits`     | Player clicks Exit.                               | `POST /exit`.          |
 
-**Particles + toasts:** `firework1_gold` fires on every non-P7 puzzle submit; `explosion_float` (duration 6) fires on P7 completion. In-world toasts (`fireToast` via `shared/copy/toasts.ts`) announce item earned / puzzle solved / room cleared / escaped / time expired / artifact acquired.
+**Particles + toasts:** `firework1_gold` fires on every non-P7 puzzle submit; `explosion_float` (duration 6) fires on P7 completion. In-world toasts (`fireToast` via `shared/copy/toasts.ts`) announce item earned / puzzle solved / room cleared / escaped / artifact acquired.
 
 ## Puzzles
 
@@ -157,8 +154,7 @@ Defined in `server/utils/checkEscapeBadges.ts` (`BADGES` catalog).
 
 ## Session Model
 
-- **Duration:** hardcoded `MAX_SESSION_MINUTES = 30` in `checkSessionExpiration.ts` (client mirrors the value).
-- **Enforcement:** every `/game-state`, `/session`, `/submit-puzzle`, and `/teleport` call runs `checkSessionExpiration`. If expired: marks `sessionActive: false`, `timedOut: true`, fires `gameTimeouts` analytic, teleports the visitor to `EscapeRoom_start_teleport`.
+- **Enforcement:** every `/game-state`, `/session`, `/submit-puzzle`, and `/teleport` call runs `checkSessionExpiration`.
 - **Physical vs. logical rooms:** `physicalRoom` (where the avatar is) is tracked separately from `currentRoom` (puzzle progression). This is what powers walk-gating — clicking an artifact from the wrong room is refused server-side.
 - **Session-in-progress card:** if the player re-opens the start terminal mid-run, `SessionInProgressCard` offers "restart" or "teleport to current room". `justStarted` sticky state hides it right after Start is pressed.
 - **Draft resume:** `session.puzzleDrafts[n]` opaquely stores the puzzle's in-progress UI state, wiped on `/start-game` and on successful `/submit-puzzle`.

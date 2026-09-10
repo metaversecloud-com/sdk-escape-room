@@ -3,7 +3,6 @@ import { VisitorInterface } from "@rtsdk/topia";
 import {
   VisitorInventory,
   checkEscapeBadges,
-  checkSessionExpiration,
   checkTrashPandaBadge,
   errorHandler,
   fireToast,
@@ -98,18 +97,15 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     }
 
     // getVisitor guarantees the session exists and is initialized.
-    const { visitor, visitorInventory } = await getVisitor(credentials, true);
-
-    const expirationResult = await checkSessionExpiration({ credentials, visitor, sessionKey });
-    if (expirationResult.expired || !expirationResult.session.sessionActive) {
+    const { visitor, session, visitorInventory } = await getVisitor(credentials, true);
+    if (!session.sessionActive) {
       return res.status(200).json({
         success: false,
-        message: "Session expired.",
-        visitorData: expirationResult.session,
-        hasSessionExpired: true,
+        message: "No active session.",
+        visitorData: session,
       });
     }
-    const game = expirationResult.session;
+    const game = session;
 
     // Look up the key asset (start terminal) where the leaderboard lives.
     // Found by uniqueName within the scene — no world data needed. For

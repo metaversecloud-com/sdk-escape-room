@@ -161,7 +161,7 @@ export const content = {
   briefing: {
     title: "Escape Room\nBriefing",
     intro:
-      "“Welcome, Crew. This is Commander Vega. The station is failing and we have only 30 MINUTES of oxygen left. You must bring Power, Comms, and the Airlock back online and get us out before the air runs out! Click around the station for clues and crack the puzzles to escape!”",
+      "“Welcome, Crew. This is Commander Vega. The station is failing and we're running out of oxygen. You must bring Power, Comms, and the Airlock back online and get us out before the air runs out! Click around the station for clues and crack the puzzles to escape!”",
     pills: [
       {
         label: "How to Play",
@@ -224,10 +224,6 @@ export const content = {
   /* ─── Empty / locked / expired states ──────────────────────────────── */
 
   states: {
-    sessionExpired: {
-      title: "Time has run out",
-      message: "Click on the Start button to start a new game.",
-    },
     gameNotStarted: {
       title: "Game Not Started",
       message: "You must begin at the Start button before accessing any puzzle.",

@@ -30,7 +30,6 @@ export interface InitialState {
   visitorInventory?: VisitorInventoryType;
   sessionKey?: string;
   uniqueName?: string;
-  hasSessionExpired?: boolean;
 }
 
 export type ActionType = {

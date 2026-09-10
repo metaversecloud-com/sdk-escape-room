@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import {
-  checkSessionExpiration,
   errorHandler,
   getBadges,
   getCredentials,
@@ -26,18 +25,8 @@ export const handleGetGameState = async (req: Request, res: Response) => {
 
     // Visitor (data + inventory). getVisitor guarantees session defaults exist
     // and builds visitorInventory with both badges and items.
-    const { visitor, visitorDataObject, visitorInventory } = await getVisitor(credentials, true);
-
-    // If the session is active, run an expiration check (may mark it timed-out).
-    let session = visitorDataObject[sessionKey];
-    let updatedVisitorDataObject = visitorDataObject;
-    let remainingMs: number | null = null;
-    if (session.sessionActive && session.startTime) {
-      const checkResult = await checkSessionExpiration({ credentials, visitor, sessionKey });
-      session = checkResult.session;
-      updatedVisitorDataObject = checkResult.visitorDataObject;
-      remainingMs = checkResult.remainingMs;
-    }
+    const { visitorDataObject, visitorInventory } = await getVisitor(credentials, true);
+    const session = visitorDataObject[sessionKey];
 
     const badges = await getBadges(credentials, forceRefreshInventory);
 
@@ -45,12 +34,11 @@ export const handleGetGameState = async (req: Request, res: Response) => {
       success: true,
       droppedAsset,
       sessionKey,
-      visitorData: updatedVisitorDataObject?.[sessionKey] || session,
+      visitorData: session,
       uniqueName: droppedAsset?.uniqueName || null,
       badges,
       visitorInventory,
       leaderboard,
-      remainingMs,
     });
   } catch (error) {
     return errorHandler({

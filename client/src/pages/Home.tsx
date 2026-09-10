@@ -28,13 +28,7 @@ import {
 import { content } from "@/constants";
 import { GlobalDispatchContext, GlobalStateContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
-import {
-  backendAPI,
-  formatCountdownFromTimestamp,
-  remainingSecondsFromTimestamp,
-  setErrorMessage,
-  setGameState,
-} from "@/utils";
+import { backendAPI, formatElapsedFromTimestamp, setErrorMessage, setGameState } from "@/utils";
 
 const { states, exitConfirmation, exitButton, teleport } = content;
 
@@ -162,8 +156,7 @@ const getForceRefreshInventoryFromSearch = () =>
 
 export const Home = () => {
   const dispatch = useContext(GlobalDispatchContext);
-  const { hasInteractiveParams, visitorData, visitorInventory, leaderboard, badges, hasSessionExpired } =
-    useContext(GlobalStateContext);
+  const { hasInteractiveParams, visitorData, visitorInventory, leaderboard, badges } = useContext(GlobalStateContext);
   const visitorSession = visitorData || null;
   const puzzlesCompleted = visitorSession?.puzzlesCompleted;
 
@@ -206,46 +199,21 @@ export const Home = () => {
   }
   const wasJustCompleted = (n: number) => justCompletedRef.current.has(n);
 
-  // Hardcoded: no admin surface to configure it yet. Server uses the same
-  // value (see `MAX_SESSION_MINUTES` in checkSessionExpiration.ts) — keep
-  // the two in sync if either changes.
-  const maxSessionMinutes = 30;
-
-  // Verifies session state with the server (hits the same expiration check
-  // /game-state runs), then dispatches the result. We translate `timedOut`
-  // into `hasSessionExpired` so the UI flips to the "Time has run out" view
-  // — mirrors what handleSubmitPuzzle already sets when it catches a
-  // timeout mid-puzzle.
-  const handleCheckSession = async () => {
-    try {
-      const res = await backendAPI.get("/session");
-      setGameState(dispatch, { ...res.data, hasSessionExpired: res.data?.timedOut === true });
-    } catch (error) {
-      setErrorMessage(dispatch, error as ErrorType);
-    }
-  };
-
-  // Live countdown to the session deadline. When it hits zero we stop ticking
-  // and call handleCheckSession so the server marks the session expired and
-  // the UI flips to the locked state.
+  // Live count-up stopwatch. The game has no time limit — this just keeps
+  // ticking upward for as long as the session is active, so a player can see
+  // their elapsed time in the status bar and the leaderboard scores the same
+  // count on completion.
   useEffect(() => {
     if (!hasStarted || !visitorSession?.startTime) {
       setTimer("--:--");
       return;
     }
     const startMs = new Date(visitorSession.startTime).getTime();
-    const tick = () => {
-      setTimer(formatCountdownFromTimestamp(startMs, maxSessionMinutes));
-      if (remainingSecondsFromTimestamp(startMs, maxSessionMinutes) <= 0) {
-        window.clearInterval(id);
-        handleCheckSession();
-      }
-    };
+    const tick = () => setTimer(formatElapsedFromTimestamp(startMs));
     tick();
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasStarted, visitorSession?.startTime, maxSessionMinutes]);
+  }, [hasStarted, visitorSession?.startTime]);
 
   const refreshGameState = async () => {
     const response = await backendAPI.get("/game-state");
@@ -304,7 +272,7 @@ export const Home = () => {
     setIsLoading(true);
     try {
       const res = await backendAPI.post("/teleport", { room: target });
-      setGameState(dispatch, { ...res.data, hasSessionExpired: res.data?.hasSessionExpired === true });
+      setGameState(dispatch, res.data);
       await backendAPI.post("/close-iframe");
     } catch (error) {
       setErrorMessage(dispatch, error as ErrorType);
@@ -323,9 +291,8 @@ export const Home = () => {
     backendAPI
       .post("/teleport", { room: targetRoom })
       .then((res) => {
-        // Dispatch so visitorData / hasSessionExpired stay in sync if the
-        // server detected an expired session during the check.
-        setGameState(dispatch, { ...res.data, hasSessionExpired: res.data?.hasSessionExpired === true });
+        // Dispatch so visitorData stays in sync with the server response.
+        setGameState(dispatch, res.data);
         if (res.data?.teleported) {
           setTeleportState({ state: "teleported", targetRoom: res.data.targetRoom });
         } else {
@@ -424,14 +391,6 @@ export const Home = () => {
     if (!hasInteractiveParams) return;
     if (!visitorData) return;
 
-    // Session timed out — checkSessionExpiration already teleported the
-    // player back to the start terminal. Walking them BACK to the asset
-    // they clicked would fight that teleport.
-    if (visitorData.timedOut === true || hasSessionExpired === true) {
-      walkedRef.current = true;
-      return;
-    }
-
     // Some screens (exit terminal) intentionally don't walk the player —
     // they're standalone confirmation pages where moving the avatar would
     // be confusing.
@@ -458,7 +417,7 @@ export const Home = () => {
       // Swallow errors silently — failing to walk shouldn't surface as a
       // user-facing error. The screen content still rendered correctly.
     });
-  }, [hasInteractiveParams, visitorData, hasSessionExpired, screen]);
+  }, [hasInteractiveParams, visitorData, screen]);
 
   // ── Standalone screens (own PageContainer) ──
   if (screen === "leaderboard") {
@@ -500,15 +459,6 @@ export const Home = () => {
       <PageContainer isLoading={isLoading}>
         <div className="flex flex-col w-full items-start gap-4">
           <ExitCongratsCard completionTime={visitorSession?.completionTime} leaderboard={leaderboard} />
-        </div>
-      </PageContainer>
-    );
-  } else if (screen !== "start" && hasSessionExpired) {
-    // ── Session Expired view ──
-    return (
-      <PageContainer isLoading={isLoading}>
-        <div className="flex flex-col w-full items-start gap-4">
-          <LockedState title={states.sessionExpired.title} message={states.sessionExpired.message} />
         </div>
       </PageContainer>
     );

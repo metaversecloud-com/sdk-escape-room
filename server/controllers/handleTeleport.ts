@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { VisitorData } from "@shared/types/VisitorData.js";
-import { checkSessionExpiration, errorHandler, getCredentials, getVisitor, moveVisitorToAsset } from "@utils/index.js";
+import { errorHandler, getCredentials, getVisitor, moveVisitorToAsset } from "@utils/index.js";
 
 /**
  * Per-room teleport definitions.
@@ -52,21 +52,15 @@ export const handleTeleport = async (req: Request, res: Response) => {
     const { sceneDropId, urlSlug } = credentials;
     const sessionKey = `${urlSlug}-${sceneDropId}`;
 
-    const { visitor } = await getVisitor(credentials, true);
-
-    // Reuse the same expiration check the rest of the controllers run so a
-    // late click on a teleport pad behaves like a late puzzle submission.
-    const expirationResult = await checkSessionExpiration({ credentials, visitor, sessionKey });
-    if (expirationResult.expired || !expirationResult.session.sessionActive) {
+    const { visitor, session } = await getVisitor(credentials, true);
+    if (!session.sessionActive) {
       return res.json({
         success: true,
         teleported: false,
-        reason: "sessionExpired",
-        visitorData: expirationResult.session,
-        hasSessionExpired: true,
+        reason: "noActiveSession",
+        visitorData: session,
       });
     }
-    const session = expirationResult.session;
 
     // Target room: explicit `?room=N` wins; otherwise infer from current room.
     const explicitRoom = req.body.room;

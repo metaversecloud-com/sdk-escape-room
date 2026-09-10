@@ -40,9 +40,4 @@ export const toasts = {
     title: "You Escaped!",
     text: "The airlock is open and you're free! Check your time on the leaderboard.",
   },
-  timeExpired: {
-    groupId: "timeExpired",
-    title: "Time's Up",
-    text: "The station has locked you out. Click the start terminal to try again.",
-  },
 };
