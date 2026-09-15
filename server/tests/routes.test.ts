@@ -32,7 +32,6 @@ const buildVisitorMock = (sessionOverrides: Partial<any> = {}) => {
     startTime: null as string | null,
     endTime: null as string | null,
     sessionActive: false,
-    timedOut: false,
     currentRoom: null,
     puzzlesCompleted: { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false },
     completionTime: null,
@@ -82,7 +81,6 @@ jest.mock("@utils/index.js", () => ({
   getBadges: jest.fn().mockResolvedValue({}),
   getLeaderboard: jest.fn().mockReturnValue([]),
   getVisitorInventory: jest.fn().mockReturnValue({ badges: {}, items: [] }),
-  checkSessionExpiration: jest.fn(),
   checkEscapeBadges: jest.fn().mockResolvedValue({ awarded: [], alreadyOwned: [], failed: [] }),
   checkTrashPandaBadge: jest.fn().mockResolvedValue(false),
   fireToast: jest.fn().mockResolvedValue(undefined),
@@ -93,7 +91,6 @@ jest.mock("@utils/index.js", () => ({
     startTime: null,
     endTime: null,
     sessionActive: false,
-    timedOut: false,
     currentRoom: null,
     puzzlesCompleted: { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false },
     completionTime: null,
@@ -169,12 +166,6 @@ describe("escape-room routes", () => {
       session,
       visitorInventory: { badges: {}, items: [] },
     });
-    mockUtils.checkSessionExpiration.mockResolvedValue({
-      expired: false,
-      visitorDataObject: {},
-      session,
-      remainingMs: 1000,
-    });
 
     const res = await request(makeApp()).post("/api/submit-puzzle").query(baseCreds).send({ puzzleNumber: 99 });
     expect(res.status).toBe(400);
@@ -193,12 +184,6 @@ describe("escape-room routes", () => {
       session,
       visitorInventory: { badges: {}, items: [] },
     });
-    mockUtils.checkSessionExpiration.mockResolvedValue({
-      expired: false,
-      visitorDataObject: {},
-      session,
-      remainingMs: 1000,
-    });
 
     const res = await request(makeApp()).post("/api/submit-puzzle").query(baseCreds).send({ puzzleNumber: 1 });
 
@@ -209,24 +194,20 @@ describe("escape-room routes", () => {
     expect(visitor.updateDataObject).toHaveBeenCalledTimes(1);
   });
 
-  test("POST /submit-puzzle returns 400 when session is expired", async () => {
-    const { visitor, session } = buildVisitorMock({ sessionActive: false, timedOut: true });
+  test("POST /submit-puzzle no-ops when the session isn't active", async () => {
+    const { visitor, session } = buildVisitorMock({ sessionActive: false });
     mockUtils.getVisitor.mockResolvedValue({
       visitor,
       visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
       session,
       visitorInventory: { badges: {}, items: [] },
     });
-    mockUtils.checkSessionExpiration.mockResolvedValue({
-      expired: true,
-      visitorDataObject: {},
-      session,
-      remainingMs: 0,
-    });
 
     const res = await request(makeApp()).post("/api/submit-puzzle").query(baseCreds).send({ puzzleNumber: 1 });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
     expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe("No active session.");
+    expect(visitor.updateDataObject).not.toHaveBeenCalled();
   });
 
   test("POST /exit deactivates the session and teleports home", async () => {
@@ -260,30 +241,24 @@ describe("escape-room routes", () => {
     const res = await request(makeApp()).get("/api/session").query(baseCreds);
     expect(res.status).toBe(200);
     expect(res.body.active).toBe(false);
-    expect(res.body.remainingMs).toBe(0);
+    expect(res.body.visitorData).toBeDefined();
   });
 
-  test("GET /session returns remaining time for an active session", async () => {
-    const { visitor, session } = buildVisitorMock({
-      sessionActive: true,
-      startTime: new Date().toISOString(),
-    });
+  test("GET /session returns active for a live session (no time limit)", async () => {
+    const startTime = new Date().toISOString();
+    const { visitor, session } = buildVisitorMock({ sessionActive: true, startTime });
     mockUtils.getVisitor.mockResolvedValue({
       visitor,
       visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
       session,
       visitorInventory: { badges: {}, items: [] },
     });
-    mockUtils.checkSessionExpiration.mockResolvedValue({
-      expired: false,
-      visitorDataObject: {},
-      session,
-      remainingMs: 12345,
-    });
 
     const res = await request(makeApp()).get("/api/session").query(baseCreds);
     expect(res.status).toBe(200);
     expect(res.body.active).toBe(true);
-    expect(res.body.remainingMs).toBe(12345);
+    expect(res.body.visitorData.startTime).toBe(startTime);
+    // No time limit — the endpoint must not report a countdown of any kind.
+    expect(res.body.remainingMs).toBeUndefined();
   });
 });

@@ -7,7 +7,6 @@ export interface VisitorData {
   startTime: string | null;
   endTime: string | null;
   sessionActive: boolean;
-  timedOut: boolean;
 
   // Progression — highest unlocked room (advances on puzzle completion).
   currentRoom: 1 | 2 | 3 | null;

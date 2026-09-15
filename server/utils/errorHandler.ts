@@ -1,19 +1,3 @@
-/**
- * Standard 500 handler for every controller.
- *
- * Historically we serialized the caught `Error` directly, which meant the
- * player only ever saw the generic `message` context ("Error submitting
- * puzzle") — the actual detail ("Asset X not found in scene Y") was lost
- * because Error property names aren't enumerable and JSON.stringify drops
- * them. Now we extract `message` (and `name`) explicitly so the response
- * body carries the underlying reason.
- *
- * Response shape (matched to the client's `setErrorMessage`):
- *   { success: false, message, error: { message, name } }
- *
- * `message` = the controller-supplied context. `error.message` = the actual
- * underlying error string. The client prefers `error.message` when present.
- */
 export const errorHandler = ({
   error,
   functionName,
