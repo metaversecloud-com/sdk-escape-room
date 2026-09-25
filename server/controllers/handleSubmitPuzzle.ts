@@ -13,6 +13,7 @@ import {
   getVisitorInventory,
   moveVisitorToAsset,
 } from "@utils/index.js";
+import { sseManager } from "../utils/sseManager.js";
 import { toasts } from "@shared/copy/toasts.js";
 import { Credentials, KeyAssetDataObject, VisitorData } from "../types/index.js";
 
@@ -227,6 +228,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     if (puzzleNumber === 7) {
       game.sessionActive = false;
       game.endTime = new Date().toISOString();
+
       if (game.startTime) {
         const start = new Date(game.startTime).getTime();
         const end = new Date(game.endTime).getTime();
@@ -300,6 +302,47 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         console.warn(`Key asset not found for scene ${sceneDropId}; skipping leaderboard write.`);
       }
 
+      // Mark the current team as completed
+      if (keyAsset && game.groupId) {
+        const teams = keyAssetDataObject?.teams || {};
+        const team = teams[game.groupId];
+
+        if (team) {
+          const completedAt = new Date().toISOString();
+
+          await keyAsset.updateDataObject(
+            {
+              teams: {
+                ...teams,
+                [game.groupId]: {
+                  ...team,
+                  status: "completed",
+                  updatedAt: completedAt,
+                },
+              },
+            },
+            {
+              lock: {
+                lockId: `teams-complete-${game.groupId}`,
+                releaseLock: true,
+              },
+            },
+          );
+        }
+      }
+
+      sseManager.publish({
+        event: "GAME_COMPLETED",
+        assetId: credentials.assetId,
+        urlSlug: credentials.urlSlug,
+        visitorId: credentials.visitorId,
+        interactiveNonce: credentials.interactiveNonce,
+        groupId: game.groupId,
+        data: {
+          teamId: game.groupId,
+        },
+      });
+
       teleport = "EscapeRoom_start_teleport";
 
       await visitor
@@ -350,11 +393,72 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
 
     if (teleport) {
       try {
+        console.log("FINAL TELEPORTING SUBMITTER", {
+          visitorId: credentials.visitorId,
+          profileId: credentials.profileId,
+          teleport,
+        });
         await moveVisitorToAsset(credentials, teleport);
       } catch (err) {
         console.warn(`moveVisitorToAsset to "${teleport}" failed`, err);
       }
     }
+
+    const teamId = game.groupId || credentials.groupId;
+    if (teamId) {
+      const keyAssetForTeam = await getKeyAsset(credentials);
+
+      if (keyAssetForTeam) {
+        const dataObject =
+          (keyAssetForTeam.dataObject as KeyAssetDataObject | null) || {};
+
+        const teams = dataObject.teams || {};
+        const team = teams[teamId];
+
+        if (team) {
+          const updatedTeam = {
+            ...team,
+            puzzlesCompleted: {
+              ...(team.puzzlesCompleted || {}),
+              [puzzleNumber]: true,
+            },
+            updatedAt: new Date().toISOString(),
+          };
+
+          await keyAssetForTeam.updateDataObject(
+            {
+              teams: {
+                ...teams,
+                [teamId]: updatedTeam,
+              },
+            },
+            {
+              lock: {
+                lockId: `team-progress-${teamId}-${puzzleNumber}-${Date.now()}`,
+                releaseLock: true,
+              },
+            },
+          );
+        }
+      }
+    }
+
+    sseManager.publish({
+      event: "state:update",
+      assetId: credentials.assetId,
+      urlSlug: credentials.urlSlug,
+      visitorId: credentials.visitorId,
+      interactiveNonce: credentials.interactiveNonce,
+      groupId: teamId,
+      data: {
+        kind: "puzzle",
+        visitorData: game,
+        sessionKey,
+        badgesAwarded,
+        badgesOwned,
+        badgesFailed,
+      },
+    });
 
     return res.json({
       success: true,

@@ -26,7 +26,45 @@ export const handleGetGameState = async (req: Request, res: Response) => {
     // Visitor (data + inventory). getVisitor guarantees session defaults exist
     // and builds visitorInventory with both badges and items.
     const { visitorDataObject, visitorInventory } = await getVisitor(credentials, true);
-    const session = visitorDataObject[sessionKey];
+      let session = visitorDataObject[sessionKey];
+
+      // If this player is on a team, use the team's shared puzzle progress.
+      // This is the durable source of truth for puzzles completed by any teammate.
+      if (session.groupId) {
+        const team =
+          (keyAsset?.dataObject as KeyAssetDataObject | null)?.teams?.[
+            session.groupId
+          ];
+
+        if (team?.puzzlesCompleted) {
+          const puzzlesCompleted = {
+            ...session.puzzlesCompleted,
+            ...team.puzzlesCompleted,
+          };
+
+          const currentRoom =
+            puzzlesCompleted[3] &&
+            puzzlesCompleted[4] &&
+            puzzlesCompleted[5]
+              ? 3
+              : puzzlesCompleted[1] && puzzlesCompleted[2]
+                ? 2
+                : 1;
+
+          session = {
+            ...session,
+            puzzlesCompleted,
+
+            // Once the team is completed, every player's session is over.
+            ...(team.status === "completed"
+              ? {
+                  sessionActive: false,
+                  endTime: team.updatedAt ?? session.endTime,
+                }
+              : {}),
+          };
+        }
+      }
 
     const badges = await getBadges(credentials, forceRefreshInventory);
 

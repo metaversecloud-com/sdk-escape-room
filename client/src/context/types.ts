@@ -8,6 +8,7 @@ export const SET_ERROR = "SET_ERROR";
 export type InteractiveParams = {
   assetId: string;
   displayName: string;
+  groupId?: string;
   identityId: string;
   interactiveNonce: string;
   interactivePublicKey: string;
