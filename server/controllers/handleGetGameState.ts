@@ -54,8 +54,6 @@ export const handleGetGameState = async (req: Request, res: Response) => {
           session = {
             ...session,
             puzzlesCompleted,
-
-            // Once the team is completed, every player's session is over.
             ...(team.status === "completed"
               ? {
                   sessionActive: false,
@@ -63,6 +61,32 @@ export const handleGetGameState = async (req: Request, res: Response) => {
                 }
               : {}),
           };
+        }
+
+        // Add the team's shared key items to this player's inventory view.
+        if (team?.keyItems?.length) {
+          const existingItems = visitorInventory.items || [];
+
+          const sharedKeyItems = team.keyItems.map((item) => ({
+            id: item.id,
+            name: item.name,
+            type: "ITEM",
+            imageUrl: item.imageUrl ?? null,
+            description: item.description,
+            metadata: {
+              ...(item.metadata || {}),
+              type: "keyItem",
+            },
+            quantity: item.quantity ?? 1,
+            status: "ACTIVE",
+          }));
+
+          const existingIds = new Set(existingItems.map((item) => item.id));
+
+          visitorInventory.items = [
+            ...existingItems,
+            ...sharedKeyItems.filter((item) => !existingIds.has(item.id)),
+          ];
         }
       }
 

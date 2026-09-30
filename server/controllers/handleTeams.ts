@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { errorHandler, getCredentials, getKeyAsset, getVisitor } from "@utils/index.js";
-import { KeyAssetDataObject } from "../types/index.js";
+import { KeyAssetDataObject} from "../types/index.js";
+import { TeamData } from "../types/DroppedAssetTypes.js"
 
 type TeamMember = {
   profileId: string;
@@ -10,19 +11,6 @@ type TeamMember = {
 };
 
 type TeamStatus = "waiting" | "started" | "completed";
-
-type TeamData = {
-  id: string;
-  createdBy: TeamMember;
-  leaderProfileId: string;
-  members: TeamMember[];
-  status: TeamStatus;
-  started: boolean;
-  createdAt: string;
-  updatedAt?: string;
-  startedAt?: string;
-  puzzlesCompleted: Record<number, boolean>;
-};
 
 const TEAM_INACTIVITY_MS = 1000 * 60 * 15;
 
@@ -53,12 +41,24 @@ const buildGroupProgress = (groupId: string, members: TeamMember[] = []) => ({
   items: [],
   badges: {},
   members,
+  keyItems: [],
 });
 
 const getTeamState = async (credentials: ReturnType<typeof getCredentials>) => {
   const keyAsset = await getKeyAsset(credentials);
   const dataObject = (keyAsset?.dataObject as KeyAssetDataObject | null) || {};
-  const teams = (dataObject.teams || {}) as Record<string, TeamData>;
+  const rawTeams = (dataObject.teams || {}) as Record<string, TeamData>;
+
+  const teams: Record<string, TeamData> = Object.fromEntries(
+    Object.entries(rawTeams).map(([teamId, team]) => [
+      teamId,
+      {
+        ...team,
+        keyItems: team.keyItems || [],
+      },
+    ]),
+  );
+
   return { keyAsset, teams };
 };
 
@@ -177,6 +177,7 @@ export const handleCreateTeam = async (req: Request, res: Response) => {
       createdAt: now,
       updatedAt: now,
       puzzlesCompleted: { ...DEFAULT_PUZZLES },
+      keyItems: [],
     };
 
     const updatedTeams = { ...pruneInactiveTeams(teams), [teamId]: team };

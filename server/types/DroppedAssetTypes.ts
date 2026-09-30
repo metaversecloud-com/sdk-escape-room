@@ -28,4 +28,14 @@ export type TeamData = {
   updatedAt?: string;
   startedAt?: string;
   puzzlesCompleted: Record<number, boolean>;
+  keyItems: TeamKeyItem[];
+};
+
+export type TeamKeyItem = {
+  id: string;
+  name: string;
+  imageUrl?: string | null;
+  description?: string;
+  metadata?: Record<string, unknown>;
+  quantity?: number;
 };
