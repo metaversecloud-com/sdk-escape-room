@@ -156,7 +156,7 @@ const getForceRefreshInventoryFromSearch = () =>
 
 export const Home = () => {
   const dispatch = useContext(GlobalDispatchContext);
-  const { hasInteractiveParams, visitorData, visitorInventory, leaderboard, badges } = useContext(GlobalStateContext);
+  const { hasInteractiveParams, visitorData, visitorInventory, leaderboard, teamLeaderboard, badges } = useContext(GlobalStateContext);
   const visitorSession = visitorData || null;
   const puzzlesCompleted = visitorSession?.puzzlesCompleted;
 
@@ -502,7 +502,10 @@ export const Home = () => {
             })}
           </div>
           {leaderboardTab === "leaderboard" ? (
-            <Leaderboard leaderboard={leaderboard} />
+            <Leaderboard
+              leaderboard={leaderboard}
+              teamLeaderboard={teamLeaderboard}
+            />
           ) : (
             <BadgesTab badges={badges} earned={visitorInventory?.badges} />
           )}

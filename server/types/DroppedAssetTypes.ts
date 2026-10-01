@@ -29,6 +29,7 @@ export type TeamData = {
   startedAt?: string;
   puzzlesCompleted: Record<number, boolean>;
   keyItems: TeamKeyItem[];
+  completionTime?: number;
 };
 
 export type TeamKeyItem = {

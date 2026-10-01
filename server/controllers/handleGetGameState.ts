@@ -23,6 +23,23 @@ export const handleGetGameState = async (req: Request, res: Response) => {
     const keyAsset = await getKeyAsset(credentials);
     const leaderboard = getLeaderboard((keyAsset?.dataObject as KeyAssetDataObject | null)?.leaderboard);
 
+    const teams =
+      (keyAsset?.dataObject as KeyAssetDataObject | null)?.teams || {};
+
+    const teamLeaderboard = Object.values(teams)
+      .filter(
+        (team) =>
+          team.status === "completed" &&
+          typeof team.completionTime === "number" &&
+          team.completionTime > 0,
+      )
+      .map((team) => ({
+        teamId: team.id,
+        members: team.members.map((member) => member.displayName),
+        completionTime: team.completionTime!,
+      }))
+      .sort((a, b) => a.completionTime - b.completionTime);
+      
     // Visitor (data + inventory). getVisitor guarantees session defaults exist
     // and builds visitorInventory with both badges and items.
     const { visitorDataObject, visitorInventory } = await getVisitor(credentials, true);
@@ -101,6 +118,7 @@ export const handleGetGameState = async (req: Request, res: Response) => {
       badges,
       visitorInventory,
       leaderboard,
+      teamLeaderboard,
     });
   } catch (error) {
     return errorHandler({

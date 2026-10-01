@@ -352,19 +352,26 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       // Skip the leaderboard write if the key asset isn't placed in the world.
       // Puzzle completion + badges still persist below; the run just won't
       // make it onto the board until the asset exists.
-      if (keyAsset) {
+      if (keyAsset && !game.groupId) {
         await keyAsset.updateDataObject(
           { leaderboard: updatedLeaderboard },
-          { lock: { lockId: `leaderboard-${profileId}`, releaseLock: true } },
+          {
+            lock: {
+              lockId: `leaderboard-${profileId}`,
+              releaseLock: true,
+            },
+          },
         );
-      } else {
-        console.warn(`Key asset not found for scene ${sceneDropId}; skipping leaderboard write.`);
+      } else if (!keyAsset) {
+        console.warn(
+          `Key asset not found for scene ${sceneDropId}; skipping leaderboard write.`,
+        );
       }
 
       // Mark the current team as completed
-      if (keyAsset && game.groupId) {
+      if (keyAsset && teamId) {
         const teams = keyAssetDataObject?.teams || {};
-        const team = teams[game.groupId];
+        const team = teams[teamId];
 
         if (team) {
           const completedAt = new Date().toISOString();
@@ -373,16 +380,17 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
             {
               teams: {
                 ...teams,
-                [game.groupId]: {
+                [teamId]: {
                   ...team,
                   status: "completed",
                   updatedAt: completedAt,
+                  completionTime: game.completionTime ?? 0,
                 },
               },
             },
             {
               lock: {
-                lockId: `teams-complete-${game.groupId}`,
+                lockId: `teams-complete-${teamId}`,
                 releaseLock: true,
               },
             },

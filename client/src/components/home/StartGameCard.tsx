@@ -15,6 +15,7 @@ type StartMode = "solo" | "multiplayer";
 type TeamSummary = {
   id: string;
   leaderProfileId?: string;
+  status?: "waiting" | "started" | "completed";
   createdBy?: { displayName?: string; username?: string };
   members?: Array<{ profileId?: string; displayName?: string; username?: string }>;
 };
@@ -24,9 +25,27 @@ const { briefing } = content;
 export const StartGameCard = ({ onStart, isLoading }: StartGameCardProps) => {
   const [mode, setMode] = useState<StartMode>("solo");
   const [teams, setTeams] = useState<TeamSummary[]>([]);
+  const [activeTeam, setActiveTeam] = useState<TeamSummary | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<string>("");
   const [teamMessage, setTeamMessage] = useState<string>("");
   const [isRefreshingTeams, setIsRefreshingTeams] = useState(false);
+
+  const currentProfileId = new URLSearchParams(window.location.search).get("profileId");
+
+  const selectedTeam = teams.find((team) => team.id === selectedTeamId);
+
+  const teamHasStarted =
+    activeTeam?.status === "started";
+
+  const isTeamLeader =
+    !!selectedTeam &&
+    selectedTeam.leaderProfileId === currentProfileId;
+
+  const canStartTeam =
+    mode !== "multiplayer" ||
+    !selectedTeam ||
+    selectedTeam.status !== "waiting" ||
+    isTeamLeader;
 
   const refreshTeams = async () => {
     setIsRefreshingTeams(true);
@@ -40,7 +59,12 @@ export const StartGameCard = ({ onStart, isLoading }: StartGameCardProps) => {
 
       setTeams(nextTeams);
       if (activeTeamForPlayer?.id) {
+        setActiveTeam(activeTeamForPlayer);
         setSelectedTeamId(activeTeamForPlayer.id);
+      } else if (activeTeam?.id) {
+        // The player's team may have started and disappeared
+        // from the list of open teams.
+        setSelectedTeamId(activeTeam.id);
       } else if (nextTeams.length > 0 && !selectedTeamId) {
         setSelectedTeamId(nextTeams[0].id);
       }
@@ -57,7 +81,16 @@ export const StartGameCard = ({ onStart, isLoading }: StartGameCardProps) => {
       setSelectedTeamId("");
       return;
     }
+
     void refreshTeams();
+
+    const interval = window.setInterval(() => {
+      void refreshTeams();
+    }, 2000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
   }, [mode]);
 
   const handleCreateTeam = async () => {
@@ -67,7 +100,7 @@ export const StartGameCard = ({ onStart, isLoading }: StartGameCardProps) => {
       const nextTeamId = response.data?.team?.id;
       if (nextTeamId) {
         setSelectedTeamId(nextTeamId);
-        setTeamMessage("Team created. Invite players, then start when ready.");
+        setTeamMessage("Team created. Start when ready.");
       } else {
         setTeamMessage("Team creation returned no team id.");
       }
@@ -130,81 +163,108 @@ export const StartGameCard = ({ onStart, isLoading }: StartGameCardProps) => {
         </div>
 
         <div className="card-details mt-2 grid gap-3">
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              className={mode === "solo" ? "btn er-btn-primary" : "btn btn-outline"}
-              onClick={() => setMode("solo")}
-            >
-              Solo
-            </button>
-            <button
-              type="button"
-              className={mode === "multiplayer" ? "btn er-btn-primary" : "btn btn-outline"}
-              onClick={() => setMode("multiplayer")}
-            >
-              Multiplayer
-            </button>
-          </div>
 
-          {mode === "multiplayer" && (
-            <div className="grid gap-3 rounded-lg border border-slate-600/70 p-3">
-              <div className="flex flex-wrap gap-2">
-                <button type="button" className="btn btn-outline" onClick={handleCreateTeam} disabled={isLoading}>
-                  Create team
-                </button>
+
+          {!teamHasStarted && (
+            <>
+              <div className="flex flex-wrap gap-3">
                 <button
                   type="button"
-                  className="btn btn-outline"
-                  onClick={() => void refreshTeams()}
-                  disabled={isRefreshingTeams || isLoading}
+                  className={mode === "solo" ? "btn er-btn-primary" : "btn btn-outline"}
+                  onClick={() => setMode("solo")}
                 >
-                  {isRefreshingTeams ? "Refreshing…" : "Refresh teams"}
+                  Solo
+                </button>
+
+                <button
+                  type="button"
+                  className={mode === "multiplayer" ? "btn er-btn-primary" : "btn btn-outline"}
+                  onClick={() => setMode("multiplayer")}
+                >
+                  Multiplayer
                 </button>
               </div>
 
-              {teams.length > 0 ? (
-                <div className="grid gap-2">
-                  <label className="p2 er-text" htmlFor="team-select">
-                    Join an open team
-                  </label>
-                  <select
-                    id="team-select"
-                    className="input"
-                    value={selectedTeamId}
-                    onChange={(event) => setSelectedTeamId(event.target.value)}
-                    disabled={isLoading}
-                  >
-                    <option value="">Select a team</option>
-                    {teams.map((team) => (
-                      <option key={team.id} value={team.id}>
-                        {team.createdBy?.displayName || team.createdBy?.username || "Team"} · {team.members?.length ?? 0} member
-                        {team.members?.length === 1 ? "" : "s"}
-                      </option>
-                    ))}
-                  </select>
-                  {selectedTeamId && (
+              {mode === "multiplayer" && (
+                <div className="grid gap-3 rounded-lg border border-slate-600/70 p-3">
+                  <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      className="btn btn-outline w-full sm:w-auto"
-                      onClick={() => void handleJoinTeam(selectedTeamId)}
+                      className="btn btn-outline"
+                      onClick={handleCreateTeam}
                       disabled={isLoading}
                     >
-                      Join selected team
+                      Create team
                     </button>
+
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={() => void refreshTeams()}
+                      disabled={isRefreshingTeams || isLoading}
+                    >
+                      {isRefreshingTeams ? "Refreshing…" : "Refresh teams"}
+                    </button>
+                  </div>
+
+                  {teams.length > 0 ? (
+                    <div className="grid gap-2">
+                      <label className="p2 er-text" htmlFor="team-select">
+                        Join an open team
+                      </label>
+
+                      <select
+                        id="team-select"
+                        className="input"
+                        value={selectedTeamId}
+                        onChange={(event) => setSelectedTeamId(event.target.value)}
+                        disabled={isLoading}
+                      >
+                        <option value="">Select a team</option>
+
+                        {teams.map((team) => (
+                          <option key={team.id} value={team.id}>
+                            {team.createdBy?.displayName ||
+                              team.createdBy?.username ||
+                              "Team"}{" "}
+                            · {team.members?.length ?? 0} member
+                            {team.members?.length === 1 ? "" : "s"}
+                          </option>
+                        ))}
+                      </select>
+
+                      {selectedTeamId && (
+                        <button
+                          type="button"
+                          className="btn btn-outline w-full sm:w-auto"
+                          onClick={() => void handleJoinTeam(selectedTeamId)}
+                          disabled={isLoading}
+                        >
+                          Join selected team
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="p2 er-text">
+                      No teams are open yet. Create a team to invite others.
+                    </p>
                   )}
                 </div>
-              ) : (
-                <p className="p2 er-text">No teams are open yet. Create a team to invite others.</p>
               )}
-            </div>
+            </>
           )}
 
-          {teamMessage && <p className="p2 er-text">{teamMessage}</p>}
+          {teamMessage && !teamHasStarted && (
+            <p className="p2 er-text">{teamMessage}</p>
+          )}
         </div>
 
         <div className="card-actions mt-2">
-          <button className="btn er-btn-primary w-full sm:w-auto" onClick={() => void handleStart()} disabled={isLoading}>
+          <button
+            className="btn er-btn-primary w-full sm:w-auto"
+            onClick={() => void handleStart()}
+            disabled={isLoading || !canStartTeam}
+          >
             {mode === "multiplayer" ? "Start team run" : briefing.startButton}
           </button>
         </div>
