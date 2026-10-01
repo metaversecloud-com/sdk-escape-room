@@ -4,8 +4,8 @@ import { Credentials } from "../types/index.js";
 
 interface Options {
   shouldTeleportVisitor?: boolean;
+  useServerCredentials?: boolean;
 }
-
 /**
  * Looks up a dropped asset by `uniqueName` within the current scene and
  * moves the visitor to it — instant teleport by default, optional smooth
@@ -17,23 +17,33 @@ interface Options {
 export const moveVisitorToAsset = async (
   credentials: Credentials,
   uniqueName: string,
-  { shouldTeleportVisitor = true }: Options = {},
+  {
+    shouldTeleportVisitor = true,
+    useServerCredentials = false,
+  }: Options = {},
 ): Promise<void> => {
   const { urlSlug, sceneDropId, visitorId } = credentials;
 
-  const world = World.create(urlSlug, { credentials });
-  const visitor = await Visitor.create(visitorId, urlSlug, { credentials });
+  const world = useServerCredentials
+    ? World.create(urlSlug)
+    : World.create(urlSlug, { credentials });
 
-  const droppedAssets: DroppedAssetInterface[] = await world.fetchDroppedAssetsBySceneDropId({
-    sceneDropId,
-    uniqueName,
-  });
+  const visitor = useServerCredentials
+    ? await Visitor.create(visitorId, urlSlug)
+    : await Visitor.create(visitorId, urlSlug, { credentials });
+
+  const droppedAssets: DroppedAssetInterface[] =
+    await world.fetchDroppedAssetsBySceneDropId({
+      sceneDropId,
+      uniqueName,
+    });
 
   if (!droppedAssets || droppedAssets.length === 0) {
     throw new Error(`Asset "${uniqueName}" not found in scene ${sceneDropId}`);
   }
 
   const pos = droppedAssets[0].position;
+
   if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") {
     throw new Error(`Asset "${uniqueName}" has invalid position`);
   }

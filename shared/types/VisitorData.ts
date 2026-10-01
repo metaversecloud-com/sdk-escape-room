@@ -7,6 +7,8 @@ export interface VisitorData {
   startTime: string | null;
   endTime: string | null;
   sessionActive: boolean;
+  groupId?: string;
+  groupProgress?: Record<string, { groupId: string; puzzlesCompleted: Record<number, boolean>; currentRoom: number; sessionActive: boolean; startTime: string | null; completionTime: number | null; items: unknown[]; badges: Record<string, unknown>; members: unknown[]; }>;
 
   // Progression — highest unlocked room (advances on puzzle completion).
   currentRoom: 1 | 2 | 3 | null;

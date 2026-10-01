@@ -3,12 +3,18 @@ import { getVersion } from "./utils/getVersion.js";
 import {
   handleCheckSession,
   handleCloseIframe,
+  handleCreateTeam,
   handleDiscoverDecoy,
   handleExitGame,
   handleGetGameState,
+  handleGetTeams,
   handleGrantItem,
+  handleHeartbeat,
+  handleJoinTeam,
+  handleSSE,
   handleSavePuzzleDraft,
   handleStartGame,
+  handleStartTeam,
   handleSubmitPuzzle,
   handleTeleport,
   handleWalkToAsset,
@@ -40,6 +46,12 @@ router.get("/system/health", (_req, res) => {
 
 router.get("/game-state", handleGetGameState);
 router.get("/session", handleCheckSession);
+router.get("/teams", handleGetTeams);
+router.get("/sse", handleSSE);
+router.get("/heartbeat", handleHeartbeat);
+router.post("/teams/create", handleCreateTeam);
+router.post("/teams/join", handleJoinTeam);
+router.post("/teams/start", handleStartTeam);
 router.post("/teleport", handleTeleport);
 router.post("/walk-to-asset", handleWalkToAsset);
 router.post("/start-game", handleStartGame);

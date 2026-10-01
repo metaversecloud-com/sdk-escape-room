@@ -9,70 +9,155 @@ import {
   moveVisitorToAsset,
 } from "@utils/index.js";
 
+const startVisitorSession = async ({
+  credentials,
+  teamId,
+  sessionKey,
+}: {
+  credentials: ReturnType<typeof getCredentials>;
+  teamId?: string;
+  sessionKey: string;
+}) => {
+  const profileId = credentials.profileId;
+  const urlSlug = credentials.urlSlug;
+
+  const { visitor } = await getVisitor(credentials, true);
+  await clearVisitorInventory({ visitor, credentials });
+  await visitor.fetchInventoryItems();
+  const visitorInventory = getVisitorInventory(visitor.inventoryItems || []);
+
+  await moveVisitorToAsset(credentials, "EscapeRoom_room1_teleport");
+
+  const newSession = {
+    ...getDefaultVisitorData(),
+    sessionActive: true,
+    startTime: new Date().toISOString(),
+    currentRoom: 1 as const,
+    physicalRoom: 1 as const,
+    groupId: teamId || undefined,
+  };
+
+  await visitor.updateDataObject(
+    { [sessionKey]: newSession },
+    {
+      lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true },
+      analytics: [
+        {
+          analyticName: "gameStarts",
+          profileId,
+          urlSlug,
+          uniqueKey: `${profileId}-${sessionKey}-start`,
+        },
+        {
+          analyticName: "room1Entries",
+          profileId,
+          urlSlug,
+          uniqueKey: `${profileId}-${sessionKey}-start`,
+        },
+      ],
+    },
+  );
+
+  return { visitorData: newSession, visitorInventory };
+};
+
 export const handleStartGame = async (req: Request, res: Response) => {
   try {
     const credentials = getCredentials(req.query);
-    const { sceneDropId, urlSlug, profileId } = credentials;
+    const requestedTeamId = typeof req.body?.teamId === "string" ? req.body.teamId : undefined;
+    const { getKeyAsset } = await import("@utils/index.js");
+    const keyAsset = await getKeyAsset(credentials);
+    const keyData = (keyAsset?.dataObject as Record<string, any> | null) || {};
+    const teams = (keyData.teams || {}) as Record<string, any>;
+    const activeTeam = Object.values(teams).find((candidate: any) =>
+      Array.isArray(candidate?.members) && candidate.members.some((member: any) => member.profileId === credentials.profileId),
+    );
+
+    const teamId = requestedTeamId || activeTeam?.id;
+    const isMultiplayer = req.body?.multiplayer === true || Boolean(teamId);
+    const { sceneDropId, urlSlug } = credentials;
     const sessionKey = `${urlSlug}-${sceneDropId}`;
 
-    // getVisitor (with details=true) populates visitor.inventoryItems so we can
-    // count what they're carrying before wiping it below.
-    const { visitor } = await getVisitor(credentials, true);
+    let resolvedTeam: any = undefined;
+    let isLeader = false;
 
-    // Fresh game — strip puzzle rewards (Fuse / Wrench / Access Card) from
-    // any previous run so the player starts at zero inventory. Badges are
-    // preserved (clearVisitorInventory skips them).
-    await clearVisitorInventory({ visitor, credentials });
+    if (isMultiplayer) {
+      resolvedTeam = teamId ? teams[teamId] || activeTeam : activeTeam;
 
-    // Re-read inventory after the clear so the client's context flips to the
-    // empty items list immediately (instead of carrying the stale pre-clear
-    // state until the next /game-state fetch).
-    await visitor.fetchInventoryItems();
-    const visitorInventory = getVisitorInventory(visitor.inventoryItems || []);
+      if (resolvedTeam) {
+        isLeader = resolvedTeam.leaderProfileId === credentials.profileId || resolvedTeam.createdBy?.profileId === credentials.profileId;
+        if (!resolvedTeam.started && !isLeader) {
+          return res.status(200).json({
+            success: false,
+            waitingForLeader: true,
+            message: "Waiting for the team leader to start the game.",
+            teamId: resolvedTeam.id || teamId,
+          });
+        }
+      }
+    }
 
-    // Teleport BEFORE persisting the "session active" flag. If the Room 1
-    // spawn asset isn't placed in the world, this throws → the outer catch
-    // surfaces the error to the client and we never mark the session active,
-    // so the player can retry cleanly instead of ending up in a half-started
-    // state (session active server-side, but no teleport ever fired).
-    await moveVisitorToAsset(credentials, "EscapeRoom_room1_teleport");
+    if (isMultiplayer && resolvedTeam && isLeader && !resolvedTeam.started) {
+      const startedAt = new Date().toISOString();
+      const updatedTeam = {
+        ...resolvedTeam,
+        status: "started",
+        started: true,
+        startedAt,
+        updatedAt: startedAt,
+      };
 
-    // Build a fresh active session from the defaults and overlay the started state.
-    const newSession = {
-      ...getDefaultVisitorData(),
-      sessionActive: true,
-      startTime: new Date().toISOString(),
-      currentRoom: 1 as const,
-      physicalRoom: 1 as const,
-    };
+      const { getKeyAsset } = await import("@utils/index.js");
+      const keyAsset = await getKeyAsset(credentials);
+      if (!keyAsset) {
+        return res.status(400).json({ success: false, error: "The game key asset is not available yet." });
+      }
 
-    await visitor.updateDataObject(
-      { [sessionKey]: newSession },
-      {
-        lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true },
-        analytics: [
-          {
-            analyticName: "gameStarts",
-            profileId,
-            urlSlug,
-            uniqueKey: `${profileId}-${sessionKey}-start`,
-          },
-          {
-            analyticName: "room1Entries",
-            profileId,
-            urlSlug,
-            uniqueKey: `${profileId}-${sessionKey}-start`,
-          },
-        ],
-      },
-    );
+      const keyData = (keyAsset.dataObject as Record<string, any> | null) || {};
+      const teams = (keyData.teams || {}) as Record<string, any>;
+      const nextTeams = { ...teams, [resolvedTeam.id]: updatedTeam };
+
+      await keyAsset.updateDataObject({ teams: nextTeams }, { lock: { lockId: `teams-${resolvedTeam.id}`, releaseLock: true } });
+
+      const startedResults = await Promise.all(
+        (updatedTeam.members || []).map(async (member: any) => {
+          const memberCreds = {
+            ...credentials,
+            profileId: member.profileId,
+            displayName: member.displayName,
+            username: member.username || credentials.username,
+            visitorId: member.visitorId ?? credentials.visitorId,
+          };
+
+          return startVisitorSession({
+            credentials: memberCreds,
+            teamId: resolvedTeam.id,
+            sessionKey,
+          });
+        }),
+      );
+
+      const leaderResult = startedResults.find((_, index) => (updatedTeam.members || [])[index]?.profileId === credentials.profileId) || startedResults[0];
+
+      return res.json({
+        success: true,
+        message: "Game started",
+        visitorData: leaderResult.visitorData,
+        visitorInventory: leaderResult.visitorInventory,
+        teamId: resolvedTeam.id,
+        sessionKey,
+      });
+    }
+
+    const singleStart = await startVisitorSession({ credentials, teamId, sessionKey });
 
     return res.json({
       success: true,
       message: "Game started",
-      visitorData: newSession,
-      visitorInventory,
+      visitorData: singleStart.visitorData,
+      visitorInventory: singleStart.visitorInventory,
       sessionKey,
+      ...(teamId ? { teamId } : {}),
     });
   } catch (error) {
     return errorHandler({

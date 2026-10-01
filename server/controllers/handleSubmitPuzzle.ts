@@ -13,6 +13,7 @@ import {
   getVisitorInventory,
   moveVisitorToAsset,
 } from "@utils/index.js";
+import { sseManager } from "../utils/sseManager.js";
 import { toasts } from "@shared/copy/toasts.js";
 import { Credentials, KeyAssetDataObject, VisitorData } from "../types/index.js";
 
@@ -26,7 +27,7 @@ const isPuzzleNumber = (value: unknown): value is PuzzleNumber =>
 // Maps a puzzle number to the ecosystem inventory item the player earns by
 // solving it. The item is looked up by name and granted via the SDK; the
 // visitor's actual inventory is the source of truth.
-const PUZZLE_REWARDS: Partial<Record<PuzzleNumber, string>> = {
+const PUZZLE_KEY_ITEM_REWARDS: Partial<Record<PuzzleNumber, string>> = {
   1: "Battery",
   2: "Fuse",
   3: "Wrench",
@@ -61,27 +62,77 @@ const ROOM_TRANSITIONS: RoomTransition[] = [
 ];
 
 /** Returns true if a new item was granted (caller may want to refresh inventory). */
-const applyInventoryReward = async (
+const applyTeamKeyItemReward = async (
   credentials: Credentials,
-  visitor: VisitorInterface,
-  visitorInventory: VisitorInventory,
+  teamId: string,
   puzzleNumber: PuzzleNumber,
+  keyAsset: Awaited<ReturnType<typeof getKeyAsset>>,
 ): Promise<boolean> => {
-  const itemName = PUZZLE_REWARDS[puzzleNumber];
-  if (!itemName) return false;
-  if (visitorInventory.items.some((i) => i.name === itemName)) return false;
+  const itemName = PUZZLE_KEY_ITEM_REWARDS[puzzleNumber];
+
+  if (!itemName || !keyAsset) {
+    return false;
+  }
+
+  const dataObject =
+    (keyAsset.dataObject as KeyAssetDataObject | null) || {};
+
+  const teams = dataObject.teams || {};
+  const team = teams[teamId];
+
+  if (!team) {
+    return false;
+  }
+
+  const existingKeyItems = team.keyItems || [];
+
+  // Don't award the same shared key item twice.
+  if (existingKeyItems.some((item) => item.name === itemName)) {
+    return false;
+  }
 
   const inventoryItems = await getCachedInventoryItems({ credentials });
-  const match = inventoryItems.find((item: any) => item.name === itemName && item.type === "ITEM");
-  if (!match) return false;
 
-  await visitor.grantInventoryItem(match, 1);
-  await fireToast({
-    visitor,
-    groupId: toasts.itemEarned.groupId,
-    title: toasts.itemEarned.title,
-    text: toasts.itemEarned.textTemplate.replace("{item}", itemName),
-  });
+  const match = inventoryItems.find(
+    (item: any) =>
+      item.name === itemName &&
+      item.type === "ITEM",
+  );
+
+  if (!match) {
+    return false;
+  }
+
+  const keyItem = {
+    id: match.id,
+    name: match.name,
+    imageUrl: match.image_url || match.image_path || null,
+    description: match.description,
+    metadata: match.metadata || {},
+    quantity: 1,
+  };
+
+  const updatedTeam = {
+    ...team,
+    keyItems: [...existingKeyItems, keyItem],
+    updatedAt: new Date().toISOString(),
+  };
+
+  await keyAsset.updateDataObject(
+    {
+      teams: {
+        ...teams,
+        [teamId]: updatedTeam,
+      },
+    },
+    {
+      lock: {
+        lockId: `team-key-item-${teamId}-${puzzleNumber}-${Date.now()}`,
+        releaseLock: true,
+      },
+    },
+  );
+
   return true;
 };
 
@@ -107,6 +158,8 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     }
     const game = session;
 
+    const teamId = game.groupId || credentials.groupId;
+
     // Look up the key asset (start terminal) where the leaderboard lives.
     // Found by uniqueName within the scene — no world data needed. For
     // pre-puzzle-7 submissions this just gets us the asset handle in case
@@ -118,7 +171,14 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     game.puzzlesCompleted[puzzleNumber] = true;
     // Drop the in-progress draft for this puzzle — it's no longer "in progress".
     if (game.puzzleDrafts) delete game.puzzleDrafts[puzzleNumber];
-    const granted = await applyInventoryReward(credentials, visitor, visitorInventory, puzzleNumber);
+    const granted = teamId
+      ? await applyTeamKeyItemReward(
+          credentials,
+          teamId,
+          puzzleNumber,
+          keyAsset,
+        )
+      : false;
 
     // If a fresh item just landed (puzzles 1/2/3/5 grant Battery / Fuse /
     // Wrench / Circuit Chip), check whether the player now owns every
@@ -227,6 +287,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     if (puzzleNumber === 7) {
       game.sessionActive = false;
       game.endTime = new Date().toISOString();
+
       if (game.startTime) {
         const start = new Date(game.startTime).getTime();
         const end = new Date(game.endTime).getTime();
@@ -291,14 +352,63 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       // Skip the leaderboard write if the key asset isn't placed in the world.
       // Puzzle completion + badges still persist below; the run just won't
       // make it onto the board until the asset exists.
-      if (keyAsset) {
+      if (keyAsset && !game.groupId) {
         await keyAsset.updateDataObject(
           { leaderboard: updatedLeaderboard },
-          { lock: { lockId: `leaderboard-${profileId}`, releaseLock: true } },
+          {
+            lock: {
+              lockId: `leaderboard-${profileId}`,
+              releaseLock: true,
+            },
+          },
         );
-      } else {
-        console.warn(`Key asset not found for scene ${sceneDropId}; skipping leaderboard write.`);
+      } else if (!keyAsset) {
+        console.warn(
+          `Key asset not found for scene ${sceneDropId}; skipping leaderboard write.`,
+        );
       }
+
+      // Mark the current team as completed
+      if (keyAsset && teamId) {
+        const teams = keyAssetDataObject?.teams || {};
+        const team = teams[teamId];
+
+        if (team) {
+          const completedAt = new Date().toISOString();
+
+          await keyAsset.updateDataObject(
+            {
+              teams: {
+                ...teams,
+                [teamId]: {
+                  ...team,
+                  status: "completed",
+                  updatedAt: completedAt,
+                  completionTime: game.completionTime ?? 0,
+                },
+              },
+            },
+            {
+              lock: {
+                lockId: `teams-complete-${teamId}`,
+                releaseLock: true,
+              },
+            },
+          );
+        }
+      }
+
+      sseManager.publish({
+        event: "GAME_COMPLETED",
+        assetId: credentials.assetId,
+        urlSlug: credentials.urlSlug,
+        visitorId: credentials.visitorId,
+        interactiveNonce: credentials.interactiveNonce,
+        groupId: game.groupId,
+        data: {
+          teamId: game.groupId,
+        },
+      });
 
       teleport = "EscapeRoom_start_teleport";
 
@@ -350,11 +460,71 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
 
     if (teleport) {
       try {
+        console.log("FINAL TELEPORTING SUBMITTER", {
+          visitorId: credentials.visitorId,
+          profileId: credentials.profileId,
+          teleport,
+        });
         await moveVisitorToAsset(credentials, teleport);
       } catch (err) {
         console.warn(`moveVisitorToAsset to "${teleport}" failed`, err);
       }
     }
+
+    if (teamId) {
+      const keyAssetForTeam = await getKeyAsset(credentials);
+
+      if (keyAssetForTeam) {
+        const dataObject =
+          (keyAssetForTeam.dataObject as KeyAssetDataObject | null) || {};
+
+        const teams = dataObject.teams || {};
+        const team = teams[teamId];
+
+        if (team) {
+          const updatedTeam = {
+            ...team,
+            puzzlesCompleted: {
+              ...(team.puzzlesCompleted || {}),
+              [puzzleNumber]: true,
+            },
+            updatedAt: new Date().toISOString(),
+          };
+
+          await keyAssetForTeam.updateDataObject(
+            {
+              teams: {
+                ...teams,
+                [teamId]: updatedTeam,
+              },
+            },
+            {
+              lock: {
+                lockId: `team-progress-${teamId}-${puzzleNumber}-${Date.now()}`,
+                releaseLock: true,
+              },
+            },
+          );
+        }
+      }
+    }
+
+    sseManager.publish({
+      event: "state:update",
+      assetId: credentials.assetId,
+      urlSlug: credentials.urlSlug,
+      visitorId: credentials.visitorId,
+      interactiveNonce: credentials.interactiveNonce,
+      groupId: teamId,
+      data: {
+        kind: "puzzle",
+        visitorData: game,
+        sessionKey,
+        badgesAwarded,
+        badgesOwned,
+        badgesFailed,
+      },
+    });
 
     return res.json({
       success: true,

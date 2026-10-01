@@ -4,6 +4,8 @@ import { VisitorInventory } from "./getVisitorInventory.js";
 import { awardBadge } from "./awardBadge.js";
 import { BADGES } from "./checkEscapeBadges.js";
 import { getCachedInventoryItems } from "./inventoryCache.js";
+import { KeyAssetDataObject} from "../types/index.js";
+import { getKeyAsset } from "@utils/index.js";
 
 interface Args {
   credentials: Credentials;
@@ -29,15 +31,58 @@ export const checkTrashPandaBadge = async ({ credentials, visitor, visitorInvent
   if (visitorInventory.badges?.[BADGES.TRASH_PANDA]) return false;
 
   const ecosystem = await getCachedInventoryItems({ credentials });
-  const requiredNames = ecosystem
-    .filter((i: any) => i.type === "ITEM" && i.status === "ACTIVE" && typeof i.name === "string")
+
+  const activeItems = ecosystem.filter(
+    (i: any) =>
+      i.type === "ITEM" &&
+      i.status === "ACTIVE" &&
+      typeof i.name === "string",
+  );
+
+  const artifactNames = activeItems
+    .filter((i: any) => i.metadata?.type === "artifact")
     .map((i: any) => i.name as string);
 
-  if (requiredNames.length === 0) return false;
+  const keyItemNames = activeItems
+    .filter((i: any) => i.metadata?.type === "keyItem")
+    .map((i: any) => i.name as string);
 
-  const ownedNames = new Set(visitorInventory.items.map((i) => i.name));
-  const hasAll = requiredNames.every((name) => ownedNames.has(name));
-  if (!hasAll) return false;
+  const playerArtifactNames = new Set(
+    visitorInventory.items
+      .filter((item) => item.metadata?.type === "artifact")
+      .map((item) => item.name),
+  );
+
+  const hasAllArtifacts = artifactNames.every((name) =>
+    playerArtifactNames.has(name),
+  );
+
+  if (!hasAllArtifacts) return false;
+
+  const teamId = credentials.groupId;
+
+  if (!teamId) return false;
+
+  const keyAsset = await getKeyAsset(credentials);
+
+  const teams =
+    (keyAsset?.dataObject as KeyAssetDataObject | null)?.teams || {};
+
+  const team = teams[teamId];
+
+  if (!team) return false;
+
+  const teamKeyItemNames = new Set(
+    (team.keyItems || []).map((item) => item.name),
+  );
+
+  const hasAllKeyItems = keyItemNames.every((name) =>
+    teamKeyItemNames.has(name),
+  );
+
+  if (!hasAllKeyItems) return false;
+
+  console.log("trash panda awarded")
 
   await awardBadge({ credentials, visitor, visitorInventory, badgeName: BADGES.TRASH_PANDA });
   return true;

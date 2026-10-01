@@ -23,6 +23,7 @@ const App = () => {
     return {
       assetId: searchParams.get("assetId") || "",
       displayName: searchParams.get("displayName") || "",
+      groupId: searchParams.get("groupId") || "",
       identityId: searchParams.get("identityId") || "",
       interactiveNonce: searchParams.get("interactiveNonce") || "",
       interactivePublicKey: searchParams.get("interactivePublicKey") || "",

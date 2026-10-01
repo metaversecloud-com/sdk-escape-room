@@ -8,6 +8,7 @@ export const SET_ERROR = "SET_ERROR";
 export type InteractiveParams = {
   assetId: string;
   displayName: string;
+  groupId?: string;
   identityId: string;
   interactiveNonce: string;
   interactivePublicKey: string;
@@ -26,6 +27,7 @@ export interface InitialState {
   visitorData?: VisitorData;
   droppedAsset?: DroppedAssetInterface;
   leaderboard?: LeaderboardRowType[];
+  teamLeaderboard?: TeamLeaderboardRowType[];
   badges?: { [name: string]: BadgeType };
   visitorInventory?: VisitorInventoryType;
   sessionKey?: string;
@@ -61,6 +63,12 @@ export type LeaderboardRowType = {
   name: string;
   completionTime: number;
   attempts: number;
+};
+
+export type TeamLeaderboardRowType = {
+  teamId: string;
+  members: string[];
+  completionTime: number;
 };
 
 export type InventoryItemSummary = {
