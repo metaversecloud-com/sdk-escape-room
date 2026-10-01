@@ -19,6 +19,7 @@ const globalReducer = (state: InitialState, action: ActionType) => {
         visitorData: payload.visitorData ?? state.visitorData,
         droppedAsset: payload.droppedAsset ?? state.droppedAsset,
         leaderboard: payload.leaderboard ?? state.leaderboard,
+        teamLeaderboard: payload.teamLeaderboard ?? state.teamLeaderboard,
         sessionKey: payload.sessionKey ?? state.sessionKey,
         uniqueName: payload.uniqueName ?? state.uniqueName,
         error: "",

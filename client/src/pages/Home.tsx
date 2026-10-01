@@ -156,7 +156,7 @@ const getForceRefreshInventoryFromSearch = () =>
 
 export const Home = () => {
   const dispatch = useContext(GlobalDispatchContext);
-  const { hasInteractiveParams, visitorData, visitorInventory, leaderboard, badges } = useContext(GlobalStateContext);
+  const { hasInteractiveParams, visitorData, visitorInventory, leaderboard, teamLeaderboard, badges } = useContext(GlobalStateContext);
   const visitorSession = visitorData || null;
   const puzzlesCompleted = visitorSession?.puzzlesCompleted;
 
@@ -220,6 +220,49 @@ export const Home = () => {
     setGameState(dispatch, response.data);
   };
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const required = ["assetId", "displayName", "interactiveNonce", "profileId", "sceneDropId", "urlSlug", "visitorId"];
+    if (!required.every((key) => params.get(key))) return;
+
+    const eventSource = new EventSource(`/api/sse?${params.toString()}`);
+    const heartbeat = window.setInterval(() => {
+      backendAPI.get("/heartbeat").catch(() => undefined);
+    }, 15000);
+
+    eventSource.onmessage = async (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+
+        if (payload?.kind === "GAME_COMPLETED") {
+          try {
+            await backendAPI.post("/teleport", { room: "start" });
+          } catch (error) {
+            console.error("FINAL TEAM TELEPORT REQUEST FAILED", error);
+          }
+
+          await refreshGameState();
+          return;
+        }
+
+        if (payload?.kind === "state:update" || payload?.success === true) {
+          await refreshGameState();
+        }
+      } catch {
+        // Ignore malformed SSE payloads and continue listening.
+      }
+    };
+
+    eventSource.onerror = () => {
+      // EventSource will automatically retry.
+    };
+
+    return () => {
+      eventSource.close();
+      window.clearInterval(heartbeat);
+    };
+  }, [hasInteractiveParams]);
+
   // Sticky for the lifetime of this iframe — flips true the first time the
   // player hits the Start button so the post-click render shows the Room 1
   // intro instead of the SessionInProgressCard. A separate click on the
@@ -227,10 +270,21 @@ export const Home = () => {
   // again), which is when we want the in-progress restart/teleport options.
   const [justStarted, setJustStarted] = useState(false);
 
-  const startGame = async () => {
+  const startGame = async (options?: { multiplayer: boolean; teamId?: string }) => {
     setIsLoading(true);
     try {
-      const res = await backendAPI.post("/start-game");
+      const payload = {
+        multiplayer: options?.multiplayer ?? false,
+        ...(options?.teamId ? { teamId: options.teamId } : {}),
+      };
+      const res = await backendAPI.post("/start-game", payload);
+
+      if (res.data?.waitingForLeader) {
+        setErrorMessage(dispatch, { message: res.data.message || "Waiting for the team leader to start the game." });
+        setIsLoading(false);
+        return;
+      }
+
       setGameState(dispatch, res.data);
       setJustStarted(true);
     } catch (error) {
@@ -291,6 +345,7 @@ export const Home = () => {
     backendAPI
       .post("/teleport", { room: targetRoom })
       .then((res) => {
+        console.log("FRONTEND TELEPORT RESPONSE", res.data);
         // Dispatch so visitorData stays in sync with the server response.
         setGameState(dispatch, res.data);
         if (res.data?.teleported) {
@@ -447,7 +502,10 @@ export const Home = () => {
             })}
           </div>
           {leaderboardTab === "leaderboard" ? (
-            <Leaderboard leaderboard={leaderboard} />
+            <Leaderboard
+              leaderboard={leaderboard}
+              teamLeaderboard={teamLeaderboard}
+            />
           ) : (
             <BadgesTab badges={badges} earned={visitorInventory?.badges} />
           )}
