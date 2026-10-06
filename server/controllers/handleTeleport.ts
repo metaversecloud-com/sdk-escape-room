@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getVisitor, moveVisitorToAsset, getKeyAsset, } from "@utils/index.js";
+import { errorHandler, getCredentials, getVisitor, moveVisitorToAsset, getKeyAsset, fireToast,} from "@utils/index.js";
 import { KeyAssetDataObject, VisitorData } from "../types/index.js";
+import { sseManager } from "../utils/sseManager.js";
+import { toasts } from "@shared/copy/toasts.js";
 
 /**
  * Per-room teleport definitions.
@@ -66,10 +68,10 @@ export const handleTeleport = async (req: Request, res: Response) => {
     const keyAsset = await getKeyAsset(credentials);
 
       let effectivePuzzlesCompleted = session.puzzlesCompleted;
+      const keyAssetDataObject =
+        (keyAsset?.dataObject as KeyAssetDataObject | null) || {};
 
       if (session.groupId) {
-        const keyAssetDataObject =
-        (keyAsset?.dataObject as KeyAssetDataObject | null) || {};
 
       const team = keyAssetDataObject.teams?.[session.groupId];
 
@@ -100,6 +102,8 @@ export const handleTeleport = async (req: Request, res: Response) => {
 
     // Target room: explicit `?room=N` wins; otherwise infer from current room.
     const explicitRoom = req.body.room;
+    const isTeamAdvance = req.body?.teamAdvance === true;
+    const completedByProfileId = req.body?.completedByProfileId as string | undefined;
 
     // Final team completion teleport.
     // The player is allowed to teleport home using their own
@@ -180,7 +184,6 @@ export const handleTeleport = async (req: Request, res: Response) => {
       });
     }
 
-    console.log("========== PASSED READINESS CHECK ==========");
 
     // Prerequisites satisfied — fire the teleport. `currentRoom` (progression)
     // is advanced by handleSubmitPuzzle on puzzle completion. `physicalRoom`
@@ -198,11 +201,9 @@ export const handleTeleport = async (req: Request, res: Response) => {
     try {
       await moveVisitorToAsset(credentials, def.spawnUniqueName);
 
-      console.log("AFTER MOVE VISITOR");
     } catch (err) {
       teleportSucceeded = false;
 
-      console.error("MOVE VISITOR ERROR", err);
     }
 
     console.log("CONTINUING AFTER MOVE", {
@@ -228,6 +229,55 @@ export const handleTeleport = async (req: Request, res: Response) => {
         { [sessionKey]: updatedSession },
         { lock: { lockId: `${sessionKey}-${Date.now()}-visitor-teleport`, releaseLock: true } },
       );
+    }
+
+    if (
+      teleportSucceeded &&
+      session.groupId &&
+      !isTeamAdvance
+    ) {
+      const team = keyAssetDataObject.teams?.[session.groupId];
+
+      if (team) {
+        sseManager.publish({
+          event: "TEAM_ROOM_ADVANCE",
+          assetId: credentials.assetId,
+          urlSlug: credentials.urlSlug,
+          visitorId: credentials.visitorId,
+          interactiveNonce: credentials.interactiveNonce,
+          groupId: session.groupId,
+          data: {
+            targetRoom: def.targetRoom,
+            completedByProfileId: credentials.profileId,
+            completedByName:
+              team.members.find(
+                (member) => member.profileId === credentials.profileId,
+              )?.displayName || credentials.displayName,
+          },
+        });
+      }
+    }
+
+    if (teleportSucceeded && isTeamAdvance && session.groupId) {
+      const team = keyAssetDataObject.teams?.[session.groupId];
+
+      if (team) {
+        const completedBy = team.members.find(
+          (member) => member.profileId === completedByProfileId,
+        );
+
+        await fireToast({
+          visitor,
+          groupId: toasts.teammateAdvanced.groupId,
+          title: toasts.teammateAdvanced.title,
+          text: toasts.teammateAdvanced.textTemplate
+            .replace(
+              "{member}",
+              completedBy?.displayName || "A teammate",
+            )
+            .replace("{room}", String(def.targetRoom)),
+        });
+      }
     }
 
     return res.json({

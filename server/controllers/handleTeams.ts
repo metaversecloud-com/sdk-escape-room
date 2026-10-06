@@ -131,9 +131,25 @@ export const handleGetTeams = async (req: Request, res: Response) => {
       await keyAsset.updateDataObject({ teams: cleanedTeams }, { lock: { lockId: `teams-prune-${Date.now()}`, releaseLock: true } });
     }
 
-    const list = Object.values(cleanedTeams).filter(
+    const waitingTeams = Object.values(cleanedTeams).filter(
       (team) => team?.status === "waiting" && team.members?.length > 0,
     );
+
+    const playerTeam = findTeamForProfile(
+      cleanedTeams,
+      credentials.profileId,
+    );
+
+    const list = [...waitingTeams];
+
+    if (
+      playerTeam &&
+      playerTeam.status !== "waiting" &&
+      !list.some((team) => team.id === playerTeam.id)
+    ) {
+      list.push(playerTeam);
+    }
+
     return res.json({ success: true, teams: list });
   } catch (error) {
     return errorHandler({
@@ -292,22 +308,33 @@ export const handleStartTeam = async (req: Request, res: Response) => {
       updatedAt: startedAt,
     };
 
-    const updatedTeams = { ...pruneInactiveTeams(teams), [teamId]: startedTeam };
-    await keyAsset.updateDataObject({ teams: updatedTeams }, { lock: { lockId: `teams-${teamId}`, releaseLock: true } });
+    const updatedTeams = {
+      ...pruneInactiveTeams(teams),
+      [teamId]: startedTeam,
+    };
 
-    for (const member of startedTeam.members) {
-      const currentCreds = {
-        ...credentials,
-        profileId: member.profileId,
-        displayName: member.displayName,
-        username: member.username || credentials.username,
-        visitorId: member.visitorId || credentials.visitorId,
-      };
+    await keyAsset.updateDataObject(
+      { teams: updatedTeams },
+      {
+        lock: {
+          lockId: `teams-${teamId}`,
+          releaseLock: true,
+        },
+      },
+    );
 
-      await upsertVisitorTeamSession(currentCreds, teamId, startedTeam.members, true);
-    }
+    await upsertVisitorTeamSession(
+      credentials,
+      teamId,
+      startedTeam.members,
+      true,
+    );
 
-    return res.json({ success: true, team: startedTeam, started: true });
+    return res.json({
+      success: true,
+      team: startedTeam,
+      started: true,
+    });
   } catch (error) {
     return errorHandler({
       error,
