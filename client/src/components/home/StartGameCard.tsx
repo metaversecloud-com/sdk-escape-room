@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { content } from "@/constants";
 import { backendAPI } from "@/utils";
@@ -29,6 +29,7 @@ export const StartGameCard = ({ onStart, isLoading }: StartGameCardProps) => {
   const [selectedTeamId, setSelectedTeamId] = useState<string>("");
   const [teamMessage, setTeamMessage] = useState<string>("");
   const [isRefreshingTeams, setIsRefreshingTeams] = useState(false);
+  const hasStartedTeamSession = useRef(false);
 
   const currentProfileId = new URLSearchParams(window.location.search).get("profileId");
 
@@ -58,13 +59,31 @@ export const StartGameCard = ({ onStart, isLoading }: StartGameCardProps) => {
       );
 
       setTeams(nextTeams);
+
       if (activeTeamForPlayer?.id) {
         setActiveTeam(activeTeamForPlayer);
         setSelectedTeamId(activeTeamForPlayer.id);
+
+        if (activeTeamForPlayer.status === "started") {
+          setTeamMessage("The team run has started!");
+
+          if (!hasStartedTeamSession.current) {
+            hasStartedTeamSession.current = true;
+
+            await onStart({
+              multiplayer: true,
+              teamId: activeTeamForPlayer.id,
+            });
+          }
+        }
       } else if (activeTeam?.id) {
         // The player's team may have started and disappeared
         // from the list of open teams.
         setSelectedTeamId(activeTeam.id);
+
+        if (activeTeam.status === "started") {
+          setTeamMessage("The team run has started!");
+        }
       } else if (nextTeams.length > 0 && !selectedTeamId) {
         setSelectedTeamId(nextTeams[0].id);
       }
@@ -77,6 +96,8 @@ export const StartGameCard = ({ onStart, isLoading }: StartGameCardProps) => {
   };
 
   useEffect(() => {
+    console.log("START GAME EFFECT", { mode });
+
     if (mode !== "multiplayer") {
       setSelectedTeamId("");
       return;
@@ -118,6 +139,7 @@ export const StartGameCard = ({ onStart, isLoading }: StartGameCardProps) => {
       setTeamMessage("Joining team…");
       await backendAPI.post("/teams/join", { teamId });
       setSelectedTeamId(teamId);
+      setMode("multiplayer");
       setTeamMessage("Team joined. Wait for the leader to start the run.");
     } catch (error) {
       const message = (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
@@ -254,7 +276,7 @@ export const StartGameCard = ({ onStart, isLoading }: StartGameCardProps) => {
             </>
           )}
 
-          {teamMessage && !teamHasStarted && (
+          {teamMessage && (
             <p className="p2 er-text">{teamMessage}</p>
           )}
         </div>

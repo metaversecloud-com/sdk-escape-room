@@ -234,6 +234,39 @@ export const Home = () => {
       try {
         const payload = JSON.parse(event.data);
 
+        if (payload?.kind === "TEAM_ROOM_ADVANCE") {
+          const targetRoom = payload?.data?.targetRoom;
+
+          if (targetRoom === 2 || targetRoom === 3) {
+            try {
+              await backendAPI.post("/teleport", {
+                room: String(targetRoom),
+                teamAdvance: true,
+                completedByProfileId: payload?.data?.completedByProfileId,
+              });
+            } catch (error) {
+              console.error("TEAM TELEPORT FAILED", error);
+            }
+          }
+
+          await refreshGameState();
+          return;
+        }
+
+        if (payload?.kind === "TEAM_PUZZLE_SOLVED") {
+          try {
+            await backendAPI.post("/team-puzzle-solved", {
+              completedByProfileId: payload?.data?.completedByProfileId,
+              puzzleNumber: payload?.data?.puzzleNumber,
+            });
+          } catch (error) {
+            console.error("TEAM PUZZLE TOAST FAILED", error);
+          }
+
+          await refreshGameState();
+          return;
+        }
+
         if (payload?.kind === "GAME_COMPLETED") {
           try {
             await backendAPI.post("/teleport", { room: "start" });
@@ -512,11 +545,14 @@ export const Home = () => {
         </div>
       </PageContainer>
     );
-  } else if (screen === "puzzle7" && isFinished) {
+  } else if (isFinished && screen !== "start") {
     return (
       <PageContainer isLoading={isLoading}>
         <div className="flex flex-col w-full items-start gap-4">
-          <ExitCongratsCard completionTime={visitorSession?.completionTime} leaderboard={leaderboard} />
+          <ExitCongratsCard completionTime={visitorSession?.completionTime} 
+          leaderboard={leaderboard} 
+          teamLeaderboard={teamLeaderboard} 
+          teamId={visitorData?.groupId}/>
         </div>
       </PageContainer>
     );

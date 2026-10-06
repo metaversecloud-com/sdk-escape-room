@@ -119,25 +119,11 @@ export const handleStartGame = async (req: Request, res: Response) => {
 
       await keyAsset.updateDataObject({ teams: nextTeams }, { lock: { lockId: `teams-${resolvedTeam.id}`, releaseLock: true } });
 
-      const startedResults = await Promise.all(
-        (updatedTeam.members || []).map(async (member: any) => {
-          const memberCreds = {
-            ...credentials,
-            profileId: member.profileId,
-            displayName: member.displayName,
-            username: member.username || credentials.username,
-            visitorId: member.visitorId ?? credentials.visitorId,
-          };
-
-          return startVisitorSession({
-            credentials: memberCreds,
-            teamId: resolvedTeam.id,
-            sessionKey,
-          });
-        }),
-      );
-
-      const leaderResult = startedResults.find((_, index) => (updatedTeam.members || [])[index]?.profileId === credentials.profileId) || startedResults[0];
+      const leaderResult = await startVisitorSession({
+        credentials,
+        teamId: resolvedTeam.id,
+        sessionKey,
+      });
 
       return res.json({
         success: true,

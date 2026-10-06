@@ -35,9 +35,19 @@ export const toasts = {
     title: "Door Unlocked",
     textTemplate: "All puzzles cleared. The teleporter to Room {room} is now active.",
   },
+    teammateAdvanced: {
+    groupId: "teammateAdvanced",
+    title: "Room Cleared",
+    textTemplate: "{member} has teleported the team to the next room!",
+  },
   escaped: {
     groupId: "escaped",
     title: "You Escaped!",
     text: "The airlock is open and you're free! Check your time on the leaderboard.",
+  },
+  teammatePuzzleSolved: {
+    groupId: "teammatePuzzleSolved",
+    title: "Puzzle Solved",
+    textTemplate: "{member} solved a puzzle!",
   },
 };

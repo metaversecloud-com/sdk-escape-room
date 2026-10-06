@@ -200,6 +200,20 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         title: toasts.puzzleSolved.title,
         text: toasts.puzzleSolved.text,
       });
+
+      sseManager.publish({
+        event: "TEAM_PUZZLE_SOLVED",
+        assetId: credentials.assetId,
+        urlSlug: credentials.urlSlug,
+        visitorId: credentials.visitorId,
+        interactiveNonce: credentials.interactiveNonce,
+        groupId: game.groupId,
+        data: {
+          puzzleNumber,
+          completedByProfileId: credentials.profileId,
+          completedByName: credentials.displayName,
+        },
+      });
     }
 
     const badgesAwarded: string[] = [];
