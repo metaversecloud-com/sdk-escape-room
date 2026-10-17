@@ -59,7 +59,7 @@ const droppedAssetMock = {
   id: "asset-123",
   uniqueName: "keyAsset",
   position: { x: 0, y: 0 },
-  dataObject: { leaderboard: {} as Record<string, string> },
+  dataObject: { themeID: undefined as string | undefined, leaderboard: {} as Record<string, string> },
   fetchDataObject: jest.fn().mockResolvedValue({}),
   setDataObject: jest.fn().mockResolvedValue(undefined),
   updateDataObject: jest.fn().mockResolvedValue(undefined),
@@ -77,6 +77,22 @@ jest.mock("@utils/index.js", () => ({
   getCredentials: jest.fn(),
   getDroppedAsset: jest.fn(),
   getKeyAsset: jest.fn(),
+  getTheme: jest.fn().mockReturnValue({
+    themeID: "SPACE",
+    displayName: "SPACE",
+    roomCount: 3,
+    puzzleCount: 7,
+    rooms: [
+      { id: 1, puzzleNumbers: [1, 2] },
+      { id: 2, puzzleNumbers: [3, 4, 5] },
+      { id: 3, puzzleNumbers: [6, 7] },
+    ],
+  }),
+  getSessionTheme: jest.fn(),
+  isPuzzleInTheme: jest.fn((theme: any, puzzleNumber: unknown) =>
+    typeof puzzleNumber === "number" &&
+    theme.rooms.some((room: any) => room.puzzleNumbers.includes(puzzleNumber)),
+  ),
   getVisitor: jest.fn(),
   getBadges: jest.fn().mockResolvedValue({}),
   getLeaderboard: jest.fn().mockReturnValue([]),
@@ -102,12 +118,40 @@ jest.mock("@utils/index.js", () => ({
 }));
 
 const mockUtils = jest.mocked(require("@utils/index.js"));
+const spaceTheme = {
+  themeID: "SPACE",
+  displayName: "SPACE",
+  roomCount: 3,
+  puzzleCount: 7,
+  rooms: [
+    { id: 1, puzzleNumbers: [1, 2] },
+    { id: 2, puzzleNumbers: [3, 4, 5] },
+    { id: 3, puzzleNumbers: [6, 7] },
+  ],
+};
+const libraryTheme = {
+  themeID: "LIBRARY",
+  displayName: "LIBRARY",
+  roomCount: 1,
+  puzzleCount: 4,
+  rooms: [{ id: 1, puzzleNumbers: [1, 2, 3, 4] }],
+};
 
 describe("escape-room routes", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockUtils.getCredentials.mockReturnValue(baseCreds);
+    droppedAssetMock.dataObject = { themeID: undefined, leaderboard: {} };
     mockUtils.getDroppedAsset.mockResolvedValue(droppedAssetMock);
+    mockUtils.getTheme.mockReturnValue(spaceTheme);
+    mockUtils.getKeyAsset.mockResolvedValue(null);
+    mockUtils.moveVisitorToAsset.mockResolvedValue(undefined);
+    mockUtils.getTheme.mockReturnValue(spaceTheme);
+    mockUtils.getSessionTheme.mockImplementation(async (_credentials: any, session: any) => {
+      const theme = session.themeID === "LIBRARY" ? libraryTheme : spaceTheme;
+      session.themeID = theme.themeID;
+      return theme;
+    });
     mockUtils.World.create.mockReturnValue(worldMock);
     mockUtils.DroppedAsset.create.mockReturnValue(droppedAssetMock);
   });
@@ -134,10 +178,104 @@ describe("escape-room routes", () => {
     expect(res.body.visitorData).toBeDefined();
     expect(res.body.leaderboard).toEqual([]);
     expect(res.body.badges).toEqual({});
+    expect(mockUtils.getTheme).toHaveBeenCalledWith(undefined);
+    expect(res.body.themeID).toBe("SPACE");
+  });
+
+  test("GET /game-state uses the clicked asset theme instead of another start asset", async () => {
+    const libraryTheme = {
+      themeID: "LIBRARY",
+      displayName: "LIBRARY",
+      roomCount: 1,
+      puzzleCount: 4,
+      rooms: [{ id: 1, puzzleNumbers: [1, 2, 3, 4] }],
+    };
+    const { visitor, session } = buildVisitorMock();
+    droppedAssetMock.dataObject = { themeID: "LIBRARY", leaderboard: {} };
+    mockUtils.getKeyAsset.mockResolvedValue({ dataObject: { themeID: "SPACE" } } as any);
+    mockUtils.getTheme.mockReturnValue(libraryTheme);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).get("/api/game-state").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(mockUtils.getTheme).toHaveBeenCalledWith("LIBRARY");
+    expect(res.body.themeID).toBe("LIBRARY");
+    expect(res.body.theme).toEqual(libraryTheme);
+  });
+
+  test("GET /game-state prefers the interacted asset theme over the key asset theme", async () => {
+    const libraryTheme = {
+      themeID: "LIBRARY",
+      displayName: "LIBRARY",
+      roomCount: 1,
+      puzzleCount: 4,
+      rooms: [{ id: 1, puzzleNumbers: [1, 2, 3, 4] }],
+    };
+    const { visitor, session } = buildVisitorMock();
+    droppedAssetMock.dataObject = { themeID: "LIBRARY", leaderboard: {} };
+    mockUtils.getKeyAsset.mockResolvedValue({ dataObject: { themeID: "SPACE", leaderboard: {} } } as any);
+    mockUtils.getTheme.mockReturnValue(libraryTheme);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).get("/api/game-state").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(mockUtils.getTheme).toHaveBeenCalledWith("LIBRARY");
+    expect(res.body.themeID).toBe("LIBRARY");
+    expect(res.body.theme).toEqual(libraryTheme);
+  });
+
+  test("GET /game-state keeps the theme bound to an active session", async () => {
+    const { visitor, session } = buildVisitorMock({ themeID: "LIBRARY", sessionActive: true });
+    mockUtils.getKeyAsset.mockResolvedValue({ dataObject: { themeID: "SPACE" } } as any);
+    mockUtils.getTheme.mockReturnValue(libraryTheme);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).get("/api/game-state").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(mockUtils.getTheme).toHaveBeenCalledWith("LIBRARY");
+    expect(res.body.themeID).toBe("LIBRARY");
+  });
+
+  test("GET /game-state defaults an inactive session to SPACE when the clicked asset has no theme", async () => {
+    const { visitor, session } = buildVisitorMock({ themeID: "LIBRARY" });
+    droppedAssetMock.dataObject = { themeID: undefined, leaderboard: {} };
+    mockUtils.getKeyAsset.mockResolvedValue({ dataObject: { themeID: "LIBRARY" } } as any);
+    mockUtils.getTheme.mockReturnValue(spaceTheme);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).get("/api/game-state").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(mockUtils.getTheme).toHaveBeenCalledWith(undefined);
+    expect(res.body.themeID).toBe("SPACE");
   });
 
   test("POST /start-game initializes a fresh session and teleports the player", async () => {
     const { visitor, session } = buildVisitorMock();
+    mockUtils.getKeyAsset.mockResolvedValue({ dataObject: { themeID: "LIBRARY" } } as any);
     mockUtils.getVisitor.mockResolvedValue({
       visitor,
       visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
@@ -151,7 +289,59 @@ describe("escape-room routes", () => {
     expect(res.body.visitorData.sessionActive).toBe(true);
     expect(res.body.visitorData.currentRoom).toBe(1);
     expect(visitor.updateDataObject).toHaveBeenCalled();
-    expect(mockUtils.moveVisitorToAsset).toHaveBeenCalledWith(baseCreds, "EscapeRoom_room1_teleport");
+    expect(mockUtils.moveVisitorToAsset).toHaveBeenCalledWith(
+      baseCreds,
+      "EscapeRoom_room1_teleport",
+      { themeID: "SPACE" },
+    );
+    expect(res.body.visitorData.themeID).toBe("SPACE");
+  });
+
+  test("POST /start-game stores the theme from the clicked start asset", async () => {
+    const { visitor, session } = buildVisitorMock();
+    droppedAssetMock.dataObject = { themeID: "LIBRARY", leaderboard: {} };
+    mockUtils.getKeyAsset.mockResolvedValue({ dataObject: { themeID: "SPACE" } } as any);
+    mockUtils.getTheme.mockReturnValue(libraryTheme);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/start-game").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(res.body.visitorData.themeID).toBe("LIBRARY");
+    expect(mockUtils.moveVisitorToAsset).toHaveBeenCalledWith(
+      baseCreds,
+      "EscapeRoom_room1_teleport",
+      { themeID: "LIBRARY" },
+    );
+    expect(visitor.updateDataObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: expect.objectContaining({ themeID: "LIBRARY" }),
+      }),
+      expect.any(Object),
+    );
+  });
+
+  test("POST /start-game fails instead of using another theme's room entry asset", async () => {
+    const { visitor, session } = buildVisitorMock();
+    droppedAssetMock.dataObject = { themeID: "LIBRARY", leaderboard: {} };
+    mockUtils.getTheme.mockReturnValue(libraryTheme);
+    mockUtils.moveVisitorToAsset.mockRejectedValue(new Error("No matching themed asset"));
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/start-game").query(baseCreds);
+
+    expect(res.status).toBe(500);
+    expect(visitor.updateDataObject).not.toHaveBeenCalled();
   });
 
   test("POST /submit-puzzle rejects invalid puzzleNumber", async () => {
@@ -210,6 +400,98 @@ describe("escape-room routes", () => {
     expect(visitor.updateDataObject).not.toHaveBeenCalled();
   });
 
+  test("POST /submit-puzzle completes LIBRARY on puzzle 4 without SPACE-only rewards", async () => {
+    const { visitor, session } = buildVisitorMock({
+      themeID: "LIBRARY",
+      sessionActive: true,
+      startTime: new Date(Date.now() - 60000).toISOString(),
+      currentRoom: 1,
+    });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/submit-puzzle").query(baseCreds).send({ puzzleNumber: 4 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.visitorData.puzzlesCompleted[4]).toBe(true);
+    expect(res.body.visitorData.sessionActive).toBe(false);
+    expect(res.body.visitorData.completionTime).toEqual(expect.any(Number));
+    expect(mockUtils.checkEscapeBadges).not.toHaveBeenCalled();
+    expect(mockUtils.getCachedInventoryItems).not.toHaveBeenCalled();
+    expect(mockUtils.fireToast).toHaveBeenCalledWith(
+      expect.objectContaining({ text: expect.stringContaining("Library's final puzzle") }),
+    );
+    expect(mockUtils.moveVisitorToAsset).toHaveBeenCalledWith(
+      baseCreds,
+      "EscapeRoom_start_teleport",
+      { themeID: "LIBRARY", allowThemeFallback: true },
+    );
+  });
+
+  test("POST /submit-puzzle rejects puzzle numbers outside the session theme", async () => {
+    const { visitor, session } = buildVisitorMock({
+      themeID: "LIBRARY",
+      sessionActive: true,
+      currentRoom: 1,
+    });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/submit-puzzle").query(baseCreds).send({ puzzleNumber: 5 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("not part of the LIBRARY theme");
+    expect(visitor.updateDataObject).not.toHaveBeenCalled();
+  });
+
+  test("POST /puzzle-draft rejects puzzle numbers outside the session theme", async () => {
+    const { visitor, session } = buildVisitorMock({
+      themeID: "LIBRARY",
+      sessionActive: true,
+      currentRoom: 1,
+    });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/puzzle-draft").query(baseCreds)
+      .send({ puzzleNumber: 5, draft: {} });
+
+    expect(res.status).toBe(400);
+    expect(visitor.updateDataObject).not.toHaveBeenCalled();
+  });
+
+  test("POST /wrong-attempt rejects puzzle numbers outside the session theme", async () => {
+    const { visitor, session } = buildVisitorMock({
+      themeID: "LIBRARY",
+      sessionActive: true,
+      currentRoom: 1,
+    });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/wrong-attempt").query(baseCreds).send({ puzzleNumber: 5 });
+
+    expect(res.status).toBe(400);
+    expect(visitor.updateDataObject).not.toHaveBeenCalled();
+  });
+
   test("POST /exit deactivates the session and teleports home", async () => {
     const { visitor, session } = buildVisitorMock({
       sessionActive: true,
@@ -226,7 +508,11 @@ describe("escape-room routes", () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.visitorData.sessionActive).toBe(false);
-    expect(mockUtils.moveVisitorToAsset).toHaveBeenCalledWith(baseCreds, "EscapeRoom_start_teleport");
+    expect(mockUtils.moveVisitorToAsset).toHaveBeenCalledWith(
+      baseCreds,
+      "EscapeRoom_start_teleport",
+      { themeID: "SPACE", allowThemeFallback: true },
+    );
   });
 
   test("GET /session returns inactive when no session has been started", async () => {

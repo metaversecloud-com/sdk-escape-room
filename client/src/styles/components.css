@@ -39,6 +39,41 @@ body {
   box-shadow: var(--er-shadow-card-running);
 }
 
+.er-library-start {
+  padding: 1.25rem;
+  border: 1px solid var(--er-border-cyan);
+  border-radius: var(--er-radius-card);
+  background:
+    radial-gradient(ellipse at top right, rgba(27, 224, 242, 0.14), transparent 55%),
+    var(--er-grad-card-violet);
+  box-shadow: var(--er-shadow-card-running);
+}
+
+.er-library-start__briefing {
+  display: grid;
+  gap: 0.75rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--er-border-faint);
+}
+
+.er-library-start__title {
+  color: var(--er-cyan);
+  letter-spacing: 0.04em;
+}
+
+.er-library-start__stat {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem;
+  border: 1px solid var(--er-border-faint);
+  border-radius: var(--er-radius-pill);
+  background: var(--er-bg-panel);
+}
+
+.er-library-start__stat strong {
+  color: var(--er-gold);
+}
+
 /* The blurred halo overlay rendered behind a card's content */
 .er-card__glow {
   position: absolute;

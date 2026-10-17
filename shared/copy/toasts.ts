@@ -40,4 +40,9 @@ export const toasts = {
     title: "You Escaped!",
     text: "The airlock is open and you're free! Check your time on the leaderboard.",
   },
+  libraryEscaped: {
+    groupId: "escaped",
+    title: "You Escaped!",
+    text: "You solved the Library's final puzzle. Check your time on the leaderboard.",
+  },
 };

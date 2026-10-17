@@ -9,20 +9,21 @@ import {
   getCachedInventoryItems,
   getCredentials,
   getKeyAsset,
+  getSessionTheme,
   getVisitor,
   getVisitorInventory,
+  isPuzzleInTheme,
   moveVisitorToAsset,
 } from "@utils/index.js";
 import { sseManager } from "../utils/sseManager.js";
 import { toasts } from "@shared/copy/toasts.js";
+import { getFinalPuzzleNumber } from "@shared/themes.js";
 import { Credentials, KeyAssetDataObject, VisitorData } from "../types/index.js";
 
-type PuzzleNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7;
-
-const VALID_PUZZLE_NUMBERS: ReadonlySet<PuzzleNumber> = new Set([1, 2, 3, 4, 5, 6, 7]);
+type PuzzleNumber = number;
 
 const isPuzzleNumber = (value: unknown): value is PuzzleNumber =>
-  typeof value === "number" && VALID_PUZZLE_NUMBERS.has(value as PuzzleNumber);
+  typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 
 // Maps a puzzle number to the ecosystem inventory item the player earns by
 // solving it. The item is looked up by name and granted via the SDK; the
@@ -144,11 +145,19 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
 
     const puzzleNumber = req.body?.puzzleNumber;
     if (!isPuzzleNumber(puzzleNumber)) {
-      return res.status(400).json({ success: false, error: "Invalid puzzleNumber. Must be 1-7." });
+      return res.status(400).json({ success: false, error: "Invalid puzzleNumber. Must be a positive integer." });
     }
 
     // getVisitor guarantees the session exists and is initialized.
     const { visitor, session, visitorInventory } = await getVisitor(credentials, true);
+    const theme = await getSessionTheme(credentials, session);
+    if (!isPuzzleInTheme(theme, puzzleNumber)) {
+      return res.status(400).json({
+        success: false,
+        error: `Puzzle ${puzzleNumber} is not part of the ${theme.themeID} theme.`,
+      });
+    }
+
     if (!session.sessionActive) {
       return res.status(200).json({
         success: false,
@@ -171,7 +180,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     game.puzzlesCompleted[puzzleNumber] = true;
     // Drop the in-progress draft for this puzzle — it's no longer "in progress".
     if (game.puzzleDrafts) delete game.puzzleDrafts[puzzleNumber];
-    const granted = teamId
+    const granted = theme.themeID === "SPACE" && teamId
       ? await applyTeamKeyItemReward(
           credentials,
           teamId,
@@ -185,7 +194,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     // ecosystem ITEM — that's the **Trash Panda** trigger. Needs a fresh
     // inventory snapshot because `visitorInventory` above is from before
     // applyInventoryReward.
-    if (granted) {
+    if (granted && theme.themeID === "SPACE") {
       await visitor.fetchInventoryItems();
       const freshInventory = getVisitorInventory(visitor.inventoryItems || []);
       await checkTrashPandaBadge({ credentials, visitor, visitorInventory: freshInventory });
@@ -193,7 +202,8 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
 
     // Generic puzzle-solved toast. Puzzle 7 gets the "escaped" toast below
     // instead — that beat is more meaningful as the game-end moment.
-    if (puzzleNumber !== 7) {
+    const finalPuzzleNumber = getFinalPuzzleNumber(theme);
+    if (puzzleNumber !== finalPuzzleNumber) {
       await fireToast({
         visitor,
         groupId: toasts.puzzleSolved.groupId,
@@ -230,7 +240,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
 
     // Room transitions: Puzzle 7 (game-end) teleports home
     let teleport;
-    for (const transition of ROOM_TRANSITIONS) {
+    for (const transition of theme.themeID === "SPACE" ? ROOM_TRANSITIONS : []) {
       if (game.currentRoom !== transition.fromRoom || !transition.isReady(game)) continue;
       game.currentRoom = transition.toRoom;
       analytics.push({
@@ -263,14 +273,17 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       // player to the next. Best-effort; missing pad just no-ops.
       const padUniqueName = `EscapeRoom_room${transition.fromRoom}_teleportRoom${transition.toRoom}`;
       try {
-        await moveVisitorToAsset(credentials, padUniqueName, { shouldTeleportVisitor: false });
+        await moveVisitorToAsset(credentials, padUniqueName, {
+          shouldTeleportVisitor: false,
+          themeID: theme.themeID,
+        });
       } catch (err) {
         console.warn(`Walk to "${padUniqueName}" failed`, err);
       }
     }
 
     // Puzzle 6 — last puzzle in Room 3; awards the engineering badge but doesn't end the game.
-    if (puzzleNumber === 6) {
+    if (theme.themeID === "SPACE" && puzzleNumber === 6) {
       collectBadges(
         await checkEscapeBadges({
           credentials,
@@ -284,7 +297,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     }
 
     // Puzzle 7 — game complete: stamp end time, write leaderboard, teleport home, mark survivor.
-    if (puzzleNumber === 7) {
+    if (puzzleNumber === finalPuzzleNumber) {
       game.sessionActive = false;
       game.endTime = new Date().toISOString();
 
@@ -294,36 +307,37 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         game.completionTime = Math.floor((end - start) / 1000);
       }
 
-      collectBadges(
-        await checkEscapeBadges({
-          credentials,
-          visitor,
-          visitorInventory,
-          game,
-          puzzleNumber,
-          badgeKey: "STATION_SURVIVOR",
-        }),
-      );
+      if (theme.themeID === "SPACE") {
+        collectBadges(
+          await checkEscapeBadges({
+            credentials,
+            visitor,
+            visitorInventory,
+            game,
+            puzzleNumber,
+            badgeKey: "STATION_SURVIVOR",
+          }),
+        );
 
-      // Warp Speed — fires only if the escape beat the threshold. The check
-      // itself reads completionTime off `game` (set just above), so this just
-      // gates the lookup.
-      collectBadges(
-        await checkEscapeBadges({
-          credentials,
-          visitor,
-          visitorInventory,
-          game,
-          puzzleNumber,
-          badgeKey: "WARP_SPEED",
-        }),
-      );
+        // Warp Speed — fires only if the escape beat the threshold.
+        collectBadges(
+          await checkEscapeBadges({
+            credentials,
+            visitor,
+            visitorInventory,
+            game,
+            puzzleNumber,
+            badgeKey: "WARP_SPEED",
+          }),
+        );
+      }
 
+      const escapedToast = theme.themeID === "SPACE" ? toasts.escaped : toasts.libraryEscaped;
       await fireToast({
         visitor,
-        groupId: toasts.escaped.groupId,
-        title: toasts.escaped.title,
-        text: toasts.escaped.text,
+        groupId: escapedToast.groupId,
+        title: escapedToast.title,
+        text: escapedToast.text,
       });
 
       // One entry per profileId. Each escape: take min(existing best, new)
@@ -465,7 +479,10 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
           profileId: credentials.profileId,
           teleport,
         });
-        await moveVisitorToAsset(credentials, teleport);
+        await moveVisitorToAsset(credentials, teleport, {
+          themeID: theme.themeID,
+          allowThemeFallback: true,
+        });
       } catch (err) {
         console.warn(`moveVisitorToAsset to "${teleport}" failed`, err);
       }

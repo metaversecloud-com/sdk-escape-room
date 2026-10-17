@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   ArtifactGrantCard,
@@ -12,85 +12,29 @@ import {
   Leaderboard,
   LockedState,
   PageContainer,
-  PuzzleCompleteCard,
-  Room1Puzzle1,
-  Room1Puzzle2,
-  Room2Puzzle1,
-  Room2Puzzle2,
-  Room2Puzzle3,
-  Room3Puzzle1,
-  Room3Puzzle2,
   RoomIntroCard,
   SessionInProgressCard,
   StartGameCard,
   StatusBar,
+  ThemePuzzleScreen,
 } from "@/components";
 import { content } from "@/constants";
 import { GlobalDispatchContext, GlobalStateContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
 import { backendAPI, formatElapsedFromTimestamp, setErrorMessage, setGameState } from "@/utils";
+import { getFinalPuzzleNumber } from "@shared/themes";
+import {
+  getPuzzleNumberFromScreen,
+  getRoomForScreen,
+  isArtifactScreen,
+  isRoomComplete,
+  isThemeComplete,
+  resolveThemeScreen,
+  SPACE_THEME,
+  ThemeScreen,
+} from "@/utils/themeRouting";
 
 const { states, exitConfirmation, exitButton, teleport } = content;
-
-/**
- * Artifact / collectible screens. Each maps to an inventory item with the
- * same name minus spaces — e.g. `Room1Artifact` → item "Room 1 Artifact".
- * Clicking the asset grants the matching item (idempotently) and shows it
- * to the player.
- */
-const ARTIFACT_SCREENS = [
-  "Room1Artifact",
-  "CrewPortrait1",
-  "CrewPortrait2",
-  "CrewPortrait3",
-  "AlphaStation",
-  "BetaStation",
-  "OmegaStation",
-  "Room3Artifact",
-] as const;
-
-type ArtifactScreen = (typeof ARTIFACT_SCREENS)[number];
-
-type ScreenType =
-  | "start"
-  | "exit"
-  | "teleport"
-  | "leaderboard"
-  | "room1"
-  | "room2"
-  | "room3"
-  | "puzzle1"
-  | "puzzle2"
-  | "puzzle3"
-  | "puzzle4"
-  | "puzzle5"
-  | "puzzle6"
-  | "puzzle7"
-  | "decoy"
-  | ArtifactScreen
-  | "null";
-
-const SCREENS: ScreenType[] = [
-  "start",
-  "exit",
-  "teleport",
-  "leaderboard",
-  "room1",
-  "room2",
-  "room3",
-  "puzzle1",
-  "puzzle2",
-  "puzzle3",
-  "puzzle4",
-  "puzzle5",
-  "puzzle6",
-  "puzzle7",
-  "decoy",
-  ...ARTIFACT_SCREENS,
-];
-
-const isArtifactScreen = (screen: ScreenType): screen is ArtifactScreen =>
-  (ARTIFACT_SCREENS as readonly string[]).includes(screen);
 
 /**
  * Derives the ecosystem inventory item name from a `?screen=` value by
@@ -112,26 +56,6 @@ type TeleportState =
   | { state: "blocked"; reason: string };
 
 /**
- * Maps a screen value to the room number whose progression must be unlocked
- * before walking the visitor to that asset is allowed. Screens not in the
- * map (and not in SCREENS_WITHOUT_WALK below) aren't tied to a room and
- * always permit walking. Keeps the walk effect from yanking a player across
- * room boundaries to an asset they haven't progressed to yet.
- */
-const SCREEN_REQUIRED_ROOM: Partial<Record<ScreenType, 1 | 2 | 3>> = {
-  room1: 1,
-  puzzle1: 1,
-  puzzle2: 1,
-  room2: 2,
-  puzzle3: 2,
-  puzzle4: 2,
-  puzzle5: 2,
-  room3: 3,
-  puzzle6: 3,
-  puzzle7: 3,
-};
-
-/**
  * Screens that should never trigger a walk-to-asset, regardless of room.
  * - `start`: the start terminal opens the briefing; the player's avatar is
  *   already next to it.
@@ -142,28 +66,34 @@ const SCREEN_REQUIRED_ROOM: Partial<Record<ScreenType, 1 | 2 | 3>> = {
  * - `decoy`: easter-egg trash assets — yanking the avatar over reveals the
  *   asset's location to other players nearby, which spoils the find.
  */
-const SCREENS_WITHOUT_WALK: ReadonlySet<ScreenType> = new Set(["start", "exit", "leaderboard", "teleport", "decoy"]);
-
-const isScreen = (value: string | null): value is ScreenType => value !== null && (SCREENS as string[]).includes(value);
-
-const getScreenFromSearch = (): ScreenType => {
-  const screen = new URLSearchParams(window.location.search).get("screen");
-  return isScreen(screen) ? screen : "null";
-};
+const SCREENS_WITHOUT_WALK: ReadonlySet<ThemeScreen> = new Set(["start", "exit", "leaderboard", "teleport", "decoy"]);
 
 const getForceRefreshInventoryFromSearch = () =>
   new URLSearchParams(window.location.search).get("forceRefreshInventory") === "true";
 
 export const Home = () => {
   const dispatch = useContext(GlobalDispatchContext);
-  const { hasInteractiveParams, visitorData, visitorInventory, leaderboard, teamLeaderboard, badges } = useContext(GlobalStateContext);
+  const {
+    hasInteractiveParams,
+    visitorData,
+    visitorInventory,
+    leaderboard,
+    teamLeaderboard,
+    badges,
+    theme: configuredTheme,
+  } = useContext(GlobalStateContext);
+  const theme = configuredTheme ?? SPACE_THEME;
   const visitorSession = visitorData || null;
   const puzzlesCompleted = visitorSession?.puzzlesCompleted;
 
-  const screen = useMemo(() => getScreenFromSearch(), []);
+  const rawScreen = useMemo(() => new URLSearchParams(window.location.search).get("screen"), []);
+  const screen = resolveThemeScreen(rawScreen, theme);
   const forceRefreshInventory = useMemo(() => getForceRefreshInventoryFromSearch(), []);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [hasLoadedInitialGameState, setHasLoadedInitialGameState] = useState(false);
+  const isPageLoading =
+    isLoading || (!!hasInteractiveParams && !hasLoadedInitialGameState);
   const [timer, setTimer] = useState("--:--");
   const [showInventory, setShowInventory] = useState(false);
   const [leaderboardTab, setLeaderboardTab] = useState<"leaderboard" | "badges">("leaderboard");
@@ -176,9 +106,9 @@ export const Home = () => {
   const [decoyState, setDecoyState] = useState<DecoyState>({ state: "loading" });
 
   const hasStarted = visitorSession?.sessionActive === true;
-  const isFinished = puzzlesCompleted?.[7] === true;
-  const room1Done = !!(puzzlesCompleted?.[1] && puzzlesCompleted?.[2]);
-  const room2Done = !!(puzzlesCompleted?.[3] && puzzlesCompleted?.[4] && puzzlesCompleted?.[5]);
+  const puzzleNumber = getPuzzleNumberFromScreen(screen);
+  const roomScreenId = screen.startsWith("room") ? getRoomForScreen(screen, theme) : undefined;
+  const isFinished = isThemeComplete(theme, puzzlesCompleted);
 
   // Track puzzles that flipped from false → true *within this iframe session*
   // so PuzzleCompleteCard can show the rich just-acquired copy + fire the
@@ -191,7 +121,7 @@ export const Home = () => {
   if (puzzlesCompleted) {
     const prev = prevPuzzlesCompletedRef.current;
     if (prev !== undefined) {
-      ([1, 2, 3, 4, 5, 6, 7] as const).forEach((n) => {
+      theme.rooms.flatMap((room) => room.puzzleNumbers).forEach((n) => {
         if (puzzlesCompleted[n] && !prev[n]) justCompletedRef.current.add(n);
       });
     }
@@ -215,10 +145,10 @@ export const Home = () => {
     return () => window.clearInterval(id);
   }, [hasStarted, visitorSession?.startTime]);
 
-  const refreshGameState = async () => {
+  const refreshGameState = useCallback(async () => {
     const response = await backendAPI.get("/game-state");
     setGameState(dispatch, response.data);
-  };
+  }, [dispatch]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -261,7 +191,7 @@ export const Home = () => {
       eventSource.close();
       window.clearInterval(heartbeat);
     };
-  }, [hasInteractiveParams]);
+  }, [hasInteractiveParams, refreshGameState]);
 
   // Sticky for the lifetime of this iframe — flips true the first time the
   // player hits the Start button so the post-click render shows the Room 1
@@ -419,12 +349,16 @@ export const Home = () => {
       setIsLoading(false);
       return;
     }
+    setHasLoadedInitialGameState(false);
     setIsLoading(true);
     backendAPI
       .get("/game-state", { params: { forceRefreshInventory } })
       .then((response) => setGameState(dispatch, response.data))
       .catch((error) => setErrorMessage(dispatch, error as ErrorType))
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        setHasLoadedInitialGameState(true);
+        setIsLoading(false);
+      });
   }, [hasInteractiveParams, dispatch, forceRefreshInventory]);
 
   // Walk the visitor to the asset they clicked to open this iframe.
@@ -456,7 +390,7 @@ export const Home = () => {
 
     // Use physicalRoom (set on teleport) as source of truth — falls back to
     // currentRoom for legacy sessions that pre-date physicalRoom.
-    const requiredRoom = SCREEN_REQUIRED_ROOM[screen];
+    const requiredRoom = getRoomForScreen(screen, theme);
     const playerRoom = visitorData.physicalRoom ?? visitorData.currentRoom ?? 0;
     if (requiredRoom && requiredRoom !== playerRoom) {
       walkedRef.current = true;
@@ -472,7 +406,7 @@ export const Home = () => {
       // Swallow errors silently — failing to walk shouldn't surface as a
       // user-facing error. The screen content still rendered correctly.
     });
-  }, [hasInteractiveParams, visitorData, screen]);
+  }, [hasInteractiveParams, visitorData, screen, theme]);
 
   // ── Standalone screens (own PageContainer) ──
   if (screen === "leaderboard") {
@@ -482,7 +416,7 @@ export const Home = () => {
       { id: "badges", label: tabCopy.badges },
     ];
     return (
-      <PageContainer isLoading={isLoading} headerText={content.leaderboard.pageTitle}>
+      <PageContainer isLoading={isPageLoading} headerText={content.leaderboard.pageTitle}>
         <div className="flex-col gap-4">
           <div className="flex gap-2 mb-4" role="tablist">
             {tabs.map((tab) => {
@@ -512,9 +446,9 @@ export const Home = () => {
         </div>
       </PageContainer>
     );
-  } else if (screen === "puzzle7" && isFinished) {
+  } else if (puzzleNumber === getFinalPuzzleNumber(theme) && isFinished) {
     return (
-      <PageContainer isLoading={isLoading}>
+      <PageContainer isLoading={isPageLoading}>
         <div className="flex flex-col w-full items-start gap-4">
           <ExitCongratsCard completionTime={visitorSession?.completionTime} leaderboard={leaderboard} />
         </div>
@@ -523,10 +457,10 @@ export const Home = () => {
   } else if (!hasStarted) {
     // ── Pre-start view ──
     return (
-      <PageContainer isLoading={isLoading}>
+      <PageContainer isLoading={isPageLoading}>
         <div className="flex flex-col w-full items-start gap-4">
           {screen === "start" ? (
-            <StartGameCard onStart={startGame} isLoading={isLoading || !hasInteractiveParams} />
+            <StartGameCard theme={theme} onStart={startGame} isLoading={isPageLoading || !hasInteractiveParams} />
           ) : (
             <LockedState title={states.gameNotStarted.title} message={states.gameNotStarted.message} />
           )}
@@ -537,7 +471,7 @@ export const Home = () => {
 
   // ── In-game view ──
   return (
-    <PageContainer isLoading={isLoading}>
+    <PageContainer isLoading={isPageLoading}>
       <div className="flex flex-col w-full items-start gap-4">
         {!isFinished && (
           <StatusBar
@@ -575,7 +509,7 @@ export const Home = () => {
           (teleportState.state === "checking" ? (
             <InfoCard title={teleport.loading.title} message={teleport.loading.message} />
           ) : teleportState.state === "teleported" ? (
-            <RoomIntroCard roomId={teleportState.targetRoom} />
+            <RoomIntroCard roomId={teleportState.targetRoom} theme={theme} />
           ) : teleportState.reason === "invalidTarget" ? (
             <LockedState title={teleport.invalidTarget.title} message={teleport.invalidTarget.message} />
           ) : (
@@ -604,7 +538,7 @@ export const Home = () => {
             options. */}
         {screen === "start" &&
           (justStarted ? (
-            <RoomIntroCard roomId={1} />
+            <RoomIntroCard roomId={1} theme={theme} />
           ) : (
             <SessionInProgressCard
               currentRoom={visitorSession?.currentRoom}
@@ -618,119 +552,22 @@ export const Home = () => {
             `?screen=roomN` that opens the matching card. Room 2 and 3 intros
             also fire when a teleport call to that room succeeds (handled in
             the teleport branch above). */}
-        {screen === "room1" && <RoomIntroCard roomId={1} />}
-        {screen === "room2" && <RoomIntroCard roomId={2} />}
-        {screen === "room3" && <RoomIntroCard roomId={3} />}
+        {roomScreenId !== undefined && <RoomIntroCard roomId={roomScreenId} theme={theme} />}
 
-        {/* Room 1 — Puzzles 1 & 2. Teleport button appears on both once the
-            room is complete, since either can be the "last puzzle solved". */}
-        {screen === "puzzle1" &&
-          (puzzlesCompleted?.[1] ? (
-            <PuzzleCompleteCard
-              {...(wasJustCompleted(1) ? content.puzzles[1].complete : content.puzzles[1].alreadyComplete)}
-              playAcquisitionAnimation={wasJustCompleted(1)}
-              showTeleportButton={room1Done}
-              onTeleportToNextRoom={teleportToCurrentRoom}
-              isTeleporting={isLoading}
-            />
-          ) : (
-            <Room1Puzzle1 refreshGameState={refreshGameState} />
-          ))}
-
-        {screen === "puzzle2" &&
-          (puzzlesCompleted?.[2] ? (
-            <PuzzleCompleteCard
-              {...(wasJustCompleted(2) ? content.puzzles[2].complete : content.puzzles[2].alreadyComplete)}
-              playAcquisitionAnimation={wasJustCompleted(2)}
-              showTeleportButton={room1Done}
-              onTeleportToNextRoom={teleportToCurrentRoom}
-              isTeleporting={isLoading}
-            />
-          ) : (
-            <Room1Puzzle2 refreshGameState={refreshGameState} />
-          ))}
-
-        {/* Room 2 — Puzzles 3, 4, 5. Teleport button appears on all three
-            once the room is complete. */}
-        {screen === "puzzle3" &&
-          (!room1Done ? (
-            <LockedState title={states.room2Locked.title} message={states.room2Locked.message} />
-          ) : puzzlesCompleted?.[3] ? (
-            <PuzzleCompleteCard
-              {...(wasJustCompleted(3) ? content.puzzles[3].complete : content.puzzles[3].alreadyComplete)}
-              playAcquisitionAnimation={wasJustCompleted(3)}
-              showTeleportButton={room2Done}
-              onTeleportToNextRoom={teleportToCurrentRoom}
-              isTeleporting={isLoading}
-            />
-          ) : (
-            <Room2Puzzle1 refreshGameState={refreshGameState} />
-          ))}
-
-        {screen === "puzzle4" &&
-          (!room1Done ? (
-            <LockedState title={states.room2Locked.title} message={states.room2Locked.message} />
-          ) : puzzlesCompleted?.[4] ? (
-            <PuzzleCompleteCard
-              {...(wasJustCompleted(4) ? content.puzzles[4].complete : content.puzzles[5].alreadyComplete)}
-              playAcquisitionAnimation={wasJustCompleted(4)}
-            >
-              <div className="er-reconstructed-message my-2 p-3 grid gap-3">
-                <h4>{content.puzzles[4].complete.heading}</h4>
-                <div className="er-scrambled-output my-2">
-                  {content.puzzles[4].complete.scrambled.map((line) => (
-                    <div key={line} className="er-scrambled-line">
-                      {line}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <p className="er-next-clue">{content.puzzles[4].complete.teaser}</p>
-            </PuzzleCompleteCard>
-          ) : (
-            <Room2Puzzle2 refreshGameState={refreshGameState} />
-          ))}
-
-        {screen === "puzzle5" &&
-          (!puzzlesCompleted?.[4] ? (
-            <LockedState title={states.puzzle5Locked.title} message={states.puzzle5Locked.message} />
-          ) : puzzlesCompleted?.[5] ? (
-            <PuzzleCompleteCard
-              {...(wasJustCompleted(5) ? content.puzzles[5].complete : content.puzzles[5].alreadyComplete)}
-              playAcquisitionAnimation={wasJustCompleted(5)}
-              showTeleportButton={room2Done}
-              onTeleportToNextRoom={teleportToCurrentRoom}
-              isTeleporting={isLoading}
-            />
-          ) : (
-            <Room2Puzzle3 refreshGameState={refreshGameState} />
-          ))}
-
-        {/* Room 3 — Puzzles 6 & 7. No teleport button on the puzzle 6 card;
-            Room 3 is the last room, so there's no next-room teleport to
-            offer. Puzzle 7 renders ExitCongratsCard on success. */}
-        {screen === "puzzle6" &&
-          (!room2Done ? (
-            <LockedState title={states.room3Locked.title} message={states.room3Locked.message} />
-          ) : puzzlesCompleted?.[6] ? (
-            <PuzzleCompleteCard
-              {...(wasJustCompleted(6) ? content.puzzles[6].complete : content.puzzles[6].alreadyComplete)}
-              playAcquisitionAnimation={wasJustCompleted(6)}
-            />
-          ) : (
-            <Room3Puzzle1 refreshGameState={refreshGameState} />
-          ))}
-
-        {screen === "puzzle7" &&
-          (!room2Done ? (
-            <LockedState title={states.room3Locked.title} message={states.room3Locked.message} />
-          ) : !puzzlesCompleted?.[6] ? (
-            <LockedState title={states.finalPuzzleLocked.title} message={states.finalPuzzleLocked.message} />
-          ) : puzzlesCompleted?.[7] ? (
-            <ExitCongratsCard completionTime={visitorSession?.completionTime} leaderboard={leaderboard} />
-          ) : (
-            <Room3Puzzle2 refreshGameState={refreshGameState} />
-          ))}
+        {puzzleNumber !== undefined && (
+          <ThemePuzzleScreen
+            theme={theme}
+            puzzleNumber={puzzleNumber}
+            puzzlesCompleted={puzzlesCompleted}
+            isRoomComplete={(roomId) => isRoomComplete(theme, puzzlesCompleted, roomId)}
+            wasJustCompleted={wasJustCompleted}
+            isLoading={isLoading}
+            onTeleportToNextRoom={teleportToCurrentRoom}
+            refreshGameState={refreshGameState}
+            completionTime={visitorSession?.completionTime}
+            leaderboard={leaderboard}
+          />
+        )}
 
         {screen === "null" && (
           <InfoCard title={states.noScreenSelected.title} message={states.noScreenSelected.message} />

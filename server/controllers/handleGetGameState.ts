@@ -6,6 +6,7 @@ import {
   getDroppedAsset,
   getKeyAsset,
   getLeaderboard,
+  getTheme,
   getVisitor,
 } from "@utils/index.js";
 import { KeyAssetDataObject } from "../types/index.js";
@@ -21,10 +22,10 @@ export const handleGetGameState = async (req: Request, res: Response) => {
 
     // Leaderboard lives on the key asset (start terminal). Look it up by uniqueName within the scene
     const keyAsset = await getKeyAsset(credentials);
-    const leaderboard = getLeaderboard((keyAsset?.dataObject as KeyAssetDataObject | null)?.leaderboard);
+    const keyAssetData = keyAsset?.dataObject as KeyAssetDataObject | null;
+    const leaderboard = getLeaderboard(keyAssetData?.leaderboard);
 
-    const teams =
-      (keyAsset?.dataObject as KeyAssetDataObject | null)?.teams || {};
+    const teams = keyAssetData?.teams || {};
 
     const teamLeaderboard = Object.values(teams)
       .filter(
@@ -43,15 +44,14 @@ export const handleGetGameState = async (req: Request, res: Response) => {
     // Visitor (data + inventory). getVisitor guarantees session defaults exist
     // and builds visitorInventory with both badges and items.
     const { visitorDataObject, visitorInventory } = await getVisitor(credentials, true);
-      let session = visitorDataObject[sessionKey];
+    let session = visitorDataObject[sessionKey];
+    const sessionThemeID = session.sessionActive ? session.themeID : undefined;
+    const theme = getTheme(sessionThemeID ?? droppedAsset.dataObject?.themeID);
 
       // If this player is on a team, use the team's shared puzzle progress.
       // This is the durable source of truth for puzzles completed by any teammate.
       if (session.groupId) {
-        const team =
-          (keyAsset?.dataObject as KeyAssetDataObject | null)?.teams?.[
-            session.groupId
-          ];
+        const team = keyAssetData?.teams?.[session.groupId];
 
         if (team?.puzzlesCompleted) {
           const puzzlesCompleted = {
@@ -115,6 +115,8 @@ export const handleGetGameState = async (req: Request, res: Response) => {
       sessionKey,
       visitorData: session,
       uniqueName: droppedAsset?.uniqueName || null,
+      themeID: theme.themeID,
+      theme,
       badges,
       visitorInventory,
       leaderboard,

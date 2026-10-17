@@ -1,5 +1,12 @@
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getVisitor, moveVisitorToAsset, getKeyAsset, } from "@utils/index.js";
+import {
+  errorHandler,
+  getCredentials,
+  getSessionTheme,
+  getVisitor,
+  moveVisitorToAsset,
+  getKeyAsset,
+} from "@utils/index.js";
 import { KeyAssetDataObject, VisitorData } from "../types/index.js";
 
 /**
@@ -53,6 +60,7 @@ export const handleTeleport = async (req: Request, res: Response) => {
     const sessionKey = `${urlSlug}-${sceneDropId}`;
 
     const { visitor, session } = await getVisitor(credentials, true);
+    const theme = await getSessionTheme(credentials, session);
 
     console.log("TELEPORT DEBUG", {
       profileId: credentials.profileId,
@@ -122,7 +130,10 @@ export const handleTeleport = async (req: Request, res: Response) => {
       }
 
       try {
-        await moveVisitorToAsset(credentials, "EscapeRoom_start_teleport");
+        await moveVisitorToAsset(credentials, "EscapeRoom_start_teleport", {
+          themeID: theme.themeID,
+          allowThemeFallback: true,
+        });
 
         return res.json({
           success: true,
@@ -155,6 +166,15 @@ export const handleTeleport = async (req: Request, res: Response) => {
     const def = targetRoomKey ? ROOM_DEFS[targetRoomKey] : null;
 
     if (!def) {
+      return res.json({
+        success: true,
+        teleported: false,
+        reason: "invalidTarget",
+        visitorData: session,
+      });
+    }
+
+    if (!theme.rooms.some(({ id }) => id === def.targetRoom)) {
       return res.json({
         success: true,
         teleported: false,
@@ -196,7 +216,7 @@ export const handleTeleport = async (req: Request, res: Response) => {
     });
 
     try {
-      await moveVisitorToAsset(credentials, def.spawnUniqueName);
+      await moveVisitorToAsset(credentials, def.spawnUniqueName, { themeID: theme.themeID });
 
       console.log("AFTER MOVE VISITOR");
     } catch (err) {
@@ -232,7 +252,8 @@ export const handleTeleport = async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
-      teleported: true,
+      teleported: teleportSucceeded,
+      ...(!teleportSucceeded ? { reason: "teleportFailed" } : {}),
       targetRoom: def.targetRoom,
       visitorData: updatedSession,
     });

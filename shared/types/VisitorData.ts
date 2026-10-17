@@ -2,30 +2,25 @@
  * Shared types between client and server for visitor data
  */
 
+import { ThemeID } from "../themes.js";
+
 export interface VisitorData {
   // Session fields
   startTime: string | null;
   endTime: string | null;
   sessionActive: boolean;
+  themeID?: ThemeID;
   groupId?: string;
   groupProgress?: Record<string, { groupId: string; puzzlesCompleted: Record<number, boolean>; currentRoom: number; sessionActive: boolean; startTime: string | null; completionTime: number | null; items: unknown[]; badges: Record<string, unknown>; members: unknown[]; }>;
 
   // Progression — highest unlocked room (advances on puzzle completion).
-  currentRoom: 1 | 2 | 3 | null;
+  currentRoom: number | null;
   // Physical location — where the avatar actually is (updated on teleport).
   // Used to gate walk-to-asset so we don't drag a player across rooms to an
   // asset they're not standing near. Optional for legacy sessions that
   // pre-date this field.
-  physicalRoom?: 1 | 2 | 3 | null;
-  puzzlesCompleted: {
-    1: boolean;
-    2: boolean;
-    3: boolean;
-    4: boolean;
-    5: boolean;
-    6: boolean;
-    7: boolean;
-  };
+  physicalRoom?: number | null;
+  puzzlesCompleted: Record<number, boolean>;
 
   // Completion
   completionTime: number | null;
