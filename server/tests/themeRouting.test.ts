@@ -1,4 +1,4 @@
-import { getFinalPuzzleNumber, isPuzzleInTheme, THEME_CONFIGS } from "@shared/themes.js";
+import { getArtifactItemName, getFinalPuzzleNumber, isPuzzleInTheme, THEME_CONFIGS } from "@shared/themes.js";
 import {
   getPuzzleNumberFromScreen,
   getRoomForScreen,
@@ -8,13 +8,23 @@ import {
 } from "../../client/src/utils/themeRouting.js";
 
 describe("theme-aware screen routing", () => {
-  test("allows only the configured LIBRARY room and puzzle screens", () => {
+  test("allows only the configured LIBRARY room, puzzle, and artifact screens", () => {
     const libraryTheme = THEME_CONFIGS.LIBRARY;
+    const libraryArtifactScreens = ["paper1", "paper2", "paper3", "paper4", "bookcase"];
 
     expect(resolveThemeScreen("room1", libraryTheme)).toBe("room1");
     expect(resolveThemeScreen("room2", libraryTheme)).toBe("null");
     expect(resolveThemeScreen("puzzle4", libraryTheme)).toBe("puzzle4");
     expect(resolveThemeScreen("puzzle5", libraryTheme)).toBe("null");
+    const resolvedLibraryArtifactScreens = libraryArtifactScreens.map((screen) =>
+      resolveThemeScreen(screen, libraryTheme),
+    );
+    expect(resolvedLibraryArtifactScreens).toEqual(libraryArtifactScreens);
+    expect(resolvedLibraryArtifactScreens.every((screen) => isArtifactScreen(screen, libraryTheme))).toBe(true);
+    expect(resolveThemeScreen("CrewPortrait1", libraryTheme)).toBe("null");
+    expect(resolveThemeScreen("decoy", libraryTheme)).toBe("null");
+    expect(getArtifactItemName("paper1")).toBe("Paper 1");
+    expect(getArtifactItemName("bookcase")).toBe("Bookcase");
     expect(getPuzzleNumberFromScreen(resolveThemeScreen("puzzle4", libraryTheme))).toBe(4);
     expect(getRoomForScreen(resolveThemeScreen("puzzle4", libraryTheme), libraryTheme)).toBe(1);
   });
@@ -24,8 +34,14 @@ describe("theme-aware screen routing", () => {
 
     expect(resolveThemeScreen("puzzle7", spaceTheme)).toBe("puzzle7");
     expect(resolveThemeScreen("room3", spaceTheme)).toBe("room3");
-    expect(isArtifactScreen(resolveThemeScreen("Room3Artifact", spaceTheme))).toBe(true);
-    expect(isArtifactScreen(resolveThemeScreen("decoy", spaceTheme))).toBe(false);
+    expect(
+      spaceTheme.artifactScreens.every((screen) =>
+        isArtifactScreen(resolveThemeScreen(screen, spaceTheme), spaceTheme),
+      ),
+    ).toBe(true);
+    expect(isArtifactScreen(resolveThemeScreen("decoy", spaceTheme), spaceTheme)).toBe(false);
+    expect(resolveThemeScreen("paper1", spaceTheme)).toBe("null");
+    expect(resolveThemeScreen("bookcase", spaceTheme)).toBe("null");
   });
 
   test("checks completion against each theme's room puzzle assignments", () => {

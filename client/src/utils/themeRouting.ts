@@ -1,20 +1,6 @@
-import { getFinalPuzzleNumber, THEME_CONFIGS, ThemeConfig } from "@shared/themes";
+import { ArtifactScreen, getFinalPuzzleNumber, THEME_CONFIGS, ThemeConfig } from "@shared/themes";
 
 const COMMON_SCREENS = new Set(["start", "exit", "teleport", "leaderboard"]);
-const ARTIFACT_SCREENS = new Set([
-  "Room1Artifact",
-  "CrewPortrait1",
-  "CrewPortrait2",
-  "CrewPortrait3",
-  "AlphaStation",
-  "BetaStation",
-  "OmegaStation",
-  "Room3Artifact",
-]);
-const SPACE_SCREENS = new Set([
-  "decoy",
-  ...ARTIFACT_SCREENS,
-]);
 
 export type ThemeScreen =
   | "start"
@@ -22,25 +8,22 @@ export type ThemeScreen =
   | "teleport"
   | "leaderboard"
   | "decoy"
-  | "Room1Artifact"
-  | "CrewPortrait1"
-  | "CrewPortrait2"
-  | "CrewPortrait3"
-  | "AlphaStation"
-  | "BetaStation"
-  | "OmegaStation"
-  | "Room3Artifact"
+  | ArtifactScreen
   | `room${number}`
   | `puzzle${number}`
   | "null";
 
-export const isArtifactScreen = (screen: ThemeScreen): boolean => ARTIFACT_SCREENS.has(screen);
+export const isArtifactScreen = (screen: ThemeScreen, theme: ThemeConfig): screen is ArtifactScreen =>
+  theme.artifactScreens.some((artifactScreen) => artifactScreen === screen);
 
 export const resolveThemeScreen = (screen: string | null, theme: ThemeConfig): ThemeScreen => {
   if (!screen) return "null";
   if (COMMON_SCREENS.has(screen)) return screen as ThemeScreen;
 
-  if (theme.themeID === "SPACE" && SPACE_SCREENS.has(screen)) {
+  if (
+    theme.artifactScreens.some((artifactScreen) => artifactScreen === screen) ||
+    (theme.themeID === "SPACE" && screen === "decoy")
+  ) {
     return screen as ThemeScreen;
   }
 

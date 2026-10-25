@@ -167,6 +167,14 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     }
     const game = session;
 
+    if (game.puzzlesCompleted?.[puzzleNumber]) {
+      return res.json({
+        success: true,
+        alreadyCompleted: true,
+        visitorData: game,
+      });
+    }
+
     const teamId = game.groupId || credentials.groupId;
 
     // Look up the key asset (start terminal) where the leaderboard lives.

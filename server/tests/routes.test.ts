@@ -384,6 +384,32 @@ describe("escape-room routes", () => {
     expect(visitor.updateDataObject).toHaveBeenCalledTimes(1);
   });
 
+  test("POST /submit-puzzle does not process an already-completed puzzle again", async () => {
+    const { visitor, session } = buildVisitorMock({
+      sessionActive: true,
+      currentRoom: 1,
+      puzzlesCompleted: { 1: true, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false },
+    });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/submit-puzzle").query(baseCreds).send({ puzzleNumber: 1 });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      success: true,
+      alreadyCompleted: true,
+      visitorData: { puzzlesCompleted: { 1: true } },
+    });
+    expect(visitor.updateDataObject).not.toHaveBeenCalled();
+    expect(mockUtils.getKeyAsset).not.toHaveBeenCalled();
+    expect(mockUtils.fireToast).not.toHaveBeenCalled();
+  });
+
   test("POST /submit-puzzle no-ops when the session isn't active", async () => {
     const { visitor, session } = buildVisitorMock({ sessionActive: false });
     mockUtils.getVisitor.mockResolvedValue({

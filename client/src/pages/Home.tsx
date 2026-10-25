@@ -22,7 +22,7 @@ import { content } from "@/constants";
 import { GlobalDispatchContext, GlobalStateContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
 import { backendAPI, formatElapsedFromTimestamp, setErrorMessage, setGameState } from "@/utils";
-import { getFinalPuzzleNumber } from "@shared/themes";
+import { getArtifactItemName, getFinalPuzzleNumber } from "@shared/themes";
 import {
   getPuzzleNumberFromScreen,
   getRoomForScreen,
@@ -35,19 +35,6 @@ import {
 } from "@/utils/themeRouting";
 
 const { states, exitConfirmation, exitButton, teleport } = content;
-
-/**
- * Derives the ecosystem inventory item name from a `?screen=` value by
- * inserting spaces around camelCase boundaries and digit boundaries:
- *   Room1Artifact  → "Room 1 Artifact"
- *   CrewPortrait1   → "Crew Portrait 1"
- *   AlphaStation    → "Alpha Station"
- */
-const screenToItemName = (screen: string): string =>
-  screen
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/([a-zA-Z])(\d)/g, "$1 $2")
-    .replace(/(\d)([a-zA-Z])/g, "$1 $2");
 
 /** Result of a /teleport call. `checking` is the local pre-response state. */
 type TeleportState =
@@ -109,6 +96,13 @@ export const Home = () => {
   const puzzleNumber = getPuzzleNumberFromScreen(screen);
   const roomScreenId = screen.startsWith("room") ? getRoomForScreen(screen, theme) : undefined;
   const isFinished = isThemeComplete(theme, puzzlesCompleted);
+
+  useEffect(() => {
+    document.body.dataset.theme = theme.themeID;
+    return () => {
+      delete document.body.dataset.theme;
+    };
+  }, [theme.themeID]);
 
   // Track puzzles that flipped from false → true *within this iframe session*
   // so PuzzleCompleteCard can show the rich just-acquired copy + fire the
@@ -312,9 +306,9 @@ export const Home = () => {
   // shows the new item immediately.
   useEffect(() => {
     if (!hasInteractiveParams) return;
-    if (!isArtifactScreen(screen)) return;
+    if (!isArtifactScreen(screen, theme)) return;
     setArtifactState({ state: "loading" });
-    const itemName = screenToItemName(screen);
+    const itemName = getArtifactItemName(screen);
     backendAPI
       .post("/grant-item", { itemName })
       .then((res) => {
@@ -341,7 +335,7 @@ export const Home = () => {
           setErrorMessage(dispatch, err as ErrorType);
         }
       });
-  }, [screen, hasInteractiveParams, dispatch]);
+  }, [screen, hasInteractiveParams, dispatch, theme]);
 
   // Initial game-state fetch
   useEffect(() => {
@@ -516,7 +510,7 @@ export const Home = () => {
             <LockedState title={teleport.blocked.title} message={teleport.blocked.message} />
           ))}
 
-        {isArtifactScreen(screen) &&
+        {isArtifactScreen(screen, theme) &&
           (artifactState.state === "locked" ? (
             <LockedState
               title={content.artifactGrant.locked.title}
@@ -526,7 +520,7 @@ export const Home = () => {
               )}
             />
           ) : (
-            <ArtifactGrantCard itemName={screenToItemName(screen)} state={artifactState} />
+            <ArtifactGrantCard itemName={getArtifactItemName(screen)} state={artifactState} />
           ))}
 
         {screen === "decoy" && <DecoyCard state={decoyState} />}

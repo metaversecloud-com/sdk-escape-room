@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { content } from "@/constants";
 import { backendAPI } from "@/utils";
 
 export interface LibraryPuzzleProps {
@@ -18,6 +19,7 @@ export const LibraryPuzzlePlaceholder = ({
   isLoading,
   refreshGameState,
 }: LibraryPuzzlePlaceholderProps) => {
+  const copy = content.libraryPuzzles[puzzleNumber];
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -42,13 +44,11 @@ export const LibraryPuzzlePlaceholder = ({
   return (
     <div className="card w-full">
       <div className="card-details">
-        <h3 className="card-title">LIBRARY Puzzle {puzzleNumber}</h3>
-        <p className="card-description p2">
-          Placeholder :)
-        </p>
+        <h3 className="card-title">{copy.title || `LIBRARY Puzzle ${puzzleNumber}`}</h3>
+        <p className="card-description p2">{copy.description || "Placeholder :)"}</p>
         {isCompleted ? (
           <p className="p2 text-success" role="status">
-            Puzzle {puzzleNumber} completed.
+            {copy.complete.body || `Puzzle ${puzzleNumber} completed.`}
           </p>
         ) : (
           <div className="card-actions mt-2">
@@ -58,7 +58,9 @@ export const LibraryPuzzlePlaceholder = ({
               onClick={() => void submitPlaceholder()}
               disabled={isLoading || isSubmitting}
             >
-              {isSubmitting ? "Completing…" : "Complete placeholder"}
+              {isSubmitting
+                ? copy.submittingLabel || "Completing…"
+                : copy.submitLabel || "Complete placeholder"}
             </button>
           </div>
         )}

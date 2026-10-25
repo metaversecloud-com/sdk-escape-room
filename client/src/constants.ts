@@ -304,6 +304,106 @@ export const content = {
     },
   },
 
+  /* ─── LIBRARY puzzle copy ──────────────────────────────────────────── */
+
+  libraryPuzzles: {
+    1: {
+      title: "The Archive Lock",
+      description:
+        "The archive's keypad is locked. Find the four-digit code to gain access.",
+      howToPlay:
+        "Use the clues hidden around the library's books to determine the four-digit code.",
+      submitLabel: "Unlock Archive",
+      submittingLabel: "Unlocking...",
+      errors: {
+        wrongSequence: "Incorrect code. Examine the clues and try again.",
+      },
+      complete: {
+        body: "The archive is unlocked!",
+      },
+    },
+    2: {
+      title: "Within the Pages",
+      description:
+        "An open book sits on the librarian's desk",
+      howToPlay:
+        "Read through the book's pages to discover a hidden word",
+      answerPlaceholder: "Enter the code...",
+      previousPageLabel: "Previous",
+      nextPageLabel: "Next",
+      pageLabel: "Page",
+      submitLabel: "Submit Answer",
+      submittingLabel: "Checking...",
+      errors: {
+        emptyAnswer: "Enter your answer before submitting.",
+        wrongAnswer: "That's not quite right..",
+      },
+      complete: {
+        body: "Correct! You've uncovered the hidden word and solved the puzzle.",
+      },
+    },
+
+    3: {
+      title: "Shelves of Books",
+      description:
+        "A series of sliders. Adjust the sliders to the correct values.",
+      shelfNames: [
+        "Top Shelf",
+        "Middle Shelf",
+        "Bottom Shelf",
+      ],
+      resetLabel: "Reset Counts",
+      submitLabel: "Unlock",
+      submittingLabel: "Checking Counts...",
+      errors: {
+        wrongSequence:
+          "Those counts aren't quite right....",
+      },
+      complete: {
+        body:
+          "Correct!",
+      },
+    },
+
+    4: {
+      title: "",
+      description: "",
+      howToPlay: "",
+      submitLabel: "",
+      submittingLabel: "",
+      errors: {
+        wrongSequence: "",
+      },
+      complete: {
+        body: "",
+      },
+    },
+  },
+
+  /* Library puzzle 2 book contents*/ 
+
+  libraryBookPuzzle: {
+    emphasizeFirstLetter: true,
+
+    pages: [
+      {
+        text: "Among these shelves, the oldest volumes hold stories that few visitors ever discover.",
+      },
+      {
+        text: "In quiet corners, forgotten books wait patiently for someone curious enough to find them.",
+      },
+      {
+        text: "Some titles reveal their secrets only when readers take the time to look closely.",
+      },
+      {
+        text: "Libraries preserve more than stories; they preserve the paths that lead us to knowledge.",
+      },
+      {
+        text: "Every journey through a collection begins with a single step in the right direction.",
+      },
+    ],
+  },
+
   /* ─── Per-puzzle copy ──────────────────────────────────────────────── */
 
   puzzles: {
