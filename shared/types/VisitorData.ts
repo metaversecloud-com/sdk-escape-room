@@ -11,6 +11,11 @@ export interface VisitorData {
   sessionActive: boolean;
   themeID?: ThemeID;
   groupId?: string;
+  /**
+   * Maps Library puzzle numbers to their collected ecosystem item IDs.
+   * Used when an ecosystem Paper cannot carry its reward selector metadata.
+   */
+  libraryRewardItemIds?: Record<number, string>;
   groupProgress?: Record<string, { groupId: string; puzzlesCompleted: Record<number, boolean>; currentRoom: number; sessionActive: boolean; startTime: string | null; completionTime: number | null; items: unknown[]; badges: Record<string, unknown>; members: unknown[]; }>;
 
   // Progression — highest unlocked room (advances on puzzle completion).

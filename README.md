@@ -107,7 +107,7 @@ All routes mount under `/api`. **No admin gating — every route runs for the au
 | `GET`  | `/game-state`     | Full state snapshot including `themeID` and `theme`, plus `droppedAsset`, `sessionKey`, `visitorData`, `uniqueName`, `badges`, `visitorInventory`, `leaderboard`, and `remainingMs`. Supports `?forceRefreshInventory=true` to bust the 6h ecosystem cache. |
 | `GET`  | `/session`        | Lightweight status: `{ active, remainingMs, visitorData }`.                                                                                                                                                        |
 | `POST` | `/start-game`     | Clears prior ecosystem ITEMs (badges preserved), teleports to Room 1, writes fresh session.                                                                                                                        |
-| `POST` | `/submit-puzzle`  | Body: `{ puzzleNumber }` for a puzzle configured in the active theme. SPACE retains its ITEM rewards, room transitions, and badges; the final puzzle in either theme stamps completion, writes the leaderboard, and teleports home. |
+| `POST` | `/submit-puzzle`  | Body: `{ puzzleNumber }` for a puzzle configured in the active theme. Configured SPACE rewards and LIBRARY puzzles 1–3 grant items directly to the solving visitor, regardless of team membership; if teamed, rewards are also mirrored to the shared team inventory. SPACE retains its room transitions and badges. The final puzzle in either theme stamps completion, writes the leaderboard, and teleports home. |
 | `POST` | `/puzzle-draft`   | Persists a per-puzzle draft `{ puzzleNumber, draft }` into `session.puzzleDrafts` for close-and-resume; puzzle numbers outside the active theme are rejected.                                                                    |
 | `POST` | `/grant-item`     | Body: `{ itemName }`. Grants an ecosystem ITEM after room-gate check against `metadata.room`. Runs Trash Panda check.                                                                                              |
 | `POST` | `/teleport`       | Body: `{ room?: 1 \| 2 \| 3 }`. Gated on `puzzlesCompleted`; bumps `physicalRoom` and moves the visitor to the target room's teleport pad.                                                                         |
@@ -144,6 +144,16 @@ All events emitted via `analytics: [...]` on `visitor.updateDataObject`. `unique
 | 5   | B    | Word decode + valves | Decode `EVLAV/KLCO/EURSSPE` then operate valves `Blue→Red→Yellow` | Circuit Chip |
 | 6   | C    | Node-graph circuit   | Draw the correct connections between fixed nodes                  | _(none)_     |
 | 7   | C    | Airlock keypad       | Enter code `3967`                                                 | _(win)_      |
+
+Library puzzles 1–3 each grant a key item to the player's inventory and mirror it to shared team inventory when applicable. Keep all three ecosystem item names as `Paper`; set each item's `metadata.type` to `"keyItem"` and `metadata.escapeRoomReward` to the corresponding opaque selector below:
+
+| Library puzzle | `metadata.escapeRoomReward` |
+| -------------- | --------------------------- |
+| 1              | `library-9f31`              |
+| 2              | `library-4c82`              |
+| 3              | `library-d7a6`              |
+
+These selectors must be unique among active ecosystem `ITEM`s. The item's Topia ID is used to distinguish collected rewards, so duplicate display names remain separate in inventory. Puzzle completion refreshes ecosystem inventory if a selector is missing. As a safe fallback, it can infer the reward only when excluding previously assigned or already-collected Papers leaves exactly one active `Paper` item; that item ID is saved with the visitor's session and exposed with the correct selector in inventory so Puzzle 4 can recognize it. Add all selectors whenever possible. A restart clears player inventory by item ID and resets shared team progress and rewards. After changing ecosystem metadata, open the app once with `?forceRefreshInventory=true` to refresh the six-hour inventory cache.
 
 ## Badges
 

@@ -380,6 +380,11 @@ export const content = {
     },
   },
 
+  libraryPuzzleReward: {
+    acquired: "Paper acquired and added to your inventory.",
+    unavailable: "Paper reward is not visible in your inventory.",
+  },
+
   /* Library puzzle 2 book contents*/ 
 
   libraryBookPuzzle: {

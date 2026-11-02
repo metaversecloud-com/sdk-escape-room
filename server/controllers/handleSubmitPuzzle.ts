@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { VisitorInterface } from "@rtsdk/topia";
 import {
   VisitorInventory,
+  applyLibraryRewardSelectors,
   checkEscapeBadges,
   checkTrashPandaBadge,
   errorHandler,
@@ -18,17 +19,18 @@ import {
 import { sseManager } from "../utils/sseManager.js";
 import { toasts } from "@shared/copy/toasts.js";
 import { getFinalPuzzleNumber } from "@shared/themes.js";
+import type { ThemeID } from "@shared/themes.js";
+import { LIBRARY_PUZZLE_REWARD_SELECTORS } from "@shared/themes.js";
 import { Credentials, KeyAssetDataObject, VisitorData } from "../types/index.js";
 
 type PuzzleNumber = number;
 
+const LIBRARY_REWARD_SELECTORS = Object.values(LIBRARY_PUZZLE_REWARD_SELECTORS);
+
 const isPuzzleNumber = (value: unknown): value is PuzzleNumber =>
   typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 
-// Maps a puzzle number to the ecosystem inventory item the player earns by
-// solving it. The item is looked up by name and granted via the SDK; the
-// visitor's actual inventory is the source of truth.
-const PUZZLE_KEY_ITEM_REWARDS: Partial<Record<PuzzleNumber, string>> = {
+const SPACE_PUZZLE_KEY_ITEM_REWARDS: Partial<Record<PuzzleNumber, string>> = {
   1: "Battery",
   2: "Fuse",
   3: "Wrench",
@@ -62,79 +64,274 @@ const ROOM_TRANSITIONS: RoomTransition[] = [
   },
 ];
 
-/** Returns true if a new item was granted (caller may want to refresh inventory). */
-const applyTeamKeyItemReward = async (
-  credentials: Credentials,
-  teamId: string,
-  puzzleNumber: PuzzleNumber,
-  keyAsset: Awaited<ReturnType<typeof getKeyAsset>>,
-): Promise<boolean> => {
-  const itemName = PUZZLE_KEY_ITEM_REWARDS[puzzleNumber];
+interface PuzzleRewardResult {
+  granted: boolean;
+  visitorInventory: VisitorInventory;
+}
 
-  if (!itemName || !keyAsset) {
-    return false;
-  }
+const applySpacePuzzleReward = async ({
+  credentials,
+  visitor,
+  visitorInventory,
+  teamId,
+  puzzleNumber,
+  keyAsset,
+}: {
+  credentials: Credentials;
+  visitor: VisitorInterface;
+  visitorInventory: VisitorInventory;
+  teamId?: string;
+  puzzleNumber: PuzzleNumber;
+  keyAsset: Awaited<ReturnType<typeof getKeyAsset>>;
+}): Promise<PuzzleRewardResult> => {
+  const itemName = SPACE_PUZZLE_KEY_ITEM_REWARDS[puzzleNumber];
 
-  const dataObject =
-    (keyAsset.dataObject as KeyAssetDataObject | null) || {};
-
-  const teams = dataObject.teams || {};
-  const team = teams[teamId];
-
-  if (!team) {
-    return false;
-  }
-
-  const existingKeyItems = team.keyItems || [];
-
-  // Don't award the same shared key item twice.
-  if (existingKeyItems.some((item) => item.name === itemName)) {
-    return false;
+  if (!itemName) {
+    return { granted: false, visitorInventory };
   }
 
   const inventoryItems = await getCachedInventoryItems({ credentials });
 
-  const match = inventoryItems.find(
-    (item: any) =>
-      item.name === itemName &&
-      item.type === "ITEM",
-  );
-
+  const match = inventoryItems.find((item) => item.name === itemName && item.type === "ITEM");
   if (!match) {
-    return false;
+    throw new Error(`SPACE key item "${itemName}" not found in ecosystem inventory.`);
   }
 
-  const keyItem = {
-    id: match.id,
-    name: match.name,
-    imageUrl: match.image_url || match.image_path || null,
-    description: match.description,
-    metadata: match.metadata || {},
-    quantity: 1,
-  };
+  const alreadyOwned = visitorInventory.items.some((item) => item.id === match.id);
+  let updatedVisitorInventory = visitorInventory;
 
-  const updatedTeam = {
-    ...team,
-    keyItems: [...existingKeyItems, keyItem],
-    updatedAt: new Date().toISOString(),
-  };
+  if (!alreadyOwned) {
+    await visitor.grantInventoryItem(match, 1);
+    await visitor.fetchInventoryItems();
+    updatedVisitorInventory = getVisitorInventory(visitor.inventoryItems || []);
+  }
 
-  await keyAsset.updateDataObject(
-    {
-      teams: {
-        ...teams,
-        [teamId]: updatedTeam,
-      },
-    },
-    {
-      lock: {
-        lockId: `team-key-item-${teamId}-${puzzleNumber}-${Date.now()}`,
-        releaseLock: true,
-      },
-    },
+  if (teamId && keyAsset) {
+    const dataObject = (keyAsset.dataObject as KeyAssetDataObject | null) || {};
+    const teams = dataObject.teams || {};
+    const team = teams[teamId];
+    const existingKeyItems = team?.keyItems || [];
+
+    // Keep the shared team inventory in sync, but never make it a
+    // prerequisite for the visitor's own item reward.
+    if (team && !existingKeyItems.some((item) => item.id === match.id)) {
+      const keyItem = {
+        id: match.id,
+        name: match.name,
+        imageUrl: match.image_url || match.image_path || null,
+        description: match.description,
+        metadata: match.metadata || {},
+        quantity: 1,
+      };
+
+      await keyAsset.updateDataObject(
+        {
+          teams: {
+            ...teams,
+            [teamId]: {
+              ...team,
+              keyItems: [...existingKeyItems, keyItem],
+              updatedAt: new Date().toISOString(),
+            },
+          },
+        },
+        {
+          lock: {
+            lockId: `team-key-item-${teamId}-${puzzleNumber}-${Date.now()}`,
+            releaseLock: true,
+          },
+        },
+      );
+    }
+  }
+
+  return {
+    granted: !alreadyOwned,
+    visitorInventory: updatedVisitorInventory,
+  };
+};
+
+interface LibraryPuzzleRewardResult extends PuzzleRewardResult {
+  itemId?: string;
+}
+
+const findLibraryRewardItemBySelector = (
+  inventoryItems: Awaited<ReturnType<typeof getCachedInventoryItems>>,
+  selector: string,
+) => {
+  const activeItems = inventoryItems.filter(
+    (item) => item.type === "ITEM" && item.status === "ACTIVE",
+  );
+  const matches = activeItems.filter((item) => {
+    const metadata = item.metadata as Record<string, unknown> | undefined;
+    return metadata?.escapeRoomReward === selector;
+  });
+
+  if (matches.length > 1) {
+    throw new Error(`Expected one active LIBRARY key item for selector "${selector}", found ${matches.length}.`);
+  }
+  return matches[0];
+};
+
+const findFallbackLibraryPaperItem = (
+  inventoryItems: Awaited<ReturnType<typeof getCachedInventoryItems>>,
+  visitorInventory: VisitorInventory,
+  puzzleNumber: PuzzleNumber,
+  keyAsset: Awaited<ReturnType<typeof getKeyAsset>>,
+  teamId?: string,
+) => {
+  const activePapers = inventoryItems.filter(
+    (item) => item.type === "ITEM" && item.status === "ACTIVE" && item.name === "Paper",
+  );
+  const previousSelectors = new Set<string>(
+    Object.entries(LIBRARY_PUZZLE_REWARD_SELECTORS)
+      .filter(([number]) => Number(number) < puzzleNumber)
+      .map(([, selector]) => selector),
+  );
+  const previouslyAssignedIds = new Set(
+    activePapers
+      .filter((item) => {
+        const metadata = item.metadata as Record<string, unknown> | undefined;
+        return typeof metadata?.escapeRoomReward === "string" &&
+          previousSelectors.has(metadata.escapeRoomReward);
+      })
+      .map((item) => item.id),
   );
 
-  return true;
+  const remainingPapers = activePapers.filter((item) => !previouslyAssignedIds.has(item.id));
+  if (remainingPapers.length === 1) return remainingPapers[0];
+
+  const ownedPaperIds = new Set(
+    (visitorInventory.items || [])
+      .filter((item) => item.name === "Paper")
+      .map((item) => item.id),
+  );
+  const teams = (keyAsset?.dataObject as KeyAssetDataObject | null)?.teams || {};
+  for (const teamItem of (teamId ? teams[teamId]?.keyItems : []) || []) {
+    if (teamItem.name === "Paper") ownedPaperIds.add(teamItem.id);
+  }
+
+  const unownedPapers = remainingPapers.filter((item) => !ownedPaperIds.has(item.id));
+  return unownedPapers.length === 1 ? unownedPapers[0] : undefined;
+};
+
+const grantLibraryPuzzleReward = async ({
+  credentials,
+  visitor,
+  visitorInventory,
+  teamId,
+  puzzleNumber,
+  keyAsset,
+}: {
+  credentials: Credentials;
+  visitor: VisitorInterface;
+  visitorInventory: VisitorInventory;
+  teamId?: string;
+  puzzleNumber: PuzzleNumber;
+  keyAsset: Awaited<ReturnType<typeof getKeyAsset>>;
+}): Promise<LibraryPuzzleRewardResult> => {
+  const selector = LIBRARY_PUZZLE_REWARD_SELECTORS[puzzleNumber as keyof typeof LIBRARY_PUZZLE_REWARD_SELECTORS];
+  if (!selector) {
+    return { granted: false, visitorInventory };
+  }
+
+  let inventoryItems = await getCachedInventoryItems({ credentials });
+  let item: (typeof inventoryItems)[number] | undefined =
+    findLibraryRewardItemBySelector(inventoryItems, selector);
+
+  if (!item) {
+    inventoryItems = await getCachedInventoryItems({ credentials, forceRefresh: true });
+    item = findLibraryRewardItemBySelector(inventoryItems, selector);
+  }
+
+  if (!item) {
+    item = findFallbackLibraryPaperItem(
+      inventoryItems,
+      visitorInventory,
+      puzzleNumber,
+      keyAsset,
+      teamId,
+    );
+    if (!item) {
+      const activePaperCount = inventoryItems.filter(
+        (candidate) =>
+          candidate.type === "ITEM" &&
+          candidate.status === "ACTIVE" &&
+          candidate.name === "Paper",
+      ).length;
+      throw new Error(
+        `Could not identify one active LIBRARY key item for selector "${selector}"; found ${activePaperCount} active Paper items and could not determine a unique remaining reward.`,
+      );
+    }
+  }
+
+  const alreadyOwned = visitorInventory.items.some((ownedItem) => ownedItem.id === item.id);
+  let updatedInventory = visitorInventory;
+
+  if (!alreadyOwned) {
+    await visitor.grantInventoryItem(item, 1);
+    await visitor.fetchInventoryItems();
+    updatedInventory = getVisitorInventory(visitor.inventoryItems || []);
+  }
+  updatedInventory = applyLibraryRewardSelectors(updatedInventory, {
+    [puzzleNumber]: item.id,
+  });
+
+  if (teamId && keyAsset) {
+    const dataObject = (keyAsset.dataObject as KeyAssetDataObject | null) || {};
+    const teams = dataObject.teams || {};
+    const team = teams[teamId];
+
+    if (team) {
+      const keyItem = {
+        id: item.id,
+        name: item.name,
+        imageUrl: item.image_url || item.image_path || null,
+        description: item.description,
+        metadata: {
+          ...(item.metadata || {}),
+          type: "keyItem",
+          escapeRoomReward: selector,
+        },
+        quantity: 1,
+      };
+      const keyItems = team.keyItems || [];
+      const hasUpdatedKeyItem = keyItems.some(
+        (teamItem) => teamItem.id === item.id &&
+          teamItem.metadata?.escapeRoomReward === selector,
+      );
+
+      if (!hasUpdatedKeyItem) {
+        await keyAsset.updateDataObject(
+          {
+            teams: {
+              ...teams,
+              [teamId]: {
+                ...team,
+                keyItems: [
+                  ...keyItems.filter((teamItem) => teamItem.id !== item.id),
+                  keyItem,
+                ],
+                updatedAt: new Date().toISOString(),
+              },
+            },
+          },
+          {
+            lock: {
+              lockId: `team-key-item-${teamId}-${puzzleNumber}-${Date.now()}`,
+              releaseLock: true,
+            },
+          },
+        );
+      }
+    }
+  }
+
+  return {
+    granted: !alreadyOwned,
+    visitorInventory: updatedInventory,
+    itemId: item.id,
+  };
 };
 
 export const handleSubmitPuzzle = async (req: Request, res: Response) => {
@@ -166,16 +363,68 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       });
     }
     const game = session;
+    const teamId = game.groupId || credentials.groupId;
 
     if (game.puzzlesCompleted?.[puzzleNumber]) {
+      if (theme.themeID === "LIBRARY" || theme.themeID === "SPACE") {
+        const keyAsset = teamId ? await getKeyAsset(credentials) : null;
+        let reward: PuzzleRewardResult;
+
+        if (theme.themeID === "LIBRARY") {
+          const libraryReward = await grantLibraryPuzzleReward({
+            credentials,
+            visitor,
+            visitorInventory,
+            teamId,
+            puzzleNumber,
+            keyAsset,
+          });
+          reward = libraryReward;
+          if (libraryReward.itemId) {
+            game.libraryRewardItemIds = {
+              ...(game.libraryRewardItemIds || {}),
+              [puzzleNumber]: libraryReward.itemId,
+            };
+            await visitor.updateDataObject(
+              { [sessionKey]: game },
+              { lock: { lockId: `${sessionKey}-${Date.now()}-library-reward`, releaseLock: true } },
+            );
+          }
+        } else {
+          reward = await applySpacePuzzleReward({
+            credentials,
+            visitor,
+            visitorInventory,
+            teamId,
+            puzzleNumber,
+            keyAsset,
+          });
+        }
+
+        if (reward.granted) {
+          await checkTrashPandaBadge({
+            credentials: { ...credentials, groupId: teamId },
+            visitor,
+            visitorInventory: reward.visitorInventory,
+          });
+        }
+
+        return res.json({
+          success: true,
+          alreadyCompleted: true,
+          visitorData: game,
+          ...(theme.themeID === "LIBRARY" || reward.granted
+            ? { visitorInventory: reward.visitorInventory }
+            : {}),
+        });
+      }
+
       return res.json({
         success: true,
         alreadyCompleted: true,
         visitorData: game,
       });
     }
-
-    const teamId = game.groupId || credentials.groupId;
 
     // Look up the key asset (start terminal) where the leaderboard lives.
     // Found by uniqueName within the scene — no world data needed. For
@@ -188,24 +437,54 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     game.puzzlesCompleted[puzzleNumber] = true;
     // Drop the in-progress draft for this puzzle — it's no longer "in progress".
     if (game.puzzleDrafts) delete game.puzzleDrafts[puzzleNumber];
-    const granted = theme.themeID === "SPACE" && teamId
-      ? await applyTeamKeyItemReward(
-          credentials,
-          teamId,
-          puzzleNumber,
-          keyAsset,
-        )
-      : false;
+    let granted = false;
+    let updatedVisitorInventory: VisitorInventory | undefined;
 
-    // If a fresh item just landed (puzzles 1/2/3/5 grant Battery / Fuse /
-    // Wrench / Circuit Chip), check whether the player now owns every
-    // ecosystem ITEM — that's the **Trash Panda** trigger. Needs a fresh
-    // inventory snapshot because `visitorInventory` above is from before
-    // applyInventoryReward.
-    if (granted && theme.themeID === "SPACE") {
+    if (theme.themeID === "LIBRARY") {
+      const reward = await grantLibraryPuzzleReward({
+        credentials,
+        visitor,
+        visitorInventory,
+        teamId,
+        puzzleNumber,
+        keyAsset,
+      });
+      granted = reward.granted;
+      updatedVisitorInventory = reward.visitorInventory;
+      if (reward.itemId) {
+        game.libraryRewardItemIds = {
+          ...(game.libraryRewardItemIds || {}),
+          [puzzleNumber]: reward.itemId,
+        };
+      }
+    } else if (theme.themeID === "SPACE") {
+      const reward = await applySpacePuzzleReward({
+        credentials,
+        visitor,
+        visitorInventory,
+        teamId,
+        puzzleNumber,
+        keyAsset,
+      });
+      granted = reward.granted;
+      updatedVisitorInventory = reward.visitorInventory;
+    }
+
+    // A newly collected item can complete the ecosystem ITEM set.
+    if (granted && updatedVisitorInventory) {
+      await checkTrashPandaBadge({
+        credentials: { ...credentials, groupId: teamId },
+        visitor,
+        visitorInventory: updatedVisitorInventory,
+      });
+    } else if (granted) {
       await visitor.fetchInventoryItems();
       const freshInventory = getVisitorInventory(visitor.inventoryItems || []);
-      await checkTrashPandaBadge({ credentials, visitor, visitorInventory: freshInventory });
+      await checkTrashPandaBadge({
+        credentials: { ...credentials, groupId: teamId },
+        visitor,
+        visitorInventory: freshInventory,
+      });
     }
 
     // Generic puzzle-solved toast. Puzzle 7 gets the "escaped" toast below
@@ -557,6 +836,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       badgesAwarded,
       badgesOwned,
       badgesFailed,
+      ...(updatedVisitorInventory ? { visitorInventory: updatedVisitorInventory } : {}),
     });
   } catch (error) {
     return errorHandler({

@@ -1,5 +1,11 @@
 export type ThemeID = "SPACE" | "LIBRARY";
 
+export const LIBRARY_PUZZLE_REWARD_SELECTORS = {
+  1: "library-9f31",
+  2: "library-4c82",
+  3: "library-d7a6",
+} as const;
+
 export type ArtifactScreen =
   | "Room1Artifact"
   | "CrewPortrait1"

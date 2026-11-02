@@ -8,6 +8,8 @@ import {
   getLeaderboard,
   getTheme,
   getVisitor,
+  applyLibraryRewardSelectors,
+  inferLibraryRewardItemIds,
 } from "@utils/index.js";
 import { KeyAssetDataObject } from "../types/index.js";
 
@@ -43,8 +45,9 @@ export const handleGetGameState = async (req: Request, res: Response) => {
       
     // Visitor (data + inventory). getVisitor guarantees session defaults exist
     // and builds visitorInventory with both badges and items.
-    const { visitorDataObject, visitorInventory } = await getVisitor(credentials, true);
+    const { visitor, visitorDataObject, visitorInventory } = await getVisitor(credentials, true);
     let session = visitorDataObject[sessionKey];
+    let responseInventory = visitorInventory;
     const sessionThemeID = session.sessionActive ? session.themeID : undefined;
     const theme = getTheme(sessionThemeID ?? droppedAsset.dataObject?.themeID);
 
@@ -82,7 +85,7 @@ export const handleGetGameState = async (req: Request, res: Response) => {
 
         // Add the team's shared key items to this player's inventory view.
         if (team?.keyItems?.length) {
-          const existingItems = visitorInventory.items || [];
+          const existingItems = responseInventory.items || [];
 
           const sharedKeyItems = team.keyItems.map((item) => ({
             id: item.id,
@@ -100,12 +103,45 @@ export const handleGetGameState = async (req: Request, res: Response) => {
 
           const existingIds = new Set(existingItems.map((item) => item.id));
 
-          visitorInventory.items = [
+          responseInventory = {
+            ...responseInventory,
+            items: [
             ...existingItems,
             ...sharedKeyItems.filter((item) => !existingIds.has(item.id)),
-          ];
+            ],
+          };
         }
       }
+
+    if (theme.themeID === "LIBRARY") {
+      const libraryRewardItemIds = inferLibraryRewardItemIds(
+        responseInventory,
+        session.puzzlesCompleted || {},
+        session.libraryRewardItemIds,
+      );
+      const hasNewRewardIds = Object.entries(libraryRewardItemIds).some(
+        ([puzzleNumber, itemId]) =>
+          session.libraryRewardItemIds?.[Number(puzzleNumber)] !== itemId,
+      );
+
+      if (hasNewRewardIds) {
+        session = { ...session, libraryRewardItemIds };
+        await visitor.updateDataObject(
+          { [sessionKey]: session },
+          {
+            lock: {
+              lockId: `${sessionKey}-${Date.now()}-library-reward-repair`,
+              releaseLock: true,
+            },
+          },
+        );
+      }
+
+      responseInventory = applyLibraryRewardSelectors(
+        responseInventory,
+        libraryRewardItemIds,
+      );
+    }
 
     const badges = await getBadges(credentials, forceRefreshInventory);
 
@@ -118,7 +154,7 @@ export const handleGetGameState = async (req: Request, res: Response) => {
       themeID: theme.themeID,
       theme,
       badges,
-      visitorInventory,
+      visitorInventory: responseInventory,
       leaderboard,
       teamLeaderboard,
     });

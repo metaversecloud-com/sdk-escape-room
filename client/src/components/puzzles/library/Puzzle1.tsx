@@ -10,6 +10,8 @@ import {
   useInitialPuzzleDraft,
   usePuzzleDraft,
 } from "@/utils";
+import { LIBRARY_PUZZLE_REWARD_SELECTORS } from "@shared/themes";
+import { LibraryPuzzleCompleteCard } from "./LibraryPuzzleCompleteCard";
 import { LibraryPuzzleHeader } from "./PuzzleHeader";
 
 const c = content.libraryPuzzles[1];
@@ -94,14 +96,12 @@ export const Puzzle1 = ({
 
   if (isCompleted) {
     return (
-      <div className="card w-full">
-        <div className="card-details">
-          <h3 className="card-title">{c.title}</h3>
-          <p className="p2 text-success" role="status">
-            {c.complete.body}
-          </p>
-        </div>
-      </div>
+      <LibraryPuzzleCompleteCard
+        title={c.title}
+        body={c.complete.body}
+        rewardSelector={LIBRARY_PUZZLE_REWARD_SELECTORS[1]}
+        puzzleNumber={1}
+      />
     );
   }
 

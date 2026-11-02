@@ -14,6 +14,7 @@ export * from "./getLeaderboard.js";
 export * from "./getVersion.js";
 export * from "./getVisitor.js";
 export * from "./getVisitorInventory.js";
+export { inferLibraryRewardItemIds } from "./getVisitorInventory.js";
 export * from "./getTheme.js";
 export * from "./getSessionTheme.js";
 export * from "./inventoryCache.js";

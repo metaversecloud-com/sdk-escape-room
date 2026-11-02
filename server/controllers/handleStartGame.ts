@@ -12,6 +12,16 @@ import {
   moveVisitorToAsset,
 } from "@utils/index.js";
 
+const DEFAULT_TEAM_PUZZLES = {
+  1: false,
+  2: false,
+  3: false,
+  4: false,
+  5: false,
+  6: false,
+  7: false,
+};
+
 const startVisitorSession = async ({
   credentials,
   teamId,
@@ -27,7 +37,7 @@ const startVisitorSession = async ({
   const urlSlug = credentials.urlSlug;
 
   const { visitor } = await getVisitor(credentials, true);
-  await clearVisitorInventory({ visitor, credentials });
+  await clearVisitorInventory({ visitor });
   await visitor.fetchInventoryItems();
   const visitorInventory = getVisitorInventory(visitor.inventoryItems || []);
 
@@ -106,7 +116,14 @@ export const handleStartGame = async (req: Request, res: Response) => {
       }
     }
 
-    if (isMultiplayer && resolvedTeam && isLeader && !resolvedTeam.started) {
+    const shouldStartTeam =
+      isMultiplayer &&
+      resolvedTeam &&
+      ((isLeader && !resolvedTeam.started) ||
+        resolvedTeam.status === "started" ||
+        resolvedTeam.status === "completed");
+
+    if (shouldStartTeam) {
       const startedAt = new Date().toISOString();
       const updatedTeam = {
         ...resolvedTeam,
@@ -114,6 +131,9 @@ export const handleStartGame = async (req: Request, res: Response) => {
         started: true,
         startedAt,
         updatedAt: startedAt,
+        puzzlesCompleted: { ...DEFAULT_TEAM_PUZZLES },
+        keyItems: [],
+        completionTime: undefined,
       };
 
       if (!keyAsset) {
