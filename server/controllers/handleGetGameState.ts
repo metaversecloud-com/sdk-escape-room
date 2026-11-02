@@ -78,6 +78,7 @@ export const handleGetGameState = async (req: Request, res: Response) => {
               ? {
                   sessionActive: false,
                   endTime: team.updatedAt ?? session.endTime,
+                  completionTime: team.completionTime ?? session.completionTime,
                 }
               : {}),
           };

@@ -97,35 +97,6 @@ export const handleGrantItem = async (req: Request, res: Response) => {
     const item = updatedInventory.items.find((i) => i.name === itemName) || null;
     const teamId = session.groupId || credentials.groupId;
 
-    if (teamId) {
-      const { getKeyAsset } = await import("@utils/index.js");
-      const keyAsset = await getKeyAsset(credentials);
-      const team = (keyAsset?.dataObject as Record<string, any> | null)?.teams?.[teamId];
-      if (team) {
-        for (const member of team.members || []) {
-          if (member.profileId === credentials.profileId) continue;
-          const memberCreds = {
-            ...credentials,
-            profileId: member.profileId,
-            displayName: member.displayName,
-            username: member.username || credentials.username,
-            visitorId: member.visitorId ?? credentials.visitorId,
-          };
-          const { visitor: memberVisitor, session: memberSession } = await getVisitor(memberCreds, true);
-          const memberSessionKey = `${memberCreds.urlSlug}-${memberCreds.sceneDropId}`;
-          await memberVisitor.updateDataObject(
-            {
-              [memberSessionKey]: {
-                ...memberSession,
-                groupId: teamId,
-              },
-            },
-            { lock: { lockId: `${memberSessionKey}-${Date.now()}-group-sync`, releaseLock: true } },
-          );
-        }
-      }
-    }
-
     sseManager.publish({
       event: "state:update",
       assetId: credentials.assetId,
