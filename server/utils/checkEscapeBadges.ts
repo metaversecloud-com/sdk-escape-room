@@ -31,7 +31,7 @@ export interface BadgeContext {
   visitor: VisitorInterface;
   visitorInventory: VisitorInventory;
   game: VisitorData;
-  puzzleNumber: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  puzzleNumber: number;
   badgeKey?: keyof typeof BADGES;
 }
 

@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getVisitor, moveVisitorToAsset, getKeyAsset, fireToast,} from "@utils/index.js";
+import { errorHandler, getCredentials, getVisitor, moveVisitorToAsset, getKeyAsset, fireToast, getSessionTheme} from "@utils/index.js";
 import { KeyAssetDataObject, VisitorData } from "../types/index.js";
 import { sseManager } from "../utils/sseManager.js";
 import { toasts } from "@shared/copy/toasts.js";
@@ -55,6 +55,7 @@ export const handleTeleport = async (req: Request, res: Response) => {
     const sessionKey = `${urlSlug}-${sceneDropId}`;
 
     const { visitor, session } = await getVisitor(credentials, true);
+    const theme = await getSessionTheme(credentials, session);
 
     console.log("TELEPORT DEBUG", {
       profileId: credentials.profileId,
@@ -126,7 +127,10 @@ export const handleTeleport = async (req: Request, res: Response) => {
       }
 
       try {
-        await moveVisitorToAsset(credentials, "EscapeRoom_start_teleport");
+        await moveVisitorToAsset(credentials, "EscapeRoom_start_teleport", {
+          themeID: theme.themeID,
+          allowThemeFallback: true,
+        });
 
         return res.json({
           success: true,
@@ -167,6 +171,15 @@ export const handleTeleport = async (req: Request, res: Response) => {
       });
     }
 
+    if (!theme.rooms.some(({ id }) => id === def.targetRoom)) {
+      return res.json({
+        success: true,
+        teleported: false,
+        reason: "invalidTarget",
+        visitorData: session,
+      });
+    }
+
     console.log("TELEPORT READINESS", {
       targetRoomKey,
       targetRoom: def.targetRoom,
@@ -199,7 +212,7 @@ export const handleTeleport = async (req: Request, res: Response) => {
     });
 
     try {
-      await moveVisitorToAsset(credentials, def.spawnUniqueName);
+      await moveVisitorToAsset(credentials, def.spawnUniqueName, { themeID: theme.themeID });
 
     } catch (err) {
       teleportSucceeded = false;
@@ -282,7 +295,8 @@ export const handleTeleport = async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
-      teleported: true,
+      teleported: teleportSucceeded,
+      ...(!teleportSucceeded ? { reason: "teleportFailed" } : {}),
       targetRoom: def.targetRoom,
       visitorData: updatedSession,
     });

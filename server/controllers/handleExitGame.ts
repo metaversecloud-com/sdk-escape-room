@@ -1,5 +1,12 @@
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getVisitor, moveVisitorToAsset, getKeyAsset } from "@utils/index.js";
+import {
+  errorHandler,
+  getCredentials,
+  getSessionTheme,
+  getVisitor,
+  moveVisitorToAsset,
+  getKeyAsset,
+} from "@utils/index.js";
 
 export const handleExitGame = async (req: Request, res: Response) => {
   try {
@@ -8,6 +15,7 @@ export const handleExitGame = async (req: Request, res: Response) => {
     const sessionKey = `${urlSlug}-${sceneDropId}`;
 
     const { visitor, session } = await getVisitor(credentials, true);
+    const theme = await getSessionTheme(credentials, session);
 
     session.sessionActive = false;
     session.endTime = new Date().toISOString();
@@ -98,10 +106,10 @@ export const handleExitGame = async (req: Request, res: Response) => {
       }
     }
 
-    await moveVisitorToAsset(
-      credentials,
-      "EscapeRoom_start_teleport",
-    );
+    await moveVisitorToAsset(credentials, "EscapeRoom_start_teleport", {
+      themeID: theme.themeID,
+      allowThemeFallback: true,
+    });
 
     await visitor.closeIframe(assetId);
 

@@ -22,6 +22,16 @@ body {
   background-repeat: no-repeat;
 }
 
+body[data-theme="LIBRARY"] {
+  background:
+    radial-gradient(ellipse at 15% 10%, rgba(255, 255, 255, 0.85), transparent 55%),
+    radial-gradient(ellipse at 85% 90%, rgba(208, 190, 161, 0.24), transparent 50%),
+    linear-gradient(140deg, #f8f5ed 0%, #f1eadb 52%, #e9dfcd 100%);
+  background-attachment: fixed;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
 #root {
   min-height: 100vh;
 }
@@ -37,6 +47,41 @@ body {
   background: var(--er-grad-card-running);
   border-color: var(--er-border-cyan);
   box-shadow: var(--er-shadow-card-running);
+}
+
+.er-library-start {
+  padding: 1.25rem;
+  border: 1px solid var(--er-border-cyan);
+  border-radius: var(--er-radius-card);
+  background:
+    radial-gradient(ellipse at top right, rgba(27, 224, 242, 0.14), transparent 55%),
+    var(--er-grad-card-violet);
+  box-shadow: var(--er-shadow-card-running);
+}
+
+.er-library-start__briefing {
+  display: grid;
+  gap: 0.75rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--er-border-faint);
+}
+
+.er-library-start__title {
+  color: var(--er-cyan);
+  letter-spacing: 0.04em;
+}
+
+.er-library-start__stat {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem;
+  border: 1px solid var(--er-border-faint);
+  border-radius: var(--er-radius-pill);
+  background: var(--er-bg-panel);
+}
+
+.er-library-start__stat strong {
+  color: var(--er-gold);
 }
 
 /* The blurred halo overlay rendered behind a card's content */
@@ -925,6 +970,637 @@ body {
     opacity: 1;
   }
 }
+
+/* Library start screen */
+.er-library-start__briefing {
+  padding: 20px;
+  border: 1px solid #c5ad83;
+  border-radius: 8px;
+  background: #f5eddd;
+  color: #342d25;
+}
+
+.er-library-start__eyebrow {
+  margin: 0 0 8px;
+  color: #80613b;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.er-library-start__title {
+  margin: 0 0 12px;
+  color: #49351f;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.8rem, 5vw, 2.5rem);
+  font-weight: 700;
+}
+
+.er-library-start__description {
+  margin: 0;
+  color: #504638;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.er-library-start__stat {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid #bba477;
+  border-radius: 6px;
+  background: #eee2cc;
+  color: #342d25;
+}
+
+.er-library-start__stat-label {
+  color: #80613b;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.er-library-start__stat strong {
+  color: #49351f;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+/* Keep buttons and other controls legible inside the start screen. */
+.er-library-start button {
+  color: #342d25;
+}
+
+.er-library-start button:focus-visible {
+  outline: 2px solid #a7864d;
+  outline-offset: 3px;
+}
+
+/* Library Puzzle 1 */
+
+.library-lock {
+  color: #342d25;
+}
+
+.library-lock-panel {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+  padding: 20px;
+  border: 1px solid #bba477;
+  border-radius: 8px;
+  background: #f4ead8;
+  color: #342d25;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.library-lock-heading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  color: #776044;
+  font-family: Georgia, serif;
+  font-size: 0.75rem;
+  font-weight: bold;
+  letter-spacing: 0.12em;
+}
+
+.library-lock-ornament {
+  color: #a7864d;
+}
+
+.library-lock-display {
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid #c9b99b;
+  border-radius: 6px;
+  background: #e9dfcd;
+}
+
+.library-lock-label {
+  margin-bottom: 10px;
+  color: #776044;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-align: center;
+}
+
+.library-lock-digits {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.library-lock-digit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 48px;
+  border: 1px solid #c9b99b;
+  border-radius: 4px;
+  background: #faf5eb;
+  color: #342d25;
+  font-family: Georgia, serif;
+  font-size: 1.7rem;
+}
+
+.library-lock-digit.is-filled {
+  border-color: #a7864d;
+  color: #594326;
+}
+
+.library-lock-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.library-lock-keypad .library-key {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 8px;
+  border: 1px solid #bba477;
+  border-radius: 6px;
+  background: #fffaf0;
+  color: #342d25;
+  font-family: Georgia, serif;
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+.library-lock-keypad .library-key:hover:not(:disabled) {
+  background: #e9dfcd;
+}
+
+.library-lock-keypad .library-key:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.library-lock-keypad .library-key-clear {
+  background: #e7d5bd;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
+.library-lock-keypad .library-key-delete {
+  background: #e7d5bd;
+}
+
+.library-lock-submit {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid #8e7041;
+  border-radius: 6px;
+  background: #594326;
+  color: #fff5e2;
+  font-family: Georgia, serif;
+  font-size: 0.9rem;
+  font-weight: bold;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.library-lock-submit:hover:not(:disabled) {
+  background: #725832;
+}
+
+.library-lock-submit:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.library-lock-footer {
+  margin-top: 14px;
+  color: #776044;
+  font-size: 0.6rem;
+  line-height: 1.5;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+/*Library puzzle 2*/
+.library-book {
+  width: 100%;
+  max-width: 620px;
+  margin: 0 auto;
+  min-width: 0;
+}
+
+.library-book-pages {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2048 / 1433;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  perspective: 1200px;
+}
+
+/* The page sits over the right-hand page in the image. */
+.library-book-page {
+  position: absolute;
+  top: 13%;
+  left: 52%;
+  width: 34%;
+  height: 69%;
+  box-sizing: border-box;
+  padding: 5% 3% 4%;
+  overflow: hidden;
+
+  color: #342d25;
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+
+/* The paper image already supplies the paper texture. */
+.library-book-page-number {
+  margin-bottom: 12%;
+  color: #806b4d;
+  font-size: clamp(0.45rem, 1.4vw, 0.7rem);
+  text-align: right;
+}
+
+.library-book-text {
+  margin: 0;
+  color: #342d25;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(0.65rem, 2vw, 1rem);
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.library-book-first-letter {
+  color: #594326;
+  font-size: 2em;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.library-book-page-footer {
+  position: absolute;
+  right: 5%;
+  bottom: 3%;
+  left: 5%;
+  color: #806b4d;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(0.35rem, 1vw, 0.55rem);
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+/* Flip the current clue away from the viewer. */
+.library-book-page.is-flipping {
+  animation: library-page-flip 550ms ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes library-page-flip {
+  0% {
+    transform: rotateY(0deg);
+    filter: brightness(1);
+  }
+
+  45% {
+    filter: brightness(0.82);
+  }
+
+  100% {
+    transform: rotateY(-180deg);
+    filter: brightness(0.7);
+  }
+}
+
+.library-book-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.library-book-nav {
+  padding: 8px 10px;
+  border: 1px solid #bba477;
+  border-radius: 5px;
+  background: #f4ead8;
+  color: #342d25;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.library-book-nav:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.library-book-progress {
+  color: #d8c8a8;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .library-book-page.is-flipping {
+    animation-duration: 1ms;
+  }
+}
+
+/*Library puzzle 3 sliders*/
+.library-shelf-counts {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  color: #705621;
+  font-size: 0.75rem;
+}
+
+.library-lock .er-shelf-name {
+  color: #342d25;
+}
+
+.library-lock .er-shelf-value {
+  color: #594326;
+}
+
+/*Library Puzzle 4*/
+/* =========================================
+   LIBRARY PUZZLE 4 - PAPER ARRANGEMENT
+   ========================================= */
+
+.library-paper-puzzle {
+  min-width: 0;
+  color: #342d25;
+}
+
+.library-paper-stage,
+.library-connection-stage {
+  display: grid;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+}
+
+.library-paper-stage-heading {
+  display: grid;
+  gap: 5px;
+  color: #342d25;
+}
+
+.library-paper-stage-heading h3 {
+  margin: 0;
+  color: #49351f;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.library-paper-stage-heading p {
+  margin: 0;
+  color: #665944;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* Three vertical paper positions */
+
+.library-paper-slots {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+}
+
+.library-paper-slot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 105px;
+  padding: 5px;
+  overflow: hidden;
+  border: 2px dashed #bba477;
+  border-radius: 6px;
+  background: rgba(238, 226, 204, 0.55);
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.library-paper-slot.has-paper {
+  border-style: solid;
+  border-color: #bba477;
+  background: #eee2cc;
+}
+
+.library-paper-slot:hover:not(:disabled) {
+  border-color: #80613b;
+  background: #e8d8bc;
+}
+
+.library-paper-slot.is-selected {
+  border: 3px solid #a36c28;
+  background: #f5e6c8;
+  transform: scale(1.02);
+  box-shadow: 0 0 0 3px rgba(163, 108, 40, 0.18);
+}
+
+.library-paper-slot:disabled {
+  cursor: default;
+}
+
+.library-paper-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.library-paper-empty {
+  color: #9b896b;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.library-paper-position {
+  position: absolute;
+  top: 5px;
+  left: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  background: #49351f;
+  color: #fff6e8;
+  font-size: 0.7rem;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.library-paper-instructions,
+.library-paper-status {
+  margin: 0;
+  color: #806b4d;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.library-paper-count {
+  display: block;
+  margin-top: 4px;
+  font-weight: 700;
+}
+
+.library-paper-success {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #9aab79;
+  border-radius: 5px;
+  background: #edf1e4;
+  color: #40542e;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* =========================================
+   LIBRARY PUZZLE 4 - CONNECTION BOARD
+   ========================================= */
+
+.library-connection-board {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  height: 390px;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid #bba477;
+  border-radius: 8px;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 31px,
+      rgba(139, 119, 87, 0.12) 32px
+    ),
+    #f5eddd;
+  box-shadow:
+    inset 0 0 18px rgba(101, 76, 43, 0.12),
+    0 3px 8px rgba(0, 0, 0, 0.12);
+}
+
+.library-connection-lines {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.library-connection-line {
+  stroke: #292522;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+
+.library-connection-node {
+  position: absolute;
+  z-index: 2;
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  border: 3px solid #f5eddd;
+  border-radius: 50%;
+  background: #c83f37;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  transition:
+    background 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.library-connection-node:hover:not(:disabled) {
+  background: #a72d28;
+  transform: translate(-50%, -50%) scale(1.15);
+}
+
+.library-connection-node.is-selected {
+  background: #e6a52c;
+  box-shadow: 0 0 0 4px rgba(230, 165, 44, 0.3);
+  transform: translate(-50%, -50%) scale(1.2);
+}
+
+.library-connection-node:disabled {
+  cursor: default;
+}
+
+.library-connection-progress {
+  color: #806b4d;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.library-connection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.library-paper-puzzle button:focus-visible {
+  outline: 2px solid #a7864d;
+  outline-offset: 3px;
+}
+
+@media (max-width: 380px) {
+  .library-connection-board {
+    height: 350px;
+  }
+
+  .library-connection-node {
+    width: 22px;
+    height: 22px;
+  }
+
+  .library-paper-slot {
+    height: 90px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .library-paper-slot,
+  .library-connection-node {
+    transition: none;
+  }
+}
+
 
 /* ─── Responsive (shared across puzzles) ─── */
 

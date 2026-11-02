@@ -1,11 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 
 import { content } from "@/constants";
+import { ThemeConfig } from "@shared/themes";
 import { backendAPI } from "@/utils";
 import { StatusPill } from "./StatusPill";
+import { LibraryStartScreen } from "./LibraryStartScreen";
 import commanderVegaImg from "@/assets/CommanderVega.png";
 
 interface StartGameCardProps {
+  theme: ThemeConfig;
   onStart: (options?: { multiplayer: boolean; teamId?: string }) => Promise<void>;
   isLoading: boolean;
 }
@@ -22,7 +25,7 @@ type TeamSummary = {
 
 const { briefing } = content;
 
-export const StartGameCard = ({ onStart, isLoading }: StartGameCardProps) => {
+export const StartGameCard = ({ theme, onStart, isLoading }: StartGameCardProps) => {
   const [mode, setMode] = useState<StartMode>("solo");
   const [teams, setTeams] = useState<TeamSummary[]>([]);
   const [activeTeam, setActiveTeam] = useState<TeamSummary | null>(null);
@@ -34,6 +37,7 @@ export const StartGameCard = ({ onStart, isLoading }: StartGameCardProps) => {
   const currentProfileId = new URLSearchParams(window.location.search).get("profileId");
 
   const selectedTeam = teams.find((team) => team.id === selectedTeamId);
+  const isSpaceTheme = theme.themeID === "SPACE";
 
   const teamHasStarted =
     activeTeam?.status === "started";
@@ -48,7 +52,7 @@ export const StartGameCard = ({ onStart, isLoading }: StartGameCardProps) => {
     selectedTeam.status !== "waiting" ||
     isTeamLeader;
 
-  const refreshTeams = async () => {
+  const refreshTeams = useCallback(async () => {
     setIsRefreshingTeams(true);
     try {
       const response = await backendAPI.get("/teams");
@@ -93,7 +97,7 @@ export const StartGameCard = ({ onStart, isLoading }: StartGameCardProps) => {
     } finally {
       setIsRefreshingTeams(false);
     }
-  };
+  }, [activeTeam?.id, selectedTeamId]);
 
   useEffect(() => {
     console.log("START GAME EFFECT", { mode });
@@ -112,7 +116,7 @@ export const StartGameCard = ({ onStart, isLoading }: StartGameCardProps) => {
     return () => {
       window.clearInterval(interval);
     };
-  }, [mode]);
+  }, [mode, refreshTeams]);
 
   const handleCreateTeam = async () => {
     try {
@@ -157,6 +161,115 @@ export const StartGameCard = ({ onStart, isLoading }: StartGameCardProps) => {
       mode === "multiplayer" ? { multiplayer: true, teamId: selectedTeamId } : { multiplayer: false },
     );
   };
+
+  const controls = (
+    <>
+      {!teamHasStarted && (
+        <>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              className={mode === "solo" ? "btn er-btn-primary" : "btn btn-outline"}
+              onClick={() => setMode("solo")}
+            >
+              Solo
+            </button>
+
+            <button
+              type="button"
+              className={mode === "multiplayer" ? "btn er-btn-primary" : "btn btn-outline"}
+              onClick={() => setMode("multiplayer")}
+            >
+              Multiplayer
+            </button>
+          </div>
+
+          {mode === "multiplayer" && (
+            <div className="grid gap-3 rounded-lg border border-slate-600/70 p-3">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={handleCreateTeam}
+                  disabled={isLoading}
+                >
+                  Create team
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => void refreshTeams()}
+                  disabled={isRefreshingTeams || isLoading}
+                >
+                  {isRefreshingTeams ? "Refreshing…" : "Refresh teams"}
+                </button>
+              </div>
+
+              {teams.length > 0 ? (
+                <div className="grid gap-2">
+                  <label className="p2 er-text" htmlFor="team-select">
+                    Join an open team
+                  </label>
+
+                  <select
+                    id="team-select"
+                    className="input"
+                    value={selectedTeamId}
+                    onChange={(event) => setSelectedTeamId(event.target.value)}
+                    disabled={isLoading}
+                  >
+                    <option value="">Select a team</option>
+
+                    {teams.map((team) => (
+                      <option key={team.id} value={team.id}>
+                        {team.createdBy?.displayName || team.createdBy?.username || "Team"} ·{" "}
+                        {team.members?.length ?? 0} member
+                        {team.members?.length === 1 ? "" : "s"}
+                      </option>
+                    ))}
+                  </select>
+
+                  {selectedTeamId && (
+                    <button
+                      type="button"
+                      className="btn btn-outline w-full sm:w-auto"
+                      onClick={() => void handleJoinTeam(selectedTeamId)}
+                      disabled={isLoading}
+                    >
+                      Join selected team
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <p className="p2 er-text">No teams are open yet. Create a team to invite others.</p>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {teamMessage && !teamHasStarted && <p className="p2 er-text">{teamMessage}</p>}
+
+      <div className="card-actions mt-2">
+        <button
+          className="btn er-btn-primary w-full sm:w-auto"
+          onClick={() => void handleStart()}
+          disabled={isLoading || !canStartTeam}
+        >
+          {mode === "multiplayer" ? "Start team run" : briefing.startButton}
+        </button>
+      </div>
+    </>
+  );
+
+  if (!isSpaceTheme) {
+    return (
+      <LibraryStartScreen theme={theme}>
+        {controls}
+      </LibraryStartScreen>
+    );
+  }
 
   return (
     <div className="grid gap-3">

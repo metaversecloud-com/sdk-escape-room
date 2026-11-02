@@ -19,10 +19,9 @@ interface Args {
  * ecosystem entry (puzzle rewards + artifacts). Ignores BADGE-typed entries.
  *
  * Call after any item grant — handleGrantItem (artifact pickup) and
- * handleSubmitPuzzle (Battery / Fuse / Wrench / Circuit Chip rewards from
- * puzzles 1/2/3/5). Safe to call on every submit; short-circuits cheaply
- * if the badge is already owned or the player hasn't collected the full
- * set yet.
+ * handleSubmitPuzzle (SPACE puzzle rewards or LIBRARY Papers). Safe to call
+ * on every submit; short-circuits cheaply if the badge is already owned or
+ * the player hasn't collected the full set yet.
  *
  * `awardBadge` itself short-circuits on already-owned, so the toast fires
  * exactly once.
@@ -43,9 +42,9 @@ export const checkTrashPandaBadge = async ({ credentials, visitor, visitorInvent
     .filter((i: any) => i.metadata?.type === "artifact")
     .map((i: any) => i.name as string);
 
-  const keyItemNames = activeItems
+  const keyItemIds = activeItems
     .filter((i: any) => i.metadata?.type === "keyItem")
-    .map((i: any) => i.name as string);
+    .map((i: any) => i.id as string);
 
   const playerArtifactNames = new Set(
     visitorInventory.items
@@ -72,12 +71,12 @@ export const checkTrashPandaBadge = async ({ credentials, visitor, visitorInvent
 
   if (!team) return false;
 
-  const teamKeyItemNames = new Set(
-    (team.keyItems || []).map((item) => item.name),
+  const teamKeyItemIds = new Set(
+    (team.keyItems || []).map((item) => item.id),
   );
 
-  const hasAllKeyItems = keyItemNames.every((name) =>
-    teamKeyItemNames.has(name),
+  const hasAllKeyItems = keyItemIds.every((id) =>
+    teamKeyItemIds.has(id),
   );
 
   if (!hasAllKeyItems) return false;

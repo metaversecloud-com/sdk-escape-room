@@ -1,5 +1,14 @@
 import { Request, Response } from "express";
-import { BADGES, awardBadge, errorHandler, getCredentials, getVisitor, getVisitorInventory } from "@utils/index.js";
+import {
+  BADGES,
+  awardBadge,
+  errorHandler,
+  getCredentials,
+  getSessionTheme,
+  getVisitor,
+  getVisitorInventory,
+  isPuzzleInTheme,
+} from "@utils/index.js";
 
 /**
  * Threshold of wrong attempts on a single puzzle required to earn the
@@ -7,8 +16,6 @@ import { BADGES, awardBadge, errorHandler, getCredentials, getVisitor, getVisito
  * one panel is what the badge rewards.
  */
 const BUTTON_MASHER_THRESHOLD = 4;
-
-const VALID_PUZZLE_NUMBERS = new Set([1, 2, 3, 4, 5, 6, 7]);
 
 /**
  * Bumps the visitor's wrong-attempt counter for a puzzle and awards
@@ -29,11 +36,18 @@ export const handleWrongAttempt = async (req: Request, res: Response) => {
     const sessionKey = `${urlSlug}-${sceneDropId}`;
 
     const puzzleNumber = req.body?.puzzleNumber;
-    if (typeof puzzleNumber !== "number" || !VALID_PUZZLE_NUMBERS.has(puzzleNumber)) {
-      return res.status(400).json({ success: false, error: "Invalid puzzleNumber. Must be 1-7." });
+    if (typeof puzzleNumber !== "number" || !Number.isSafeInteger(puzzleNumber) || puzzleNumber < 1) {
+      return res.status(400).json({ success: false, error: "Invalid puzzleNumber. Must be a positive integer." });
     }
 
     const { visitor, session, visitorInventory } = await getVisitor(credentials, true);
+    const theme = await getSessionTheme(credentials, session);
+    if (!isPuzzleInTheme(theme, puzzleNumber)) {
+      return res.status(400).json({
+        success: false,
+        error: `Puzzle ${puzzleNumber} is not part of the ${theme.themeID} theme.`,
+      });
+    }
 
     // Bump counter. Treat missing entries as 0.
     const wrongAttempts = { ...(session.wrongAttempts || {}) };

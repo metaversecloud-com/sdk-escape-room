@@ -7,3 +7,7 @@ export { default as Room2Puzzle2 } from "./Room2Puzzle2";
 export { default as Room2Puzzle3 } from "./Room2Puzzle3";
 export * from "./Room3Puzzle1.js";
 export * from "./Room3Puzzle2.js";
+export { default as LibraryPuzzle1 } from "./library/Puzzle1";
+export { default as LibraryPuzzle2 } from "./library/Puzzle2";
+export { default as LibraryPuzzle3 } from "./library/Puzzle3";
+export { default as LibraryPuzzle4 } from "./library/Puzzle4";

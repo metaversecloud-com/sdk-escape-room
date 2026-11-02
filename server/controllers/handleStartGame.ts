@@ -4,29 +4,46 @@ import {
   errorHandler,
   getCredentials,
   getDefaultVisitorData,
+  getDroppedAsset,
+  getKeyAsset,
+  getTheme,
   getVisitor,
   getVisitorInventory,
   moveVisitorToAsset,
 } from "@utils/index.js";
 
+const DEFAULT_TEAM_PUZZLES = {
+  1: false,
+  2: false,
+  3: false,
+  4: false,
+  5: false,
+  6: false,
+  7: false,
+};
+
 const startVisitorSession = async ({
   credentials,
   teamId,
   sessionKey,
+  themeID,
 }: {
   credentials: ReturnType<typeof getCredentials>;
   teamId?: string;
   sessionKey: string;
+  themeID: ReturnType<typeof getTheme>["themeID"];
 }) => {
   const profileId = credentials.profileId;
   const urlSlug = credentials.urlSlug;
 
   const { visitor } = await getVisitor(credentials, true);
-  await clearVisitorInventory({ visitor, credentials });
+  await clearVisitorInventory({ visitor });
   await visitor.fetchInventoryItems();
   const visitorInventory = getVisitorInventory(visitor.inventoryItems || []);
 
-  await moveVisitorToAsset(credentials, "EscapeRoom_room1_teleport");
+  await moveVisitorToAsset(credentials, "EscapeRoom_room1_teleport", {
+    themeID,
+  });
 
   const newSession = {
     ...getDefaultVisitorData(),
@@ -34,6 +51,7 @@ const startVisitorSession = async ({
     startTime: new Date().toISOString(),
     currentRoom: 1 as const,
     physicalRoom: 1 as const,
+    themeID,
     groupId: teamId || undefined,
   };
 
@@ -65,9 +83,10 @@ export const handleStartGame = async (req: Request, res: Response) => {
   try {
     const credentials = getCredentials(req.query);
     const requestedTeamId = typeof req.body?.teamId === "string" ? req.body.teamId : undefined;
-    const { getKeyAsset } = await import("@utils/index.js");
+    const droppedAsset = await getDroppedAsset(credentials);
     const keyAsset = await getKeyAsset(credentials);
     const keyData = (keyAsset?.dataObject as Record<string, any> | null) || {};
+    const theme = getTheme(droppedAsset.dataObject?.themeID);
     const teams = (keyData.teams || {}) as Record<string, any>;
     const activeTeam = Object.values(teams).find((candidate: any) =>
       Array.isArray(candidate?.members) && candidate.members.some((member: any) => member.profileId === credentials.profileId),
@@ -97,7 +116,14 @@ export const handleStartGame = async (req: Request, res: Response) => {
       }
     }
 
-    if (isMultiplayer && resolvedTeam && isLeader && !resolvedTeam.started) {
+    const shouldStartTeam =
+      isMultiplayer &&
+      resolvedTeam &&
+      ((isLeader && !resolvedTeam.started) ||
+        resolvedTeam.status === "started" ||
+        resolvedTeam.status === "completed");
+
+    if (shouldStartTeam) {
       const startedAt = new Date().toISOString();
       const updatedTeam = {
         ...resolvedTeam,
@@ -105,10 +131,11 @@ export const handleStartGame = async (req: Request, res: Response) => {
         started: true,
         startedAt,
         updatedAt: startedAt,
+        puzzlesCompleted: { ...DEFAULT_TEAM_PUZZLES },
+        keyItems: [],
+        completionTime: undefined,
       };
 
-      const { getKeyAsset } = await import("@utils/index.js");
-      const keyAsset = await getKeyAsset(credentials);
       if (!keyAsset) {
         return res.status(400).json({ success: false, error: "The game key asset is not available yet." });
       }
@@ -119,11 +146,26 @@ export const handleStartGame = async (req: Request, res: Response) => {
 
       await keyAsset.updateDataObject({ teams: nextTeams }, { lock: { lockId: `teams-${resolvedTeam.id}`, releaseLock: true } });
 
-      const leaderResult = await startVisitorSession({
-        credentials,
-        teamId: resolvedTeam.id,
-        sessionKey,
-      });
+      const startedResults = await Promise.all(
+        (updatedTeam.members || []).map(async (member: any) => {
+          const memberCreds = {
+            ...credentials,
+            profileId: member.profileId,
+            displayName: member.displayName,
+            username: member.username || credentials.username,
+            visitorId: member.visitorId ?? credentials.visitorId,
+          };
+
+          return startVisitorSession({
+            credentials: memberCreds,
+            teamId: resolvedTeam.id,
+            sessionKey,
+            themeID: theme.themeID,
+          });
+        }),
+      );
+
+      const leaderResult = startedResults.find((_, index) => (updatedTeam.members || [])[index]?.profileId === credentials.profileId) || startedResults[0];
 
       return res.json({
         success: true,
@@ -135,7 +177,12 @@ export const handleStartGame = async (req: Request, res: Response) => {
       });
     }
 
-    const singleStart = await startVisitorSession({ credentials, teamId, sessionKey });
+    const singleStart = await startVisitorSession({
+      credentials,
+      teamId,
+      sessionKey,
+      themeID: theme.themeID,
+    });
 
     return res.json({
       success: true,

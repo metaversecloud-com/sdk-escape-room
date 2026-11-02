@@ -1,10 +1,9 @@
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getVisitor } from "@utils/index.js";
+import { errorHandler, getCredentials, getSessionTheme, getVisitor, isPuzzleInTheme } from "@utils/index.js";
 
-type PuzzleNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7;
-const VALID_PUZZLE_NUMBERS: ReadonlySet<PuzzleNumber> = new Set([1, 2, 3, 4, 5, 6, 7]);
+type PuzzleNumber = number;
 const isPuzzleNumber = (value: unknown): value is PuzzleNumber =>
-  typeof value === "number" && VALID_PUZZLE_NUMBERS.has(value as PuzzleNumber);
+  typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 
 /**
  * Persists a puzzle's in-progress state ("draft") to the visitor's data object
@@ -27,7 +26,7 @@ export const handleSavePuzzleDraft = async (req: Request, res: Response) => {
     const draft = req.body?.draft;
 
     if (!isPuzzleNumber(puzzleNumber)) {
-      return res.status(400).json({ success: false, error: "Invalid puzzleNumber. Must be 1-7." });
+      return res.status(400).json({ success: false, error: "Invalid puzzleNumber. Must be a positive integer." });
     }
 
     const { visitor, session } = await getVisitor(credentials, false);
@@ -36,6 +35,13 @@ export const handleSavePuzzleDraft = async (req: Request, res: Response) => {
     // no-op the other cases so a stale client save can't corrupt anything.
     if (!session.sessionActive) {
       return res.json({ success: true, saved: false, reason: "noActiveSession" });
+    }
+    const theme = await getSessionTheme(credentials, session);
+    if (!isPuzzleInTheme(theme, puzzleNumber)) {
+      return res.status(400).json({
+        success: false,
+        error: `Puzzle ${puzzleNumber} is not part of the ${theme.themeID} theme.`,
+      });
     }
     if (session.puzzlesCompleted?.[puzzleNumber]) {
       return res.json({ success: true, saved: false, reason: "puzzleAlreadyComplete" });

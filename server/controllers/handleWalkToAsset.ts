@@ -4,20 +4,11 @@ import {
   errorHandler,
   getCachedInventoryItems,
   getCredentials,
+  getTheme,
   getVisitor,
   Visitor,
 } from "@utils/index.js";
-
-/**
- * Maps a `?screen=` artifact value to the matching ecosystem item name (used
- * to look up `metadata.room` and gate the walk). Mirrors the rule on the
- * client: drop digits to their own word and split camelCase boundaries.
- */
-const artifactItemName = (screen: string): string =>
-  screen
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/([a-zA-Z])(\d)/g, "$1 $2")
-    .replace(/(\d)([a-zA-Z])/g, "$1 $2");
+import { getArtifactItemName } from "@shared/themes.js";
 
 /** Hardcoded room gates for non-artifact screens (mirrors the client map). */
 const SCREEN_REQUIRED_ROOM: Record<string, number> = {
@@ -33,32 +24,27 @@ const SCREEN_REQUIRED_ROOM: Record<string, number> = {
   puzzle7: 3,
 };
 
-const ARTIFACT_SCREENS = new Set([
-  "Room1Artifact",
-  "CrewPortrait1",
-  "CrewPortrait2",
-  "CrewPortrait3",
-  "AlphaStation",
-  "BetaStation",
-  "OmegaStation",
-  "Room3Artifact",
-]);
-
 /**
  * Resolves the room required to walk to whatever the given `screen` opened.
  *
  * - Hardcoded screen → room map covers puzzle/room screens.
- * - Artifact screens look up the ecosystem item's `metadata.room` so the
- *   gate stays in sync with the dashboard (no double bookkeeping).
+ * - Theme artifact screens look up the ecosystem item's `metadata.room` so
+ *   the gate stays in sync with the dashboard (no double bookkeeping).
  * - Anything else returns `null` (no gate).
  */
-const resolveRequiredRoom = async (screen: string | undefined, credentials: any): Promise<number | null> => {
+const resolveRequiredRoom = async (
+  screen: string | undefined,
+  credentials: any,
+  themeID?: string,
+): Promise<number | null> => {
   if (!screen) return null;
   if (SCREEN_REQUIRED_ROOM[screen] != null) return SCREEN_REQUIRED_ROOM[screen];
-  if (!ARTIFACT_SCREENS.has(screen)) return null;
+  const theme = getTheme(themeID);
+  const artifactScreen = theme.artifactScreens.find((candidate) => candidate === screen);
+  if (!artifactScreen) return null;
 
   const items = await getCachedInventoryItems({ credentials });
-  const itemName = artifactItemName(screen);
+  const itemName = getArtifactItemName(artifactScreen);
   const match = items.find((i: any) => i.name === itemName && i.type === "ITEM");
   const room = (match?.metadata as Record<string, unknown> | undefined)?.room;
   return typeof room === "number" ? room : null;
@@ -84,12 +70,8 @@ export const handleWalkToAsset = async (req: Request, res: Response) => {
     const { assetId, urlSlug, visitorId } = credentials;
     const screen = typeof req.body?.screen === "string" ? (req.body.screen as string) : undefined;
 
-    // Look up the visitor's progression and the screen's required room (if any).
-    // Run these concurrently — they're independent.
-    const [{ session }, requiredRoom] = await Promise.all([
-      getVisitor(credentials, false),
-      resolveRequiredRoom(screen, credentials),
-    ]);
+    const { session } = await getVisitor(credentials, false);
+    const requiredRoom = await resolveRequiredRoom(screen, credentials, session.themeID);
 
     // Strict equality: only walk when the asset is in the player's current
     // physical room. Fall back to `currentRoom` for legacy sessions that

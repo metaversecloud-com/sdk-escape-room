@@ -1,6 +1,7 @@
 import { DroppedAssetInterface } from "@rtsdk/topia";
 
 export interface KeyAssetDataObject {
+  themeID?: string;
   // Pipe-delimited entries keyed by `${profileId}-${timestamp}`: "displayName|completionTime"
   leaderboard?: Record<string, string>;
   teams?: Record<string, TeamData>;
