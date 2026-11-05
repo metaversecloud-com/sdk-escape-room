@@ -122,34 +122,97 @@ export const Room3Puzzle2 = ({ refreshGameState }: Room3Puzzle2Props) => {
         })}
       </div>
 
-      <div className="my-2 grid grid-cols-3 gap-3 mx-auto">
+            {/* Numeric keypad */}
+      <div className="my-3 mx-auto grid w-full max-w-[330px] grid-cols-3 gap-3">
         {KEYPAD_DIGITS.map((num) => (
           <button
             key={num}
             onClick={() => handleKeypadClick(num)}
-            className="aspect-square w-full bg-zinc-700 hover:bg-zinc-600 text-white text-3xl font-bold rounded-xl shadow-md active:scale-95 transition"
+            disabled={isSubmitting}
+            className="
+              flex aspect-square w-full min-w-0
+              items-center justify-center
+              rounded-xl
+              border border-slate-500/60
+              bg-slate-800/90
+              text-3xl font-bold text-white
+              shadow-[0_4px_12px_rgba(0,0,0,0.35)]
+              transition-all duration-150
+              hover:border-blue-400
+              hover:bg-blue-500/20
+              hover:shadow-[0_0_15px_rgba(96,165,250,0.25)]
+              active:scale-95
+              active:bg-blue-500/30
+              disabled:opacity-50
+            "
           >
             {num}
           </button>
         ))}
 
+        {/* Clear */}
         <button
           onClick={() => handleKeypadClick("clear")}
-          className="aspect-square w-full bg-red-500 hover:bg-red-400 text-white text-lg font-bold rounded-xl"
+          disabled={isSubmitting}
+          className="
+            flex aspect-square w-full min-w-0
+            items-center justify-center
+            rounded-xl
+            border border-red-400/50
+            bg-red-500/10
+            text-lg font-bold text-red-300
+            transition-all duration-150
+            hover:border-red-400
+            hover:bg-red-500/25
+            active:scale-95
+            disabled:opacity-50
+          "
         >
-          {c.clearLabel}
+          CLEAR
         </button>
+
+        {/* Zero */}
         <button
           onClick={() => handleKeypadClick("0")}
-          className="aspect-square w-full bg-zinc-700 hover:bg-zinc-600 text-white text-3xl font-bold rounded-xl"
+          disabled={isSubmitting}
+          className="
+            flex aspect-square w-full min-w-0
+            items-center justify-center
+            rounded-xl
+            border border-slate-500/60
+            bg-slate-800/90
+            text-3xl font-bold text-white
+            shadow-[0_4px_12px_rgba(0,0,0,0.35)]
+            transition-all duration-150
+            hover:border-blue-400
+            hover:bg-blue-500/20
+            hover:shadow-[0_0_15px_rgba(96,165,250,0.25)]
+            active:scale-95
+            disabled:opacity-50
+          "
         >
           0
         </button>
+
+        {/* Delete */}
         <button
           onClick={() => handleKeypadClick("delete")}
-          className="aspect-square w-full bg-yellow-500 hover:bg-yellow-400 text-black text-lg font-bold rounded-xl"
+          disabled={isSubmitting}
+          className="
+            flex aspect-square w-full min-w-0
+            items-center justify-center
+            rounded-xl
+            border border-amber-400/50
+            bg-amber-500/10
+            text-sm font-bold text-amber-300
+            transition-all duration-150
+            hover:border-amber-400
+            hover:bg-amber-500/25
+            active:scale-95
+            disabled:opacity-50
+          "
         >
-          {c.backspaceLabel}
+          DELETE
         </button>
       </div>
 
