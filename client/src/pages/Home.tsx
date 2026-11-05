@@ -338,7 +338,7 @@ export const Home = () => {
   // repeat clicks), and dispatches the fresh visitorInventory so the panel
   // shows the new item immediately.
   useEffect(() => {
-    if (!hasInteractiveParams) return;
+    if (!hasInteractiveParams || !hasStarted) return;
     if (!isArtifactScreen(screen, theme)) return;
     setArtifactState({ state: "loading" });
     const itemName = getArtifactItemName(screen);
@@ -368,7 +368,7 @@ export const Home = () => {
           setErrorMessage(dispatch, err as ErrorType);
         }
       });
-  }, [screen, hasInteractiveParams, dispatch, theme]);
+  }, [screen, hasInteractiveParams, hasStarted, dispatch, theme.themeID]);
 
   // Initial game-state fetch
   useEffect(() => {

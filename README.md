@@ -22,7 +22,7 @@ The app rewards eight distinct badges across the run — including time-based (W
 
 - **Start terminal:** Start Escape Room, Session-in-progress card (with "restart" and "teleport to current room" CTAs) if the player has a live run.
 - **Puzzles 1–7:** rendered via `client/src/components/puzzles/` — each puzzle has its own UI and submits to `/api/submit-puzzle`.
-- **Artifact/inventory screens:** short lore blurbs for the ecosystem `ITEM` rewards; grants the item on view via `/api/grant-item`.
+- **Artifact/inventory screens:** short lore blurbs for the ecosystem `ITEM` rewards; grants the item on view via `/api/grant-item` only during an active game session. Artifact inventory is per-player and is not shared with teammates.
 - **Decoy screen:** the hidden "Trash Digger" easter-egg screen.
 
 ### Admin features
@@ -109,7 +109,7 @@ All routes mount under `/api`. **No admin gating — every route runs for the au
 | `POST` | `/start-game`     | Clears prior ecosystem ITEMs (badges preserved), teleports to Room 1, writes fresh session.                                                                                                                        |
 | `POST` | `/submit-puzzle`  | Body: `{ puzzleNumber }` for a puzzle configured in the active theme. Configured SPACE rewards and LIBRARY puzzles 1–3 grant items directly to the solving visitor, regardless of team membership; if teamed, rewards are also mirrored to the shared team inventory. SPACE retains its room transitions and badges. The final puzzle in either theme stamps completion, writes the leaderboard, and teleports home. |
 | `POST` | `/puzzle-draft`   | Persists a per-puzzle draft `{ puzzleNumber, draft }` into `session.puzzleDrafts` for close-and-resume; puzzle numbers outside the active theme are rejected.                                                                    |
-| `POST` | `/grant-item`     | Body: `{ itemName }`. Grants an ecosystem ITEM after room-gate check against `metadata.room`. Runs Trash Panda check.                                                                                              |
+| `POST` | `/grant-item`     | Body: `{ itemName }`. Requires an active game session, then grants the visitor an ecosystem ITEM after room-gate check against `metadata.room`. Inventory is per-player (not shared with teammates). Runs Trash Panda check. |
 | `POST` | `/teleport`       | Body: `{ room?: 1 \| 2 \| 3 }`. Gated on `puzzlesCompleted`; bumps `physicalRoom` and moves the visitor to the target room's teleport pad.                                                                         |
 | `POST` | `/walk-to-asset`  | Body: `{ screen }`. Walks visitor onto the artifact's asset (`y + 150`). Refuses cross-room walks with `{ walked: false, reason: "wrongRoom" }`.                                                                   |
 | `POST` | `/discover-decoy` | Idempotent: awards Trash Digger badge. No room gate.                                                                                                                                                               |

@@ -4,6 +4,19 @@ process.env.INTERACTIVE_SECRET = "test-secret";
 import express from "express";
 import request from "supertest";
 
+jest.mock("../utils/sseManager.js", () => ({
+  sseManager: {
+    addConnection: jest.fn(),
+    removeConnection: jest.fn(),
+    heartbeat: jest.fn(),
+    getVisitorIdForProfile: jest.fn(),
+    publish: jest.fn(),
+    get connectionCount() {
+      return 0;
+    },
+  },
+}));
+
 import router from "../routes.js";
 
 function makeApp() {
@@ -120,6 +133,7 @@ jest.mock("@utils/index.js", () => ({
 }));
 
 const mockUtils = jest.mocked(require("@utils/index.js"));
+const mockSseManager = jest.mocked(require("../utils/sseManager.js").sseManager);
 const spaceTheme = {
   themeID: "SPACE",
   displayName: "SPACE",
@@ -1078,5 +1092,56 @@ describe("escape-room routes", () => {
     expect(res.body.visitorData.startTime).toBe(startTime);
     // No time limit — the endpoint must not report a countdown of any kind.
     expect(res.body.remainingMs).toBeUndefined();
+  });
+
+  test("POST /grant-item rejects inactive sessions without granting or notifying", async () => {
+    const { visitor, session } = buildVisitorMock();
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp())
+      .post("/api/grant-item")
+      .query(baseCreds)
+      .send({ itemName: "Room 1 Artifact" });
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({
+      success: false,
+      error: "An active game session is required to acquire artifacts",
+    });
+    expect(visitor.grantInventoryItem).not.toHaveBeenCalled();
+    expect(mockUtils.fireToast).not.toHaveBeenCalled();
+    expect(mockSseManager.publish).not.toHaveBeenCalled();
+  });
+
+  test("POST /grant-item keeps active artifact inventory private to the visitor", async () => {
+    const { visitor, session } = buildVisitorMock({
+      groupId: "team-1",
+      sessionActive: true,
+      physicalRoom: 1,
+    });
+    const artifact = { id: "artifact-1", name: "Room 1 Artifact", type: "ITEM" };
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    mockUtils.getCachedInventoryItems.mockResolvedValue([artifact]);
+
+    const res = await request(makeApp())
+      .post("/api/grant-item")
+      .query(baseCreds)
+      .send({ itemName: artifact.name });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(visitor.grantInventoryItem).toHaveBeenCalledWith(artifact, 1);
+    expect(mockUtils.fireToast).toHaveBeenCalledTimes(1);
+    expect(mockSseManager.publish).not.toHaveBeenCalled();
   });
 });

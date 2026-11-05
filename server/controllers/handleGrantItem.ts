@@ -8,7 +8,6 @@ import {
   getVisitor,
   getVisitorInventory,
 } from "@utils/index.js";
-import { sseManager } from "../utils/sseManager.js";
 import { toasts } from "@shared/copy/toasts.js";
 
 /**
@@ -41,6 +40,13 @@ export const handleGrantItem = async (req: Request, res: Response) => {
     }
 
     const { visitor, session, visitorInventory } = await getVisitor(credentials, true);
+    if (session.sessionActive !== true) {
+      return res.status(403).json({
+        success: false,
+        error: "An active game session is required to acquire artifacts",
+      });
+    }
+
     const alreadyHad = visitorInventory.items.some((i) => i.name === itemName);
 
     // Always need to look up the ecosystem item to read metadata.room, even
@@ -95,24 +101,6 @@ export const handleGrantItem = async (req: Request, res: Response) => {
     }
 
     const item = updatedInventory.items.find((i) => i.name === itemName) || null;
-    const teamId = session.groupId || credentials.groupId;
-
-    sseManager.publish({
-      event: "state:update",
-      assetId: credentials.assetId,
-      urlSlug: credentials.urlSlug,
-      visitorId: credentials.visitorId,
-      interactiveNonce: credentials.interactiveNonce,
-      groupId: teamId,
-      data: {
-        kind: "inventory",
-        item,
-        alreadyHad,
-        visitorInventory: updatedInventory,
-        visitorData: session,
-      },
-    });
-
     return res.json({
       success: true,
       item,
