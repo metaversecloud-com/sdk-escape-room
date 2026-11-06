@@ -6,6 +6,7 @@ export * from "./InfoCard.js";
 export * from "./InventoryPanel.js";
 export * from "./LibraryStartScreen.js";
 export * from "./Leaderboard.js";
+export * from "./LibraryExitCongratsCard.js";
 export * from "./RefRow.js";
 export * from "./RoomIntroCard.js";
 export * from "./SessionInProgressCard.js";

@@ -1379,7 +1379,7 @@ body[data-theme="LIBRARY"] {
 .library-paper-slots {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 24px;
+  gap: 4px;
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
@@ -1609,6 +1609,62 @@ body[data-theme="LIBRARY"] {
   }
 }
 
+/*Library exit card*/
+
+.library-exit-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.library-exit-card > * {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.library-exit-message {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+
+.library-exit-stats {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.library-exit-stat,
+.library-exit-leaderboard {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.library-exit-table {
+  width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.library-exit-table th,
+.library-exit-table td {
+  min-width: 0;
+  padding: 0.4rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 
 /* ─── Responsive (shared across puzzles) ─── */
 

@@ -472,10 +472,9 @@ export const Puzzle4 = ({
           {papersAreCorrect && (
             <section className="library-connection-stage">
               <div className="library-paper-stage-heading">
-                <h3>Part 2: Restore the Connections</h3>
+                <h3>Part 2: Finding Patterns</h3>
                 <p>
-                  Connect the dots to recreate the pattern. Select
-                  two dots to draw a line between them. Select an
+                  Use your knowledge to piece it all together. Select two dots to draw a line between them. Select an
                   existing pair again to remove its line.
                 </p>
               </div>

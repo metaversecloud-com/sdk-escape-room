@@ -9,6 +9,7 @@ import {
   ExitCongratsCard,
   InfoCard,
   InventoryPanel,
+  LibraryExitCongratsCard,
   Leaderboard,
   LockedState,
   PageContainer,
@@ -505,10 +506,21 @@ export const Home = () => {
     return (
       <PageContainer isLoading={isPageLoading}>
         <div className="flex flex-col w-full items-start gap-4">
-          <ExitCongratsCard completionTime={visitorSession?.completionTime} 
-          leaderboard={leaderboard} 
-          teamLeaderboard={teamLeaderboard} 
-          teamId={visitorData?.groupId}/>
+          {theme.themeID === "LIBRARY" ? (
+            <LibraryExitCongratsCard
+              completionTime={visitorSession?.completionTime}
+              leaderboard={leaderboard}
+              teamLeaderboard={teamLeaderboard}
+              teamId={visitorData?.groupId}
+            />
+          ) : (
+            <ExitCongratsCard
+              completionTime={visitorSession?.completionTime}
+              leaderboard={leaderboard}
+              teamLeaderboard={teamLeaderboard}
+              teamId={visitorData?.groupId}
+            />
+          )}
         </div>
       </PageContainer>
     );
