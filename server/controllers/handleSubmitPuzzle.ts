@@ -683,48 +683,6 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         );
       }
 
-      // Mark the current team as completed
-      if (keyAsset && teamId) {
-        const teams = keyAssetDataObject?.teams || {};
-        const team = teams[teamId];
-
-        if (team) {
-          const completedAt = new Date().toISOString();
-
-          await keyAsset.updateDataObject(
-            {
-              teams: {
-                ...teams,
-                [teamId]: {
-                  ...team,
-                  status: "completed",
-                  updatedAt: completedAt,
-                  completionTime: game.completionTime ?? 0,
-                },
-              },
-            },
-            {
-              lock: {
-                lockId: `teams-complete-${teamId}`,
-                releaseLock: true,
-              },
-            },
-          );
-        }
-      }
-
-      sseManager.publish({
-        event: "GAME_COMPLETED",
-        assetId: credentials.assetId,
-        urlSlug: credentials.urlSlug,
-        visitorId: credentials.visitorId,
-        interactiveNonce: credentials.interactiveNonce,
-        groupId: game.groupId,
-        data: {
-          teamId: game.groupId,
-        },
-      });
-
       teleport = "EscapeRoom_start_teleport";
 
       await visitor
@@ -773,22 +731,6 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       },
     );
 
-    if (teleport) {
-      try {
-        console.log("FINAL TELEPORTING SUBMITTER", {
-          visitorId: credentials.visitorId,
-          profileId: credentials.profileId,
-          teleport,
-        });
-        await moveVisitorToAsset(credentials, teleport, {
-          themeID: theme.themeID,
-          allowThemeFallback: true,
-        });
-      } catch (err) {
-        console.warn(`moveVisitorToAsset to "${teleport}" failed`, err);
-      }
-    }
-
     if (teamId) {
       const keyAssetForTeam = await getKeyAsset(credentials);
 
@@ -807,6 +749,12 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
               [puzzleNumber]: true,
             },
             updatedAt: new Date().toISOString(),
+            ...(puzzleNumber === finalPuzzleNumber
+              ? {
+                  status: "completed" as const,
+                  completionTime: game.completionTime ?? 0,
+                }
+              : {}),
           };
 
           await keyAssetForTeam.updateDataObject(
@@ -823,7 +771,30 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
               },
             },
           );
+
+          if (puzzleNumber === finalPuzzleNumber) {
+            sseManager.publish({
+              event: "GAME_COMPLETED",
+              assetId: credentials.assetId,
+              urlSlug: credentials.urlSlug,
+              visitorId: credentials.visitorId,
+              interactiveNonce: credentials.interactiveNonce,
+              groupId: teamId,
+              data: { teamId },
+            });
+          }
         }
+      }
+    }
+
+    if (teleport) {
+      try {
+        await moveVisitorToAsset(credentials, teleport, {
+          themeID: theme.themeID,
+          allowThemeFallback: true,
+        });
+      } catch (err) {
+        console.warn(`moveVisitorToAsset to "${teleport}" failed`, err);
       }
     }
 

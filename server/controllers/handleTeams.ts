@@ -65,14 +65,15 @@ const getTeamState = async (credentials: ReturnType<typeof getCredentials>) => {
 const findTeamForProfile = (
   teams: Record<string, TeamData> = {},
   profileId?: string,
+  groupId?: string,
 ) => {
-  if (!profileId) return undefined;
+  if (!profileId || !groupId) return undefined;
 
-  return Object.values(teams).find(
-    (team) =>
-      team?.status !== "completed" &&
-      team?.members?.some((member) => member.profileId === profileId),
-  );
+  const team = teams[groupId];
+  return team?.status !== "completed" &&
+    team?.members?.some((member) => member.profileId === profileId)
+    ? team
+    : undefined;
 };
 
 const pruneInactiveTeams = (teams: Record<string, TeamData> = {}, now = Date.now()) => {
@@ -125,6 +126,7 @@ export const handleGetTeams = async (req: Request, res: Response) => {
   try {
     const credentials = getCredentials(req.query);
     const { keyAsset, teams } = await getTeamState(credentials);
+    const { session } = await getVisitor(credentials, true);
     const cleanedTeams = pruneInactiveTeams(teams);
 
     if (keyAsset && Object.keys(cleanedTeams).length !== Object.keys(teams).length) {
@@ -138,6 +140,7 @@ export const handleGetTeams = async (req: Request, res: Response) => {
     const playerTeam = findTeamForProfile(
       cleanedTeams,
       credentials.profileId,
+      session.groupId,
     );
 
     const list = [...waitingTeams];
@@ -169,16 +172,6 @@ export const handleCreateTeam = async (req: Request, res: Response) => {
     if (!keyAsset) {
       return res.status(400).json({ success: false, error: "The game key asset is not available yet." });
     }
-
-    const activeTeams = pruneInactiveTeams(teams);
-    const existingTeam = findTeamForProfile(
-      Object.fromEntries(
-        Object.entries(activeTeams).filter(
-          ([, team]) => team.status === "waiting"
-        )
-      ),
-      credentials.profileId
-    );
 
     const teamId = `team-${Date.now()}-${credentials.profileId}`;
     const member = makeMember(credentials);
@@ -226,7 +219,8 @@ export const handleJoinTeam = async (req: Request, res: Response) => {
     }
 
     const activeTeams = pruneInactiveTeams(teams);
-    const existingTeam = findTeamForProfile(activeTeams, credentials.profileId);
+    const { session } = await getVisitor(credentials, true);
+    const existingTeam = findTeamForProfile(activeTeams, credentials.profileId, session.groupId);
     if (existingTeam && existingTeam.id !== teamId) {
       return res.status(400).json({
         success: false,

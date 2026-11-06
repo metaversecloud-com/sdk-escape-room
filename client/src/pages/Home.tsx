@@ -22,7 +22,7 @@ import { content } from "@/constants";
 import { GlobalDispatchContext, GlobalStateContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
 import { backendAPI, formatElapsedFromTimestamp, setErrorMessage, setGameState } from "@/utils";
-import { getArtifactItemName, getFinalPuzzleNumber } from "@shared/themes";
+import { getArtifactItemName } from "@shared/themes";
 import {
   getPuzzleNumberFromScreen,
   getRoomForScreen,
@@ -144,15 +144,48 @@ export const Home = () => {
     setGameState(dispatch, response.data);
   }, [dispatch]);
 
+  const teamCompletionTeleportHandledRef = useRef(false);
+  const teamCompletionTeleportInFlightRef = useRef(false);
+  const teleportHomeAfterTeamCompletion = useCallback(async () => {
+    if (teamCompletionTeleportHandledRef.current || teamCompletionTeleportInFlightRef.current) return false;
+
+    teamCompletionTeleportInFlightRef.current = true;
+    try {
+      const response = await backendAPI.post("/teleport", { room: "start" });
+      if (response.data?.teleported === true) {
+        teamCompletionTeleportHandledRef.current = true;
+        return true;
+      }
+      if (response.data?.reason !== "teamNotCompleted") {
+        console.warn("TEAM COMPLETION TELEPORT NOT COMPLETED", response.data?.reason);
+      }
+      return false;
+    } catch (error) {
+      console.error("TEAM COMPLETION TELEPORT FAILED", error);
+      return false;
+    } finally {
+      teamCompletionTeleportInFlightRef.current = false;
+    }
+  }, []);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const required = ["assetId", "displayName", "interactiveNonce", "profileId", "sceneDropId", "urlSlug", "visitorId"];
     if (!required.every((key) => params.get(key))) return;
 
     const eventSource = new EventSource(`/api/sse?${params.toString()}`);
-    const heartbeat = window.setInterval(() => {
-      backendAPI.get("/heartbeat").catch(() => undefined);
-    }, 15000);
+    const checkHeartbeat = async () => {
+      try {
+        const response = await backendAPI.get("/heartbeat");
+        if (response.data?.teamCompleted && (await teleportHomeAfterTeamCompletion())) {
+          await refreshGameState();
+        }
+      } catch (error) {
+        console.error("TEAM COMPLETION HEARTBEAT FAILED", error);
+      }
+    };
+    void checkHeartbeat();
+    const heartbeat = window.setInterval(() => void checkHeartbeat(), 15000);
 
     eventSource.onmessage = async (event) => {
       try {
@@ -192,12 +225,7 @@ export const Home = () => {
         }
 
         if (payload?.kind === "GAME_COMPLETED") {
-          try {
-            await backendAPI.post("/teleport", { room: "start" });
-          } catch (error) {
-            console.error("FINAL TEAM TELEPORT REQUEST FAILED", error);
-          }
-
+          await teleportHomeAfterTeamCompletion();
           await refreshGameState();
           return;
         }
@@ -218,7 +246,7 @@ export const Home = () => {
       eventSource.close();
       window.clearInterval(heartbeat);
     };
-  }, [hasInteractiveParams, refreshGameState]);
+  }, [hasInteractiveParams, refreshGameState, teleportHomeAfterTeamCompletion]);
 
   // Sticky for the lifetime of this iframe — flips true the first time the
   // player hits the Start button so the post-click render shows the Room 1
@@ -473,7 +501,7 @@ export const Home = () => {
         </div>
       </PageContainer>
     );
-  } else if (puzzleNumber === getFinalPuzzleNumber(theme) && isFinished) {
+  } else if (isFinished && screen !== "start") {
     return (
       <PageContainer isLoading={isPageLoading}>
         <div className="flex flex-col w-full items-start gap-4">

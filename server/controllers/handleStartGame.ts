@@ -83,17 +83,19 @@ export const handleStartGame = async (req: Request, res: Response) => {
   try {
     const credentials = getCredentials(req.query);
     const requestedTeamId = typeof req.body?.teamId === "string" ? req.body.teamId : undefined;
+    const isMultiplayer = req.body?.multiplayer === true;
     const droppedAsset = await getDroppedAsset(credentials);
     const keyAsset = await getKeyAsset(credentials);
     const keyData = (keyAsset?.dataObject as Record<string, any> | null) || {};
     const theme = getTheme(droppedAsset.dataObject?.themeID);
     const teams = (keyData.teams || {}) as Record<string, any>;
     const activeTeam = Object.values(teams).find((candidate: any) =>
-      Array.isArray(candidate?.members) && candidate.members.some((member: any) => member.profileId === credentials.profileId),
+      candidate?.status !== "completed" &&
+      Array.isArray(candidate?.members) &&
+      candidate.members.some((member: any) => member.profileId === credentials.profileId),
     );
 
-    const teamId = requestedTeamId || activeTeam?.id;
-    const isMultiplayer = req.body?.multiplayer === true || Boolean(teamId);
+    const teamId = isMultiplayer ? requestedTeamId || activeTeam?.id : undefined;
     const { sceneDropId, urlSlug } = credentials;
     const sessionKey = `${urlSlug}-${sceneDropId}`;
 
@@ -101,7 +103,17 @@ export const handleStartGame = async (req: Request, res: Response) => {
     let isLeader = false;
 
     if (isMultiplayer) {
-      resolvedTeam = teamId ? teams[teamId] || activeTeam : activeTeam;
+      if (!teamId) {
+        return res.status(400).json({ success: false, error: "A team is required to start a multiplayer run." });
+      }
+
+      resolvedTeam = teams[teamId];
+      if (!resolvedTeam) {
+        return res.status(404).json({ success: false, error: "Team not found." });
+      }
+      if (!resolvedTeam.members?.some((member: any) => member.profileId === credentials.profileId)) {
+        return res.status(403).json({ success: false, error: "You must be a team member to start this run." });
+      }
 
       if (resolvedTeam) {
         isLeader = resolvedTeam.leaderProfileId === credentials.profileId || resolvedTeam.createdBy?.profileId === credentials.profileId;
@@ -114,72 +126,42 @@ export const handleStartGame = async (req: Request, res: Response) => {
           });
         }
       }
-    }
 
-    const shouldStartTeam =
-      isMultiplayer &&
-      resolvedTeam &&
-      ((isLeader && !resolvedTeam.started) ||
-        resolvedTeam.status === "started" ||
-        resolvedTeam.status === "completed");
-
-    if (shouldStartTeam) {
-      const startedAt = new Date().toISOString();
-      const updatedTeam = {
-        ...resolvedTeam,
-        status: "started",
-        started: true,
-        startedAt,
-        updatedAt: startedAt,
-        puzzlesCompleted: { ...DEFAULT_TEAM_PUZZLES },
-        keyItems: [],
-        completionTime: undefined,
-      };
-
-      if (!keyAsset) {
-        return res.status(400).json({ success: false, error: "The game key asset is not available yet." });
+      if (resolvedTeam.status === "completed") {
+        return res.status(409).json({
+          success: false,
+          error: "This team run is complete. Create or join a new team to play together again.",
+        });
       }
 
-      const keyData = (keyAsset.dataObject as Record<string, any> | null) || {};
-      const teams = (keyData.teams || {}) as Record<string, any>;
-      const nextTeams = { ...teams, [resolvedTeam.id]: updatedTeam };
+      if (resolvedTeam.status === "waiting") {
+        if (!keyAsset) {
+          return res.status(400).json({ success: false, error: "The game key asset is not available yet." });
+        }
 
-      await keyAsset.updateDataObject({ teams: nextTeams }, { lock: { lockId: `teams-${resolvedTeam.id}`, releaseLock: true } });
+        const startedAt = new Date().toISOString();
+        resolvedTeam = {
+          ...resolvedTeam,
+          status: "started",
+          started: true,
+          startedAt,
+          updatedAt: startedAt,
+          puzzlesCompleted: { ...DEFAULT_TEAM_PUZZLES },
+          keyItems: [],
+          completionTime: undefined,
+        };
+        const nextTeams = { ...teams, [resolvedTeam.id]: resolvedTeam };
 
-      const startedResults = await Promise.all(
-        (updatedTeam.members || []).map(async (member: any) => {
-          const memberCreds = {
-            ...credentials,
-            profileId: member.profileId,
-            displayName: member.displayName,
-            username: member.username || credentials.username,
-            visitorId: member.visitorId ?? credentials.visitorId,
-          };
-
-          return startVisitorSession({
-            credentials: memberCreds,
-            teamId: resolvedTeam.id,
-            sessionKey,
-            themeID: theme.themeID,
-          });
-        }),
-      );
-
-      const leaderResult = startedResults.find((_, index) => (updatedTeam.members || [])[index]?.profileId === credentials.profileId) || startedResults[0];
-
-      return res.json({
-        success: true,
-        message: "Game started",
-        visitorData: leaderResult.visitorData,
-        visitorInventory: leaderResult.visitorInventory,
-        teamId: resolvedTeam.id,
-        sessionKey,
-      });
+        await keyAsset.updateDataObject(
+          { teams: nextTeams },
+          { lock: { lockId: `teams-${resolvedTeam.id}`, releaseLock: true } },
+        );
+      }
     }
 
-    const singleStart = await startVisitorSession({
+    const startedSession = await startVisitorSession({
       credentials,
-      teamId,
+      teamId: resolvedTeam?.id,
       sessionKey,
       themeID: theme.themeID,
     });
@@ -187,10 +169,10 @@ export const handleStartGame = async (req: Request, res: Response) => {
     return res.json({
       success: true,
       message: "Game started",
-      visitorData: singleStart.visitorData,
-      visitorInventory: singleStart.visitorInventory,
+      visitorData: startedSession.visitorData,
+      visitorInventory: startedSession.visitorInventory,
       sessionKey,
-      ...(teamId ? { teamId } : {}),
+      ...(resolvedTeam ? { teamId: resolvedTeam.id } : {}),
     });
   } catch (error) {
     return errorHandler({

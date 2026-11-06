@@ -1,17 +1,12 @@
 import { Request, Response } from "express";
-import { getCredentials, errorHandler, getVisitor } from "../utils/index.js";
+import { getCredentials, errorHandler, getKeyAsset, getVisitor } from "../utils/index.js";
 import { sseManager } from "../utils/sseManager.js";
+import { KeyAssetDataObject } from "../types/index.js";
 
 export const handleSSE = async (req: Request, res: Response) => {
   try {
     const credentials = getCredentials(req.query);
 
-    console.log("SSE CONNECTION", {
-      profileId: credentials.profileId,
-      visitorId: credentials.visitorId,
-      assetId: credentials.assetId,
-      urlSlug: credentials.urlSlug,
-    });
 
     const { assetId, urlSlug, visitorId, profileId, interactiveNonce } = credentials;
     const { session } = await getVisitor(credentials, true);
@@ -31,14 +26,6 @@ export const handleSSE = async (req: Request, res: Response) => {
       profileId,
       interactiveNonce,
       groupId,
-    });
-
-    console.log("SSE REGISTERED", {
-      profileId,
-      visitorId,
-      assetId,
-      urlSlug,
-      connections: sseManager.connectionCount,
     });
 
     res.write(`retry: 5000\ndata: ${JSON.stringify({ success: true })}\n\n`);
@@ -65,7 +52,14 @@ export const handleHeartbeat = async (req: Request, res: Response) => {
 
     sseManager.heartbeat(visitorId, assetId, urlSlug, session.groupId || credentials.groupId);
 
-    return res.json({ success: true });
+    const keyAsset = session.groupId ? await getKeyAsset(credentials) : null;
+    const keyAssetData = (keyAsset?.dataObject as KeyAssetDataObject | null) || {};
+    const team = session.groupId ? keyAssetData.teams?.[session.groupId] : undefined;
+    const teamCompleted =
+      team?.status === "completed" &&
+      team.members?.some((member) => member.profileId === credentials.profileId) === true;
+
+    return res.json({ success: true, teamCompleted });
   } catch (error) {
     return errorHandler({
       error,
