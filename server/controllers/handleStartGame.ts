@@ -5,22 +5,15 @@ import {
   getCredentials,
   getDefaultVisitorData,
   getDroppedAsset,
+  getKeyAssetDataObjectLockId,
   getKeyAsset,
   getTheme,
   getVisitor,
   getVisitorInventory,
+  getVisitorDataObjectLockId,
   moveVisitorToAsset,
 } from "@utils/index.js";
-
-const DEFAULT_TEAM_PUZZLES = {
-  1: false,
-  2: false,
-  3: false,
-  4: false,
-  5: false,
-  6: false,
-  7: false,
-};
+import { getInitialRoom } from "@shared/themes.js";
 
 const startVisitorSession = async ({
   credentials,
@@ -35,22 +28,23 @@ const startVisitorSession = async ({
 }) => {
   const profileId = credentials.profileId;
   const urlSlug = credentials.urlSlug;
+  const firstRoom = getInitialRoom(getTheme(themeID));
 
   const { visitor } = await getVisitor(credentials, true);
   await clearVisitorInventory({ visitor });
   await visitor.fetchInventoryItems();
   const visitorInventory = getVisitorInventory(visitor.inventoryItems || []);
 
-  await moveVisitorToAsset(credentials, "EscapeRoom_room1_teleport", {
+  await moveVisitorToAsset(credentials, firstRoom.spawnUniqueName, {
     themeID,
   });
 
   const newSession = {
-    ...getDefaultVisitorData(),
+    ...getDefaultVisitorData(getTheme(themeID)),
     sessionActive: true,
     startTime: new Date().toISOString(),
-    currentRoom: 1 as const,
-    physicalRoom: 1 as const,
+    currentRoom: firstRoom.id,
+    physicalRoom: firstRoom.id,
     themeID,
     groupId: teamId || undefined,
   };
@@ -58,7 +52,7 @@ const startVisitorSession = async ({
   await visitor.updateDataObject(
     { [sessionKey]: newSession },
     {
-      lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true },
+      lock: { lockId: getVisitorDataObjectLockId(credentials), releaseLock: true },
       analytics: [
         {
           analyticName: "gameStarts",
@@ -67,7 +61,7 @@ const startVisitorSession = async ({
           uniqueKey: `${profileId}-${sessionKey}-start`,
         },
         {
-          analyticName: "room1Entries",
+          analyticName: firstRoom.entryAnalyticName,
           profileId,
           urlSlug,
           uniqueKey: `${profileId}-${sessionKey}-start`,
@@ -146,7 +140,7 @@ export const handleStartGame = async (req: Request, res: Response) => {
           started: true,
           startedAt,
           updatedAt: startedAt,
-          puzzlesCompleted: { ...DEFAULT_TEAM_PUZZLES },
+          puzzlesCompleted: { ...theme.defaultPuzzles },
           keyItems: [],
           completionTime: undefined,
         };
@@ -154,7 +148,7 @@ export const handleStartGame = async (req: Request, res: Response) => {
 
         await keyAsset.updateDataObject(
           { teams: nextTeams },
-          { lock: { lockId: `teams-${resolvedTeam.id}`, releaseLock: true } },
+          { lock: { lockId: getKeyAssetDataObjectLockId(credentials), releaseLock: true } },
         );
       }
     }

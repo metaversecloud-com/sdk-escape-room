@@ -4,6 +4,7 @@ export * from "./clearVisitorInventory.js";
 export * from "./checkEscapeBadges.js";
 export * from "./checkTrashPandaBadge.js";
 export * from "./cleanReturnPayload.js";
+export * from "./dataObjectLockIds.js";
 export * from "./errorHandler.js";
 export * from "./fireToast.js";
 export * from "./getBadges.js";

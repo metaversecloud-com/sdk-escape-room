@@ -10,24 +10,10 @@ import {
 } from "@utils/index.js";
 import { getArtifactItemName } from "@shared/themes.js";
 
-/** Hardcoded room gates for non-artifact screens (mirrors the client map). */
-const SCREEN_REQUIRED_ROOM: Record<string, number> = {
-  room1: 1,
-  puzzle1: 1,
-  puzzle2: 1,
-  room2: 2,
-  puzzle3: 2,
-  puzzle4: 2,
-  puzzle5: 2,
-  room3: 3,
-  puzzle6: 3,
-  puzzle7: 3,
-};
-
 /**
  * Resolves the room required to walk to whatever the given `screen` opened.
  *
- * - Hardcoded screen → room map covers puzzle/room screens.
+ * - Room and puzzle screens resolve from the selected theme.
  * - Theme artifact screens look up the ecosystem item's `metadata.room` so
  *   the gate stays in sync with the dashboard (no double bookkeeping).
  * - Anything else returns `null` (no gate).
@@ -38,8 +24,17 @@ const resolveRequiredRoom = async (
   themeID?: string,
 ): Promise<number | null> => {
   if (!screen) return null;
-  if (SCREEN_REQUIRED_ROOM[screen] != null) return SCREEN_REQUIRED_ROOM[screen];
   const theme = getTheme(themeID);
+  const roomMatch = /^room(\d+)$/.exec(screen);
+  if (roomMatch) {
+    const roomId = Number(roomMatch[1]);
+    return theme.rooms.some(({ id }) => id === roomId) ? roomId : null;
+  }
+  const puzzleMatch = /^puzzle(\d+)$/.exec(screen);
+  if (puzzleMatch) {
+    const puzzleNumber = Number(puzzleMatch[1]);
+    return theme.rooms.find((room) => room.puzzleNumbers.includes(puzzleNumber))?.id ?? null;
+  }
   const artifactScreen = theme.artifactScreens.find((candidate) => candidate === screen);
   if (!artifactScreen) return null;
 

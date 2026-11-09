@@ -6,12 +6,14 @@ import { BADGES } from "./checkEscapeBadges.js";
 import { getCachedInventoryItems } from "./inventoryCache.js";
 import { KeyAssetDataObject} from "../types/index.js";
 import { getKeyAsset } from "@utils/index.js";
+import type { TeamKeyItem } from "../types/DroppedAssetTypes.js";
 
 interface Args {
   credentials: Credentials;
   visitor: VisitorInterface;
   /** Post-grant visitor inventory — pass the freshest snapshot so the "has every item" check sees the just-granted item. */
   visitorInventory: VisitorInventory;
+  pendingTeamKeyItems?: TeamKeyItem[];
 }
 
 /**
@@ -26,7 +28,12 @@ interface Args {
  * `awardBadge` itself short-circuits on already-owned, so the toast fires
  * exactly once.
  */
-export const checkTrashPandaBadge = async ({ credentials, visitor, visitorInventory }: Args): Promise<boolean> => {
+export const checkTrashPandaBadge = async ({
+  credentials,
+  visitor,
+  visitorInventory,
+  pendingTeamKeyItems = [],
+}: Args): Promise<boolean> => {
   if (visitorInventory.badges?.[BADGES.TRASH_PANDA]) return false;
 
   const ecosystem = await getCachedInventoryItems({ credentials });
@@ -74,6 +81,7 @@ export const checkTrashPandaBadge = async ({ credentials, visitor, visitorInvent
   const teamKeyItemIds = new Set(
     (team.keyItems || []).map((item) => item.id),
   );
+  pendingTeamKeyItems.forEach((item) => teamKeyItemIds.add(item.id));
 
   const hasAllKeyItems = keyItemIds.every((id) =>
     teamKeyItemIds.has(id),

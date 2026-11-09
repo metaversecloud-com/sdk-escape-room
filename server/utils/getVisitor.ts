@@ -5,6 +5,7 @@ import { standardizeError } from "./standardizeError.js";
 import { getDefaultVisitorData } from "./getDefaultVisitorData.js";
 import { getVisitorInventory, VisitorInventory } from "./getVisitorInventory.js";
 import { VisitorData, VisitorDataObject } from "@shared/types/VisitorData.js";
+import { getVisitorDataObjectLockId } from "./dataObjectLockIds.js";
 
 export interface GetVisitorResult {
   visitor: VisitorInterface;
@@ -39,7 +40,7 @@ export const getVisitor = async (
     // controller can safely call updateDataObject({ [sessionKey]: ... }).
     if (!visitorDataObject[sessionKey]) {
       const defaults = getDefaultVisitorData();
-      const lockId = `${sessionKey}-${new Date(Math.round(Date.now() / 60000) * 60000)}-init`;
+      const lockId = getVisitorDataObjectLockId(credentials);
 
       if (!visitorDataObject) {
         await visitor.setDataObject({ [sessionKey]: defaults }, { lock: { lockId, releaseLock: true } });

@@ -1,5 +1,12 @@
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getSessionTheme, getVisitor, isPuzzleInTheme } from "@utils/index.js";
+import {
+  errorHandler,
+  getCredentials,
+  getSessionTheme,
+  getVisitor,
+  getVisitorDataObjectLockId,
+  isPuzzleInTheme,
+} from "@utils/index.js";
 
 type PuzzleNumber = number;
 const isPuzzleNumber = (value: unknown): value is PuzzleNumber =>
@@ -51,7 +58,7 @@ export const handleSavePuzzleDraft = async (req: Request, res: Response) => {
 
     await visitor.updateDataObject(
       { [sessionKey]: session },
-      { lock: { lockId: `${sessionKey}-draft-${puzzleNumber}-${Date.now()}`, releaseLock: true } },
+      { lock: { lockId: getVisitorDataObjectLockId(credentials), releaseLock: true } },
     );
 
     return res.json({ success: true, saved: true });

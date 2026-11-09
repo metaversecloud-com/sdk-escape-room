@@ -1,51 +1,22 @@
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getVisitor, moveVisitorToAsset, getKeyAsset, fireToast, getSessionTheme} from "@utils/index.js";
+import {
+  errorHandler,
+  getCredentials,
+  getKeyAsset,
+  getVisitor,
+  getVisitorDataObjectLockId,
+  moveVisitorToAsset,
+  fireToast,
+  getSessionTheme,
+} from "@utils/index.js";
 import { KeyAssetDataObject, VisitorData } from "../types/index.js";
 import { sseManager } from "../utils/sseManager.js";
 import { toasts } from "@shared/copy/toasts.js";
+import { isRoomReady } from "@shared/themes.js";
 
-/**
- * Per-room teleport definitions.
- *
- * - `spawnUniqueName` — the dropped asset's unique name that `moveVisitorToAsset`
- *   teleports the visitor onto. Must match the unique name set on the spawn
- *   asset in the scene (the room intro pad).
- * - `isReady` — gates whether the player has completed enough puzzles to
- *   be allowed into this room. Mirrors what the auto-teleport logic in
- *   handleSubmitPuzzle used to enforce.
- */
-interface RoomDef {
-  targetRoom: 1 | 2 | 3;
-  spawnUniqueName: string;
-  isReady: (p: VisitorData["puzzlesCompleted"]) => boolean;
-}
-
-const ROOM_DEFS: Record<string, RoomDef> = {
-  "1": {
-    targetRoom: 1,
-    spawnUniqueName: "EscapeRoom_room1_teleport",
-    isReady: () => true,
-  },
-  "2": {
-    targetRoom: 2,
-    spawnUniqueName: "EscapeRoom_room2_teleport",
-    isReady: (p) => Boolean(p[1] && p[2]),
-  },
-  "3": {
-    targetRoom: 3,
-    spawnUniqueName: "EscapeRoom_room3_teleport",
-    isReady: (p) => Boolean(p[3] && p[4] && p[5]),
-  },
-};
-
-/**
- * When `room` isn't passed, infer the natural "next room" from `currentRoom`.
- * Room 1 → 2, Room 2 → 3. Room 3 has no forward target.
- */
-const inferTargetRoomKey = (currentRoom: VisitorData["currentRoom"]): string | null => {
-  if (currentRoom === 1) return "2";
-  if (currentRoom === 2) return "3";
-  return null;
+const inferTargetRoom = (themeRooms: readonly { id: number }[], currentRoom: VisitorData["currentRoom"]) => {
+  const currentIndex = themeRooms.findIndex(({ id }) => id === currentRoom);
+  return currentIndex >= 0 ? themeRooms[currentIndex + 1]?.id : undefined;
 };
 
 export const handleTeleport = async (req: Request, res: Response) => {
@@ -123,7 +94,7 @@ export const handleTeleport = async (req: Request, res: Response) => {
         };
         await visitor.updateDataObject(
           { [sessionKey]: completedSession },
-          { lock: { lockId: `${sessionKey}-${Date.now()}-team-completion`, releaseLock: true } },
+          { lock: { lockId: getVisitorDataObjectLockId(credentials), releaseLock: true } },
         );
 
         return res.json({
@@ -148,10 +119,11 @@ export const handleTeleport = async (req: Request, res: Response) => {
       }
     }
 
-    const targetRoomKey =
-      explicitRoom ?? inferTargetRoomKey(session.currentRoom);
-
-    const def = targetRoomKey ? ROOM_DEFS[targetRoomKey] : null;
+    const targetRoom =
+      explicitRoom == null
+        ? inferTargetRoom(theme.rooms, session.currentRoom)
+        : Number(explicitRoom);
+    const def = theme.rooms.find(({ id }) => id === targetRoom);
 
     if (!def) {
       return res.json({
@@ -162,22 +134,12 @@ export const handleTeleport = async (req: Request, res: Response) => {
       });
     }
 
-    if (!theme.rooms.some(({ id }) => id === def.targetRoom)) {
-      return res.json({
-        success: true,
-        teleported: false,
-        reason: "invalidTarget",
-        visitorData: session,
-      });
-    }
-
-
-    if (!def.isReady(effectivePuzzlesCompleted)) {
+    if (!isRoomReady(theme, def.id, effectivePuzzlesCompleted)) {
       return res.json({
         success: true,
         teleported: false,
         reason: "incomplete",
-        targetRoom: def.targetRoom,
+        targetRoom: def.id,
         visitorData: session,
       });
     }
@@ -202,16 +164,16 @@ export const handleTeleport = async (req: Request, res: Response) => {
     const updatedSession: VisitorData = teleportSucceeded
       ? {
           ...session,
-          currentRoom: def.targetRoom,
-          physicalRoom: def.targetRoom,
+          currentRoom: def.id,
+          physicalRoom: def.id,
         }
       : session;
 
 
-    if (teleportSucceeded && session.physicalRoom !== def.targetRoom) {
+    if (teleportSucceeded && session.physicalRoom !== def.id) {
       await visitor.updateDataObject(
         { [sessionKey]: updatedSession },
-        { lock: { lockId: `${sessionKey}-${Date.now()}-visitor-teleport`, releaseLock: true } },
+        { lock: { lockId: getVisitorDataObjectLockId(credentials), releaseLock: true } },
       );
     }
 
@@ -231,7 +193,7 @@ export const handleTeleport = async (req: Request, res: Response) => {
           interactiveNonce: credentials.interactiveNonce,
           groupId: session.groupId,
           data: {
-            targetRoom: def.targetRoom,
+            targetRoom: def.id,
             completedByProfileId: credentials.profileId,
             completedByName:
               team.members.find(
@@ -259,7 +221,7 @@ export const handleTeleport = async (req: Request, res: Response) => {
               "{member}",
               completedBy?.displayName || "A teammate",
             )
-            .replace("{room}", String(def.targetRoom)),
+            .replace("{room}", String(def.id)),
         });
       }
     }
@@ -268,7 +230,7 @@ export const handleTeleport = async (req: Request, res: Response) => {
       success: true,
       teleported: teleportSucceeded,
       ...(!teleportSucceeded ? { reason: "teleportFailed" } : {}),
-      targetRoom: def.targetRoom,
+      targetRoom: def.id,
       visitorData: updatedSession,
     });
   } catch (error) {

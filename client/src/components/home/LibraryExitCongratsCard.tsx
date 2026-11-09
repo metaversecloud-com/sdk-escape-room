@@ -123,7 +123,7 @@ ARCHIVE RECORD UPDATED
           <thead>
             <tr>
               <th className="p2">Rank</th>
-              <th className="p2">Researcher</th>
+              <th className="p2">Investigator</th>
               <th className="p2">Time</th>
               <th className="p2">Attempts</th>
             </tr>

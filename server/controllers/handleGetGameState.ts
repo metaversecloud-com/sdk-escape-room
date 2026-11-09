@@ -8,10 +8,12 @@ import {
   getLeaderboard,
   getTheme,
   getVisitor,
+  getVisitorDataObjectLockId,
   applyLibraryRewardSelectors,
   inferLibraryRewardItemIds,
 } from "@utils/index.js";
 import { KeyAssetDataObject } from "../types/index.js";
+import { getCurrentRoomFromProgress } from "@shared/themes.js";
 
 export const handleGetGameState = async (req: Request, res: Response) => {
   try {
@@ -62,17 +64,11 @@ export const handleGetGameState = async (req: Request, res: Response) => {
             ...team.puzzlesCompleted,
           };
 
-          const currentRoom =
-            puzzlesCompleted[3] &&
-            puzzlesCompleted[4] &&
-            puzzlesCompleted[5]
-              ? 3
-              : puzzlesCompleted[1] && puzzlesCompleted[2]
-                ? 2
-                : 1;
+          const currentRoom = getCurrentRoomFromProgress(theme, puzzlesCompleted);
 
           session = {
             ...session,
+            currentRoom,
             puzzlesCompleted,
             ...(team.status === "completed"
               ? {
@@ -114,7 +110,7 @@ export const handleGetGameState = async (req: Request, res: Response) => {
         }
       }
 
-    if (theme.themeID === "LIBRARY") {
+    if (Object.values(theme.puzzleRewards).some((reward) => reward.selector)) {
       const libraryRewardItemIds = inferLibraryRewardItemIds(
         responseInventory,
         session.puzzlesCompleted || {},
@@ -131,7 +127,7 @@ export const handleGetGameState = async (req: Request, res: Response) => {
           { [sessionKey]: session },
           {
             lock: {
-              lockId: `${sessionKey}-${Date.now()}-library-reward-repair`,
+              lockId: getVisitorDataObjectLockId(credentials),
               releaseLock: true,
             },
           },

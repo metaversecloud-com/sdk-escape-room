@@ -6,6 +6,8 @@ import {
   getVisitor,
   moveVisitorToAsset,
   getKeyAsset,
+  getKeyAssetDataObjectLockId,
+  getVisitorDataObjectLockId,
 } from "@utils/index.js";
 
 export const handleExitGame = async (req: Request, res: Response) => {
@@ -32,7 +34,7 @@ export const handleExitGame = async (req: Request, res: Response) => {
           },
         ],
         lock: {
-          lockId: `${sessionKey}-${Date.now()}-visitor`,
+          lockId: getVisitorDataObjectLockId(credentials),
           releaseLock: true,
         },
       },
@@ -65,7 +67,7 @@ export const handleExitGame = async (req: Request, res: Response) => {
             { teams: remainingTeams },
             {
               lock: {
-                lockId: `team-exit-${teamId}-${Date.now()}`,
+                lockId: getKeyAssetDataObjectLockId(credentials),
                 releaseLock: true,
               },
             },
@@ -97,7 +99,7 @@ export const handleExitGame = async (req: Request, res: Response) => {
             },
             {
               lock: {
-                lockId: `team-exit-${teamId}-${Date.now()}`,
+                lockId: getKeyAssetDataObjectLockId(credentials),
                 releaseLock: true,
               },
             },

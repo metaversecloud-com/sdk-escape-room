@@ -6,6 +6,7 @@ import {
   getCredentials,
   getSessionTheme,
   getVisitor,
+  getVisitorDataObjectLockId,
   getVisitorInventory,
   isPuzzleInTheme,
 } from "@utils/index.js";
@@ -57,7 +58,7 @@ export const handleWrongAttempt = async (req: Request, res: Response) => {
 
     await visitor.updateDataObject(
       { [sessionKey]: updatedSession },
-      { lock: { lockId: `${sessionKey}-${Date.now()}-wrong`, releaseLock: true } },
+      { lock: { lockId: getVisitorDataObjectLockId(credentials), releaseLock: true } },
     );
 
     // Award path: only on the *exact* threshold crossing so we don't repeatedly

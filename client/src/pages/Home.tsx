@@ -255,6 +255,7 @@ export const Home = () => {
   // start terminal later opens a fresh iframe (justStarted starts false
   // again), which is when we want the in-progress restart/teleport options.
   const [justStarted, setJustStarted] = useState(false);
+  const [showStartMenu, setShowStartMenu] = useState(false);
 
   const startGame = async (options?: { multiplayer: boolean; teamId?: string }) => {
     setIsLoading(true);
@@ -272,7 +273,21 @@ export const Home = () => {
       }
 
       setGameState(dispatch, res.data);
+      setShowStartMenu(false);
       setJustStarted(true);
+    } catch (error) {
+      setErrorMessage(dispatch, error as ErrorType);
+    }
+    setIsLoading(false);
+  };
+
+  const prepareRestart = async () => {
+    setIsLoading(true);
+    try {
+      const res = await backendAPI.post("/prepare-restart");
+      setGameState(dispatch, res.data);
+      setJustStarted(false);
+      setShowStartMenu(true);
     } catch (error) {
       setErrorMessage(dispatch, error as ErrorType);
     }
@@ -524,6 +539,18 @@ export const Home = () => {
         </div>
       </PageContainer>
     );
+  } else if (screen === "start" && showStartMenu) {
+    return (
+      <PageContainer isLoading={isPageLoading}>
+        <div className="flex flex-col w-full items-start gap-4">
+          <StartGameCard
+            theme={theme}
+            onStart={startGame}
+            isLoading={isPageLoading || !hasInteractiveParams}
+          />
+        </div>
+      </PageContainer>
+    );
   } else if (!hasStarted) {
     // ── Pre-start view ──
     return (
@@ -614,7 +641,7 @@ export const Home = () => {
               currentRoom={visitorSession?.currentRoom}
               isLoading={isLoading}
               onTeleportBack={teleportToCurrentRoom}
-              onRestart={startGame}
+              onRestart={prepareRestart}
             />
           ))}
 

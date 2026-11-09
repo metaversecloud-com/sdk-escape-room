@@ -11,6 +11,7 @@ import {
   handleGrantItem,
   handleHeartbeat,
   handleJoinTeam,
+  handlePrepareRestart,
   handleSSE,
   handleSavePuzzleDraft,
   handleStartGame,
@@ -52,6 +53,7 @@ router.get("/sse", handleSSE);
 router.get("/heartbeat", handleHeartbeat);
 router.post("/teams/create", handleCreateTeam);
 router.post("/teams/join", handleJoinTeam);
+router.post("/prepare-restart", handlePrepareRestart);
 router.post("/teams/start", handleStartTeam);
 router.post("/teleport", handleTeleport);
 router.post("/walk-to-asset", handleWalkToAsset);
