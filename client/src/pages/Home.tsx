@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import {
   ArtifactGrantCard,
@@ -71,6 +71,7 @@ export const Home = () => {
     theme: configuredTheme,
   } = useContext(GlobalStateContext);
   const theme = configuredTheme ?? SPACE_THEME;
+  const configuredThemeID = configuredTheme?.themeID;
   const visitorSession = visitorData || null;
   const puzzlesCompleted = visitorSession?.puzzlesCompleted;
 
@@ -98,12 +99,16 @@ export const Home = () => {
   const roomScreenId = screen.startsWith("room") ? getRoomForScreen(screen, theme) : undefined;
   const isFinished = isThemeComplete(theme, puzzlesCompleted);
 
-  useEffect(() => {
-    document.body.dataset.theme = theme.themeID;
+  useLayoutEffect(() => {
+    if (configuredThemeID) {
+      document.body.dataset.theme = configuredThemeID;
+    } else {
+      delete document.body.dataset.theme;
+    }
     return () => {
       delete document.body.dataset.theme;
     };
-  }, [theme.themeID]);
+  }, [configuredThemeID]);
 
   // Track puzzles that flipped from false → true *within this iframe session*
   // so PuzzleCompleteCard can show the rich just-acquired copy + fire the

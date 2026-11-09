@@ -5,10 +5,7 @@
  * inline gradient/glow/border style objects.
  */
 
-/* Full-viewport app background. background-attachment: fixed keeps the gradient
-   sized to the viewport (not the body's content box) so it renders as a single
-   smooth radial gradient even before React has mounted any content, and stays
-   in place when the page scrolls. */
+/* Keep the pre-theme iframe transparent until the clicked asset's theme loads. */
 html,
 body {
   min-height: 100vh;
@@ -16,6 +13,10 @@ body {
 
 body {
   margin: 0;
+  background: transparent;
+}
+
+body[data-theme="SPACE"] {
   background: var(--er-grad-card-violet);
   background-attachment: fixed;
   background-size: cover;
