@@ -1,6 +1,7 @@
 export interface Credentials {
   assetId: string;
   displayName: string;
+  groupId?: string;
   identityId: string;
   interactiveNonce: string;
   interactivePublicKey: string;

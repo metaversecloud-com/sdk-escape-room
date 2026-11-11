@@ -6,7 +6,7 @@
 
 ## Introduction / Summary
 
-Escape Room is a three-room, seven-puzzle escape-room game for Topia worlds. A player clicks the start terminal to begin a per-`sceneDropId` session, walks between physical rooms via teleport pads, solves puzzles one at a time (each granting an ecosystem `ITEM` reward), and wins by cracking Puzzle 7 — which stamps their completion time, writes their entry to the leaderboard, and teleports them home.
+Escape Room is a configurable escape-room game for Topia worlds. The default `SPACE` theme retains its three-room, seven-puzzle experience. The `LIBRARY` theme configures one room and four submit-capable placeholder puzzle routes so its completion flow can be tested before the final puzzle designs are added. Starting a run stores its theme in visitor session data; subsequent puzzle, draft, and wrong-attempt requests are validated against that fixed session theme. Completing a theme's final puzzle stamps the completion time, writes the leaderboard entry, and teleports the player home.
 
 The app rewards eight distinct badges across the run — including time-based (Warp Speed for sub-3-minute completions), collection-based (Trash Panda for owning every ecosystem ITEM), and behavior-based (Button Masher for spamming wrong answers, Trash Digger for finding a hidden decoy screen).
 
@@ -14,15 +14,15 @@ The app rewards eight distinct badges across the run — including time-based (W
 
 ### Canvas elements & interactions
 
-- **Start terminal (`EscapeRoom_start`):** the key asset. Clicking it opens the drawer to start a run, resume an active one, or view the leaderboard.
+- **Start terminal (`EscapeRoom_start`):** the key asset. Clicking it opens the drawer to start a run, resume an active one, restart after a completed run, or view the leaderboard. The completion screen is shown in the current game view; reopening the start terminal returns to its start UI.
 - **Room teleport pads:** dropped assets with unique names `EscapeRoom_room1_teleport`, `EscapeRoom_room2_teleport`, `EscapeRoom_room3_teleport`, plus best-effort walk-onto pads `EscapeRoom_room{from}_teleportRoom{to}` used at room transitions.
-- **Artifact assets on canvas:** each artifact (`Room1Artifact`, `CrewPortrait1..3`, `AlphaStation`, `BetaStation`, `OmegaStation`, `Room3Artifact`, plus the hidden Decoy screen) opens the drawer with `?screen=<name>`. Clicking an artifact walks the visitor onto it — but only if their `physicalRoom` matches the artifact's required room.
+- **Artifact assets on canvas:** artifact screens are theme-specific. `SPACE` uses `Room1Artifact`, `CrewPortrait1..3`, `AlphaStation`, `BetaStation`, `OmegaStation`, and `Room3Artifact` (plus the hidden Decoy screen); `LIBRARY` uses `paper1`–`paper4` and `bookcase`. Each opens the drawer with `?screen=<name>`. Clicking an artifact walks the visitor onto it only when their `physicalRoom` matches the artifact's required room.
 
 ### Drawer content
 
 - **Start terminal:** Start Escape Room, Session-in-progress card (with "restart" and "teleport to current room" CTAs) if the player has a live run.
 - **Puzzles 1–7:** rendered via `client/src/components/puzzles/` — each puzzle has its own UI and submits to `/api/submit-puzzle`.
-- **Artifact/inventory screens:** short lore blurbs for the ecosystem `ITEM` rewards; grants the item on view via `/api/grant-item`.
+- **Artifact/inventory screens:** short lore blurbs for the ecosystem `ITEM` rewards; grants the item on view via `/api/grant-item` only during an active game session. Artifact inventory is per-player and is not shared with teammates.
 - **Decoy screen:** the hidden "Trash Digger" easter-egg screen.
 
 ### Admin features
@@ -31,7 +31,14 @@ None gated at the route layer. `AdminView.tsx` / `AdminIconButton.tsx` are place
 
 ### Themes
 
-No runtime theme switching. The app is a single game with a fixed narrative and visual style. `client/src/index.css` is the **canonical reference for the SDK cascade-layer CSS setup** (called out in the boilerplate's style guide).
+The clicked asset's data object selects a theme with `themeID`. If it is not set, the game uses `SPACE` for backward compatibility. Shared theme configuration in [`shared/themes.ts`](./shared/themes.ts) defines room layouts, puzzle defaults, room readiness requirements and spawn assets, puzzle rewards, room transitions, badges, and artifact screens; the server and client derive their routing and progression behavior from that configuration. Artifact screens map to ecosystem item names (`paper1` → `Paper 1`, `bookcase` → `Bookcase`); those items must be active `ITEM`s and should include `metadata.type: "artifact"` and their room in `metadata.room`.
+
+| Theme | Rooms | Puzzles per room | Routing state |
+| ----- | ----- | ---------------- | ------------- |
+| `SPACE` | 3 | 2, 3, 2 (7 total) | Existing puzzle screens and game flow |
+| `LIBRARY` | 1 | 4 | Puzzle 1–4 use submit-capable placeholders pending puzzle designs |
+
+For example, to select LIBRARY, set the clicked start and puzzle assets' data objects to `{ themeID: "LIBRARY" }`. If `themeID` is missing, the game uses SPACE for backwards compatibility. Theme is resolved from the clicked asset (an inactive old session or another same-name start asset cannot override it) and stored on the session when play begins. Assets used as teleport targets may share a unique name across themes; room entry requires a matching theme ID, with missing `themeID` identifying SPACE. Start requires an exact theme match; exit/completion return prefers a matching target but can fall back to a same-name target if no match exists. The game-state response includes the resolved `themeID` and theme configuration. `client/src/index.css` is the **canonical reference for the SDK cascade-layer CSS setup** (called out in the boilerplate's style guide).
 
 ## Required Assets with Unique Names
 
@@ -40,11 +47,11 @@ All are looked up via `world.fetchDroppedAssetsBySceneDropId({ sceneDropId, uniq
 | Unique Name                              | Description                                                                                      |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | `EscapeRoom_start`                       | Key asset (start terminal). Also hosts the leaderboard data object.                              |
-| `EscapeRoom_start_teleport`              | Target for `/exit` and post-Puzzle-7 completion.                                                 |
-| `EscapeRoom_room1_teleport`              | Room 1 entry point (target of `/start-game` and `/teleport?room=1`).                             |
-| `EscapeRoom_room2_teleport`              | Room 2 entry point (`/teleport?room=2`).                                                         |
-| `EscapeRoom_room3_teleport`              | Room 3 entry point (`/teleport?room=3`).                                                         |
-| `EscapeRoom_room{from}_teleportRoom{to}` | Best-effort walk-onto pads placed at each room boundary (e.g. `EscapeRoom_room1_teleportRoom2`). |
+| `EscapeRoom_start_teleport`              | Target for `/exit` and final-puzzle completion; matching theme preferred, same-name fallback allowed. |
+| `EscapeRoom_room1_teleport`              | Room 1 entry point. `/start-game` requires matching theme data; SPACE has no `themeID`.          |
+| `EscapeRoom_room2_teleport`              | SPACE Room 2 entry point (`/teleport?room=2`); must have no `themeID`.                           |
+| `EscapeRoom_room3_teleport`              | SPACE Room 3 entry point (`/teleport?room=3`); must have no `themeID`.                           |
+| `EscapeRoom_room{from}_teleportRoom{to}` | Best-effort matching-theme walk-on pads at room boundaries (e.g. `EscapeRoom_room1_teleportRoom2`). |
 
 Artifact dropped assets don't require fixed unique names — they're identified by their `clickableLink` `?screen=` query param.
 
@@ -61,9 +68,9 @@ Keyed by `${urlSlug}-${sceneDropId}` so multiple parallel scene drops in one wor
   startTime: number;              // ms epoch
   endTime?: number;
   sessionActive: boolean;
-  currentRoom: 1 | 2 | 3 | null;      // Progression (puzzle-based)
-  physicalRoom: 1 | 2 | 3 | null;     // Where the avatar actually is
-  puzzlesCompleted: { 1: boolean, ..., 7: boolean };
+  currentRoom: number | null;          // Progression (puzzle-based)
+  physicalRoom: number | null;         // Where the avatar actually is
+  puzzlesCompleted: Record<number, boolean>;
   completionTime?: number;             // seconds
   puzzleDrafts: { [n: number]: unknown };  // Close-and-resume state per puzzle
   wrongAttempts: { [n: number]: number };  // Per-puzzle wrong-submit counter
@@ -76,6 +83,7 @@ Attached to `EscapeRoom_start`.
 
 ```ts
 {
+  themeID?: "SPACE" | "LIBRARY"; // Missing means SPACE
   leaderboard: {
     [profileId]: `${displayName}|${bestTime}|${attempts}`;
   };
@@ -96,16 +104,18 @@ All routes mount under `/api`. **No admin gating — every route runs for the au
 | ------ | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `GET`  | `/`               | Sanity check.                                                                                                                                                                                                      |
 | `GET`  | `/system/health`  | Version + env-var status.                                                                                                                                                                                          |
-| `GET`  | `/game-state`     | Full state snapshot: `droppedAsset`, `sessionKey`, `visitorData`, `uniqueName`, `badges`, `visitorInventory`, `leaderboard`, `remainingMs`. Supports `?forceRefreshInventory=true` to bust the 6h ecosystem cache. |
+| `GET`  | `/game-state`     | Full state snapshot including `themeID` and `theme`, plus `droppedAsset`, `sessionKey`, `visitorData`, `uniqueName`, `badges`, `visitorInventory`, `leaderboard`, and `remainingMs`. Supports `?forceRefreshInventory=true` to bust the 6h ecosystem cache. |
 | `GET`  | `/session`        | Lightweight status: `{ active, remainingMs, visitorData }`.                                                                                                                                                        |
-| `POST` | `/start-game`     | Clears prior ecosystem ITEMs (badges preserved), teleports to Room 1, writes fresh session.                                                                                                                        |
-| `POST` | `/submit-puzzle`  | Body: `{ puzzleNumber: 1..7 }`. Marks complete, grants ITEM reward, checks room-transition + Trash Panda badges. On P7: stamps completion, writes leaderboard, teleports home.                                     |
-| `POST` | `/puzzle-draft`   | Persists a per-puzzle draft `{ puzzleNumber, draft }` into `session.puzzleDrafts` for close-and-resume.                                                                                                            |
-| `POST` | `/grant-item`     | Body: `{ itemName }`. Grants an ecosystem ITEM after room-gate check against `metadata.room`. Runs Trash Panda check.                                                                                              |
-| `POST` | `/teleport`       | Body: `{ room?: 1 \| 2 \| 3 }`. Gated on `puzzlesCompleted`; bumps `physicalRoom` and moves the visitor to the target room's teleport pad.                                                                         |
+| `GET`  | `/heartbeat`      | Keeps the visitor's SSE connection fresh; returns `{ success, teamCompleted }` so each connected team member can recover a missed completion event.                                                                |
+| `POST` | `/prepare-restart` | Ends the current run and returns the visitor to the start menu without teleporting or closing the iframe. Removes the visitor from an unfinished team using their own credentials; completed team records remain intact. |
+| `POST` | `/start-game`     | Body: `{ multiplayer?: boolean, teamId?: string }`. Solo is the default, including for members of completed teams. Clears the requesting visitor's prior ecosystem ITEMs (badges preserved), teleports them to Room 1, and writes their fresh session. A team leader starts shared team progress; every member starts only their own visitor session using their own credentials.                                                                                                                        |
+| `POST` | `/submit-puzzle`  | Body: `{ puzzleNumber }` for a puzzle configured in the active theme. Configured SPACE rewards and LIBRARY puzzles 1–3 grant items directly to the solving visitor, regardless of team membership; if teamed, rewards are also mirrored to the shared team inventory. SPACE retains its room transitions and badges. The final puzzle in either theme stamps completion, updates shared team progress before notifying teammates, writes the solo leaderboard when applicable, and teleports the solver home. |
+| `POST` | `/puzzle-draft`   | Persists a per-puzzle draft `{ puzzleNumber, draft }` into `session.puzzleDrafts` for close-and-resume; puzzle numbers outside the active theme are rejected.                                                                    |
+| `POST` | `/grant-item`     | Body: `{ itemName }`. Requires an active game session, then grants the visitor an ecosystem ITEM after room-gate check against `metadata.room`. Inventory is per-player (not shared with teammates). Runs Trash Panda check. |
+| `POST` | `/teleport`       | Body: `{ room?: 1 \| 2 \| 3 \| "start" }`. Room access is gated on `puzzlesCompleted`; a completed team member can use their own credentials with `{ room: "start" }` to teleport home. |
 | `POST` | `/walk-to-asset`  | Body: `{ screen }`. Walks visitor onto the artifact's asset (`y + 150`). Refuses cross-room walks with `{ walked: false, reason: "wrongRoom" }`.                                                                   |
 | `POST` | `/discover-decoy` | Idempotent: awards Trash Digger badge. No room gate.                                                                                                                                                               |
-| `POST` | `/wrong-attempt`  | Body: `{ puzzleNumber }`. Bumps `session.wrongAttempts[n]`; on `=== 4` (exact) awards Button Masher.                                                                                                               |
+| `POST` | `/wrong-attempt`  | Body: `{ puzzleNumber }`. Bumps `session.wrongAttempts[n]` for a puzzle in the active theme; on `=== 4` (exact) awards Button Masher.                                                                                 |
 | `POST` | `/exit`           | Marks session inactive, fires `manualGameExits`, teleports to start, closes iframe.                                                                                                                                |
 | `POST` | `/close-iframe`   | Just closes the iframe (used by "Stay Here" CTA).                                                                                                                                                                  |
 
@@ -136,6 +146,16 @@ All events emitted via `analytics: [...]` on `visitor.updateDataObject`. `unique
 | 5   | B    | Word decode + valves | Decode `EVLAV/KLCO/EURSSPE` then operate valves `Blue→Red→Yellow` | Circuit Chip |
 | 6   | C    | Node-graph circuit   | Draw the correct connections between fixed nodes                  | _(none)_     |
 | 7   | C    | Airlock keypad       | Enter code `3967`                                                 | _(win)_      |
+
+Library puzzles 1–3 each grant a key item to the player's inventory and mirror it to shared team inventory when applicable. Keep all three ecosystem item names as `Paper`; set each item's `metadata.type` to `"keyItem"` and `metadata.escapeRoomReward` to the corresponding opaque selector below:
+
+| Library puzzle | `metadata.escapeRoomReward` |
+| -------------- | --------------------------- |
+| 1              | `library-9f31`              |
+| 2              | `library-4c82`              |
+| 3              | `library-d7a6`              |
+
+These selectors must be unique among active ecosystem `ITEM`s. The item's Topia ID is used to distinguish collected rewards, so duplicate display names remain separate in inventory. Puzzle completion refreshes ecosystem inventory if a selector is missing. As a safe fallback, it can infer the reward only when excluding previously assigned or already-collected Papers leaves exactly one active `Paper` item; that item ID is saved with the visitor's session and exposed with the correct selector in inventory so Puzzle 4 can recognize it. Add all selectors whenever possible. A solo restart clears that player's inventory by item ID without changing a completed team's shared state. Starting a new multiplayer run with a new team resets its shared progress; each teammate's own `/start-game` request clears that visitor's inventory and starts that visitor's session with their own credentials. After changing ecosystem metadata, open the app once with `?forceRefreshInventory=true` to refresh the six-hour inventory cache.
 
 ## Badges
 

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { VisitorInterface } from "@rtsdk/topia";
 import {
   VisitorInventory,
+  applyLibraryRewardSelectors,
   checkEscapeBadges,
   checkTrashPandaBadge,
   errorHandler,
@@ -9,80 +10,304 @@ import {
   getCachedInventoryItems,
   getCredentials,
   getKeyAsset,
+  getKeyAssetDataObjectLockId,
+  getSessionTheme,
   getVisitor,
+  getVisitorDataObjectLockId,
   getVisitorInventory,
+  isPuzzleInTheme,
   moveVisitorToAsset,
 } from "@utils/index.js";
+import { sseManager } from "../utils/sseManager.js";
 import { toasts } from "@shared/copy/toasts.js";
-import { Credentials, KeyAssetDataObject, VisitorData } from "../types/index.js";
+import { getFinalPuzzleNumber, isRoomReady } from "@shared/themes.js";
+import type { ThemePuzzleReward } from "@shared/themes.js";
+import { Credentials, KeyAssetDataObject, TeamKeyItem } from "../types/index.js";
 
-type PuzzleNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7;
-
-const VALID_PUZZLE_NUMBERS: ReadonlySet<PuzzleNumber> = new Set([1, 2, 3, 4, 5, 6, 7]);
+type PuzzleNumber = number;
 
 const isPuzzleNumber = (value: unknown): value is PuzzleNumber =>
-  typeof value === "number" && VALID_PUZZLE_NUMBERS.has(value as PuzzleNumber);
+  typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 
-// Maps a puzzle number to the ecosystem inventory item the player earns by
-// solving it. The item is looked up by name and granted via the SDK; the
-// visitor's actual inventory is the source of truth.
-const PUZZLE_REWARDS: Partial<Record<PuzzleNumber, string>> = {
-  1: "Battery",
-  2: "Fuse",
-  3: "Wrench",
-  5: "Circuit Chip",
-};
-
-interface RoomTransition {
-  fromRoom: VisitorData["currentRoom"];
-  toRoom: VisitorData["currentRoom"];
-  isReady: (game: VisitorData) => boolean;
-  badgeKey: "POWER_RESTORED" | "SIGNAL_RECOVERED";
-  analyticName: string;
+interface PuzzleRewardResult {
+  granted: boolean;
+  visitorInventory: VisitorInventory;
+  teamKeyItems?: TeamKeyItem[];
+  itemId?: string;
 }
 
-// Spawn unique names for these transitions now live in `handleTeleport.ts` —
-// the player walks through an in-world pad to actually move between rooms.
-const ROOM_TRANSITIONS: RoomTransition[] = [
-  {
-    fromRoom: 1,
-    toRoom: 2,
-    isReady: (g) => g.puzzlesCompleted[1] && g.puzzlesCompleted[2],
-    badgeKey: "POWER_RESTORED",
-    analyticName: "room2Entries",
-  },
-  {
-    fromRoom: 2,
-    toRoom: 3,
-    isReady: (g) => g.puzzlesCompleted[3] && g.puzzlesCompleted[4] && g.puzzlesCompleted[5],
-    badgeKey: "SIGNAL_RECOVERED",
-    analyticName: "room3Entries",
-  },
-];
+const applyNamedPuzzleReward = async ({
+  credentials,
+  visitor,
+  visitorInventory,
+  teamId,
+  itemName,
+  keyAsset,
+}: {
+  credentials: Credentials;
+  visitor: VisitorInterface;
+  visitorInventory: VisitorInventory;
+  teamId?: string;
+  itemName: string;
+  keyAsset: Awaited<ReturnType<typeof getKeyAsset>>;
+}): Promise<PuzzleRewardResult> => {
+  const inventoryItems = await getCachedInventoryItems({ credentials });
 
-/** Returns true if a new item was granted (caller may want to refresh inventory). */
-const applyInventoryReward = async (
-  credentials: Credentials,
-  visitor: VisitorInterface,
+  const match = inventoryItems.find((item) => item.name === itemName && item.type === "ITEM");
+  if (!match) {
+    throw new Error(`Puzzle key item "${itemName}" not found in ecosystem inventory.`);
+  }
+
+  const alreadyOwned = visitorInventory.items.some((item) => item.id === match.id);
+  let updatedVisitorInventory = visitorInventory;
+
+  if (!alreadyOwned) {
+    await visitor.grantInventoryItem(match, 1);
+    await visitor.fetchInventoryItems();
+    updatedVisitorInventory = getVisitorInventory(visitor.inventoryItems || []);
+  }
+
+  let teamKeyItems: TeamKeyItem[] | undefined;
+  if (teamId && keyAsset) {
+    const dataObject = (keyAsset.dataObject as KeyAssetDataObject | null) || {};
+    const teams = dataObject.teams || {};
+    const team = teams[teamId];
+    const existingKeyItems = team?.keyItems || [];
+
+    // Keep the shared team inventory in sync, but never make it a
+    // prerequisite for the visitor's own item reward.
+    if (team && !existingKeyItems.some((item) => item.id === match.id)) {
+      const keyItem = {
+        id: match.id,
+        name: match.name || itemName,
+        imageUrl: match.image_url || match.image_path || null,
+        description: match.description,
+        metadata: { ...((match.metadata as Record<string, unknown> | undefined) || {}) },
+        quantity: 1,
+      };
+
+      teamKeyItems = [...existingKeyItems, keyItem];
+    }
+  }
+
+  return {
+    granted: !alreadyOwned,
+    visitorInventory: updatedVisitorInventory,
+    ...(teamKeyItems ? { teamKeyItems } : {}),
+  };
+};
+
+interface LibraryPuzzleRewardResult extends PuzzleRewardResult {
+  itemId?: string;
+}
+
+const findLibraryRewardItemBySelector = (
+  inventoryItems: Awaited<ReturnType<typeof getCachedInventoryItems>>,
+  selector: string,
+) => {
+  const activeItems = inventoryItems.filter(
+    (item) => item.type === "ITEM" && item.status === "ACTIVE",
+  );
+  const matches = activeItems.filter((item) => {
+    const metadata = item.metadata as Record<string, unknown> | undefined;
+    return metadata?.escapeRoomReward === selector;
+  });
+
+  if (matches.length > 1) {
+    throw new Error(`Expected one active LIBRARY key item for selector "${selector}", found ${matches.length}.`);
+  }
+  return matches[0];
+};
+
+const findFallbackLibraryPaperItem = (
+  inventoryItems: Awaited<ReturnType<typeof getCachedInventoryItems>>,
   visitorInventory: VisitorInventory,
   puzzleNumber: PuzzleNumber,
-): Promise<boolean> => {
-  const itemName = PUZZLE_REWARDS[puzzleNumber];
-  if (!itemName) return false;
-  if (visitorInventory.items.some((i) => i.name === itemName)) return false;
+  rewardSelectors: Readonly<Record<number, string>>,
+  keyAsset: Awaited<ReturnType<typeof getKeyAsset>>,
+  teamId?: string,
+) => {
+  const activePapers = inventoryItems.filter(
+    (item) => item.type === "ITEM" && item.status === "ACTIVE" && item.name === "Paper",
+  );
+  const previousSelectors = new Set(
+    Object.entries(rewardSelectors)
+      .filter(([number]) => Number(number) < puzzleNumber)
+      .map(([, selector]) => selector),
+  );
+  const previouslyAssignedIds = new Set(
+    activePapers
+      .filter((item) => {
+        const metadata = item.metadata as Record<string, unknown> | undefined;
+        return typeof metadata?.escapeRoomReward === "string" &&
+          previousSelectors.has(metadata.escapeRoomReward);
+      })
+      .map((item) => item.id),
+  );
 
-  const inventoryItems = await getCachedInventoryItems({ credentials });
-  const match = inventoryItems.find((item: any) => item.name === itemName && item.type === "ITEM");
-  if (!match) return false;
+  const remainingPapers = activePapers.filter((item) => !previouslyAssignedIds.has(item.id));
+  if (remainingPapers.length === 1) return remainingPapers[0];
 
-  await visitor.grantInventoryItem(match, 1);
-  await fireToast({
-    visitor,
-    groupId: toasts.itemEarned.groupId,
-    title: toasts.itemEarned.title,
-    text: toasts.itemEarned.textTemplate.replace("{item}", itemName),
+  const ownedPaperIds = new Set(
+    (visitorInventory.items || [])
+      .filter((item) => item.name === "Paper")
+      .map((item) => item.id),
+  );
+  const teams = (keyAsset?.dataObject as KeyAssetDataObject | null)?.teams || {};
+  for (const teamItem of (teamId ? teams[teamId]?.keyItems : []) || []) {
+    if (teamItem.name === "Paper") ownedPaperIds.add(teamItem.id);
+  }
+
+  const unownedPapers = remainingPapers.filter((item) => !ownedPaperIds.has(item.id));
+  return unownedPapers.length === 1 ? unownedPapers[0] : undefined;
+};
+
+const grantLibraryPuzzleReward = async ({
+  credentials,
+  visitor,
+  visitorInventory,
+  teamId,
+  puzzleNumber,
+  selector,
+  rewardSelectors,
+  keyAsset,
+}: {
+  credentials: Credentials;
+  visitor: VisitorInterface;
+  visitorInventory: VisitorInventory;
+  teamId?: string;
+  puzzleNumber: PuzzleNumber;
+  selector: string;
+  rewardSelectors: Readonly<Record<number, string>>;
+  keyAsset: Awaited<ReturnType<typeof getKeyAsset>>;
+}): Promise<LibraryPuzzleRewardResult> => {
+  let inventoryItems = await getCachedInventoryItems({ credentials });
+  let item: (typeof inventoryItems)[number] | undefined =
+    findLibraryRewardItemBySelector(inventoryItems, selector);
+
+  if (!item) {
+    inventoryItems = await getCachedInventoryItems({ credentials, forceRefresh: true });
+    item = findLibraryRewardItemBySelector(inventoryItems, selector);
+  }
+
+  if (!item) {
+    item = findFallbackLibraryPaperItem(
+      inventoryItems,
+      visitorInventory,
+      puzzleNumber,
+      rewardSelectors,
+      keyAsset,
+      teamId,
+    );
+    if (!item) {
+      const activePaperCount = inventoryItems.filter(
+        (candidate) =>
+          candidate.type === "ITEM" &&
+          candidate.status === "ACTIVE" &&
+          candidate.name === "Paper",
+      ).length;
+      throw new Error(
+        `Could not identify one active LIBRARY key item for selector "${selector}"; found ${activePaperCount} active Paper items and could not determine a unique remaining reward.`,
+      );
+    }
+  }
+
+  const alreadyOwned = visitorInventory.items.some((ownedItem) => ownedItem.id === item.id);
+  let updatedInventory = visitorInventory;
+
+  if (!alreadyOwned) {
+    await visitor.grantInventoryItem(item, 1);
+    await visitor.fetchInventoryItems();
+    updatedInventory = getVisitorInventory(visitor.inventoryItems || []);
+  }
+  updatedInventory = applyLibraryRewardSelectors(updatedInventory, {
+    [puzzleNumber]: item.id,
   });
-  return true;
+
+  let teamKeyItems: TeamKeyItem[] | undefined;
+  if (teamId && keyAsset) {
+    const dataObject = (keyAsset.dataObject as KeyAssetDataObject | null) || {};
+    const teams = dataObject.teams || {};
+    const team = teams[teamId];
+
+    if (team) {
+      const keyItem = {
+        id: item.id,
+        name: item.name || "Paper",
+        imageUrl: item.image_url || item.image_path || null,
+        description: item.description,
+        metadata: {
+          ...(item.metadata || {}),
+          type: "keyItem",
+          escapeRoomReward: selector,
+        },
+        quantity: 1,
+      };
+      const keyItems = team.keyItems || [];
+      const hasUpdatedKeyItem = keyItems.some(
+        (teamItem) => teamItem.id === item.id &&
+          teamItem.metadata?.escapeRoomReward === selector,
+      );
+
+      if (!hasUpdatedKeyItem) {
+        teamKeyItems = [
+          ...keyItems.filter((teamItem) => teamItem.id !== item.id),
+          keyItem,
+        ];
+      }
+    }
+  }
+
+  return {
+    granted: !alreadyOwned,
+    visitorInventory: updatedInventory,
+    itemId: item.id,
+    ...(teamKeyItems ? { teamKeyItems } : {}),
+  };
+};
+
+const applyConfiguredPuzzleReward = async ({
+  reward,
+  rewardSelectors,
+  credentials,
+  visitor,
+  visitorInventory,
+  teamId,
+  puzzleNumber,
+  keyAsset,
+}: {
+  reward: ThemePuzzleReward | undefined;
+  rewardSelectors: Readonly<Record<number, string>>;
+  credentials: Credentials;
+  visitor: VisitorInterface;
+  visitorInventory: VisitorInventory;
+  teamId?: string;
+  puzzleNumber: PuzzleNumber;
+  keyAsset: Awaited<ReturnType<typeof getKeyAsset>>;
+}): Promise<PuzzleRewardResult> => {
+  if (reward?.selector) {
+    return grantLibraryPuzzleReward({
+      credentials,
+      visitor,
+      visitorInventory,
+      teamId,
+      puzzleNumber,
+      selector: reward.selector,
+      rewardSelectors,
+      keyAsset,
+    });
+  }
+  if (reward?.itemName) {
+    return applyNamedPuzzleReward({
+      credentials,
+      visitor,
+      visitorInventory,
+      teamId,
+      itemName: reward.itemName,
+      keyAsset,
+    });
+  }
+  return { granted: false, visitorInventory };
 };
 
 export const handleSubmitPuzzle = async (req: Request, res: Response) => {
@@ -93,11 +318,24 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
 
     const puzzleNumber = req.body?.puzzleNumber;
     if (!isPuzzleNumber(puzzleNumber)) {
-      return res.status(400).json({ success: false, error: "Invalid puzzleNumber. Must be 1-7." });
+      return res.status(400).json({ success: false, error: "Invalid puzzleNumber. Must be a positive integer." });
     }
 
     // getVisitor guarantees the session exists and is initialized.
     const { visitor, session, visitorInventory } = await getVisitor(credentials, true);
+    const theme = await getSessionTheme(credentials, session);
+    if (!isPuzzleInTheme(theme, puzzleNumber)) {
+      return res.status(400).json({
+        success: false,
+        error: `Puzzle ${puzzleNumber} is not part of the ${theme.themeID} theme.`,
+      });
+    }
+    const rewardSelectors = Object.fromEntries(
+      Object.entries(theme.puzzleRewards).flatMap(([number, definition]) =>
+        definition.selector ? [[Number(number), definition.selector]] : [],
+      ),
+    );
+
     if (!session.sessionActive) {
       return res.status(200).json({
         success: false,
@@ -106,6 +344,79 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       });
     }
     const game = session;
+    const teamId = game.groupId || credentials.groupId;
+
+    if (game.puzzlesCompleted?.[puzzleNumber]) {
+      const rewardDefinition = theme.puzzleRewards[puzzleNumber];
+      if (!rewardDefinition) {
+        return res.json({ success: true, alreadyCompleted: true, visitorData: game });
+      }
+
+      const keyAsset = teamId ? await getKeyAsset(credentials) : null;
+      const reward = await applyConfiguredPuzzleReward({
+        reward: rewardDefinition,
+        rewardSelectors,
+        credentials,
+        visitor,
+        visitorInventory,
+        teamId,
+        puzzleNumber,
+        keyAsset,
+      });
+
+      if (reward.itemId) {
+        game.libraryRewardItemIds = {
+          ...(game.libraryRewardItemIds || {}),
+          [puzzleNumber]: reward.itemId,
+        };
+        await visitor.updateDataObject(
+          { [sessionKey]: game },
+          { lock: { lockId: getVisitorDataObjectLockId(credentials), releaseLock: true } },
+        );
+      }
+
+      if (teamId && keyAsset && reward.teamKeyItems) {
+        const dataObject = (keyAsset.dataObject as KeyAssetDataObject | null) || {};
+        const teams = dataObject.teams || {};
+        const team = teams[teamId];
+        if (team) {
+          await keyAsset.updateDataObject(
+            {
+              teams: {
+                ...teams,
+                [teamId]: {
+                  ...team,
+                  keyItems: reward.teamKeyItems,
+                  updatedAt: new Date().toISOString(),
+                },
+              },
+            },
+            {
+              lock: {
+                lockId: getKeyAssetDataObjectLockId(credentials),
+                releaseLock: true,
+              },
+            },
+          );
+        }
+      }
+
+      if (reward.granted) {
+        await checkTrashPandaBadge({
+          credentials: { ...credentials, groupId: teamId },
+          visitor,
+          visitorInventory: reward.visitorInventory,
+          pendingTeamKeyItems: reward.teamKeyItems,
+        });
+      }
+
+      return res.json({
+        success: true,
+        alreadyCompleted: true,
+        visitorData: game,
+        ...(reward.itemId || reward.granted ? { visitorInventory: reward.visitorInventory } : {}),
+      });
+    }
 
     // Look up the key asset (start terminal) where the leaderboard lives.
     // Found by uniqueName within the scene — no world data needed. For
@@ -113,32 +424,88 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     // we end up writing the leaderboard below.
     const keyAsset = await getKeyAsset(credentials);
     const keyAssetDataObject = (keyAsset?.dataObject as KeyAssetDataObject | null) || null;
+    const updatedTeams: NonNullable<KeyAssetDataObject["teams"]> = {
+      ...(keyAssetDataObject?.teams || {}),
+    };
+    let shouldUpdateTeams = false;
+    let updatedLeaderboard: Record<string, string> | undefined;
 
     // Mutate the in-memory session.
     game.puzzlesCompleted[puzzleNumber] = true;
     // Drop the in-progress draft for this puzzle — it's no longer "in progress".
     if (game.puzzleDrafts) delete game.puzzleDrafts[puzzleNumber];
-    const granted = await applyInventoryReward(credentials, visitor, visitorInventory, puzzleNumber);
+    let granted = false;
+    let updatedVisitorInventory: VisitorInventory | undefined;
 
-    // If a fresh item just landed (puzzles 1/2/3/5 grant Battery / Fuse /
-    // Wrench / Circuit Chip), check whether the player now owns every
-    // ecosystem ITEM — that's the **Trash Panda** trigger. Needs a fresh
-    // inventory snapshot because `visitorInventory` above is from before
-    // applyInventoryReward.
-    if (granted) {
+    const reward = await applyConfiguredPuzzleReward({
+      reward: theme.puzzleRewards[puzzleNumber],
+      rewardSelectors,
+      credentials,
+      visitor,
+      visitorInventory,
+      teamId,
+      puzzleNumber,
+      keyAsset,
+    });
+    granted = reward.granted;
+    updatedVisitorInventory = reward.visitorInventory;
+    if (teamId && reward.teamKeyItems && updatedTeams[teamId]) {
+      updatedTeams[teamId] = {
+        ...updatedTeams[teamId],
+        keyItems: reward.teamKeyItems,
+        updatedAt: new Date().toISOString(),
+      };
+      shouldUpdateTeams = true;
+    }
+    if (reward.itemId) {
+      game.libraryRewardItemIds = {
+        ...(game.libraryRewardItemIds || {}),
+        [puzzleNumber]: reward.itemId,
+      };
+    }
+
+    // A newly collected item can complete the ecosystem ITEM set.
+    if (granted && updatedVisitorInventory) {
+      await checkTrashPandaBadge({
+        credentials: { ...credentials, groupId: teamId },
+        visitor,
+        visitorInventory: updatedVisitorInventory,
+        pendingTeamKeyItems: teamId ? updatedTeams[teamId]?.keyItems : undefined,
+      });
+    } else if (granted) {
       await visitor.fetchInventoryItems();
       const freshInventory = getVisitorInventory(visitor.inventoryItems || []);
-      await checkTrashPandaBadge({ credentials, visitor, visitorInventory: freshInventory });
+      await checkTrashPandaBadge({
+        credentials: { ...credentials, groupId: teamId },
+        visitor,
+        visitorInventory: freshInventory,
+        pendingTeamKeyItems: teamId ? updatedTeams[teamId]?.keyItems : undefined,
+      });
     }
 
     // Generic puzzle-solved toast. Puzzle 7 gets the "escaped" toast below
     // instead — that beat is more meaningful as the game-end moment.
-    if (puzzleNumber !== 7) {
+    const finalPuzzleNumber = getFinalPuzzleNumber(theme);
+    if (puzzleNumber !== finalPuzzleNumber) {
       await fireToast({
         visitor,
         groupId: toasts.puzzleSolved.groupId,
         title: toasts.puzzleSolved.title,
         text: toasts.puzzleSolved.text,
+      });
+
+      sseManager.publish({
+        event: "TEAM_PUZZLE_SOLVED",
+        assetId: credentials.assetId,
+        urlSlug: credentials.urlSlug,
+        visitorId: credentials.visitorId,
+        interactiveNonce: credentials.interactiveNonce,
+        groupId: game.groupId,
+        data: {
+          puzzleNumber,
+          completedByProfileId: credentials.profileId,
+          completedByName: credentials.displayName,
+        },
       });
     }
 
@@ -168,10 +535,13 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       },
     ];
 
-    // Room transitions: Puzzle 7 (game-end) teleports home
+    // Theme room transitions advance progression; room teleport pads handle physical movement.
     let teleport;
-    for (const transition of ROOM_TRANSITIONS) {
-      if (game.currentRoom !== transition.fromRoom || !transition.isReady(game)) continue;
+    for (const transition of theme.transitions) {
+      if (
+        game.currentRoom !== transition.fromRoom ||
+        !isRoomReady(theme, transition.toRoom, game.puzzlesCompleted)
+      ) continue;
       game.currentRoom = transition.toRoom;
       analytics.push({
         analyticName: transition.analyticName,
@@ -185,7 +555,6 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
           visitor,
           visitorInventory,
           game,
-          puzzleNumber,
           badgeKey: transition.badgeKey,
         }),
       );
@@ -201,68 +570,60 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       // naming convention: `EscapeRoom_room{from}_teleportRoom{to}` — the
       // pad sitting in the current room that, when stepped on, sends the
       // player to the next. Best-effort; missing pad just no-ops.
-      const padUniqueName = `EscapeRoom_room${transition.fromRoom}_teleportRoom${transition.toRoom}`;
+      const padUniqueName = transition.walkPadUniqueName;
       try {
-        await moveVisitorToAsset(credentials, padUniqueName, { shouldTeleportVisitor: false });
+        await moveVisitorToAsset(credentials, padUniqueName, {
+          shouldTeleportVisitor: false,
+          themeID: theme.themeID,
+        });
       } catch (err) {
         console.warn(`Walk to "${padUniqueName}" failed`, err);
       }
     }
 
-    // Puzzle 6 — last puzzle in Room 3; awards the engineering badge but doesn't end the game.
-    if (puzzleNumber === 6) {
-      collectBadges(
-        await checkEscapeBadges({
-          credentials,
-          visitor,
-          visitorInventory,
-          game,
-          puzzleNumber,
-          badgeKey: "AIRLOCK_ENGINEER",
-        }),
-      );
+    if (puzzleNumber !== finalPuzzleNumber) {
+      for (const { badgeKey } of theme.puzzleBadges[puzzleNumber] || []) {
+        collectBadges(
+          await checkEscapeBadges({
+            credentials,
+            visitor,
+            visitorInventory,
+            game,
+            badgeKey,
+          }),
+        );
+      }
     }
 
-    // Puzzle 7 — game complete: stamp end time, write leaderboard, teleport home, mark survivor.
-    if (puzzleNumber === 7) {
+    // The theme's final puzzle completes the run.
+    if (puzzleNumber === finalPuzzleNumber) {
       game.sessionActive = false;
       game.endTime = new Date().toISOString();
+
       if (game.startTime) {
         const start = new Date(game.startTime).getTime();
         const end = new Date(game.endTime).getTime();
         game.completionTime = Math.floor((end - start) / 1000);
       }
 
-      collectBadges(
-        await checkEscapeBadges({
-          credentials,
-          visitor,
-          visitorInventory,
-          game,
-          puzzleNumber,
-          badgeKey: "STATION_SURVIVOR",
-        }),
-      );
+      for (const { badgeKey } of theme.puzzleBadges[puzzleNumber] || []) {
+        collectBadges(
+          await checkEscapeBadges({
+            credentials,
+            visitor,
+            visitorInventory,
+            game,
+            badgeKey,
+          }),
+        );
+      }
 
-      // Warp Speed — fires only if the escape beat the threshold. The check
-      // itself reads completionTime off `game` (set just above), so this just
-      // gates the lookup.
-      collectBadges(
-        await checkEscapeBadges({
-          credentials,
-          visitor,
-          visitorInventory,
-          game,
-          puzzleNumber,
-          badgeKey: "WARP_SPEED",
-        }),
-      );
-
+      const escapedToast = theme.completionToast === "escaped" ? toasts.escaped : toasts.libraryEscaped;
       await fireToast({
         visitor,
-        groupId: toasts.escaped.groupId,
-        title: toasts.escaped.title,
-        text: toasts.escaped.text,
+        groupId: escapedToast.groupId,
+        title: escapedToast.title,
+        text: escapedToast.text,
       });
 
       // One entry per profileId. Each escape: take min(existing best, new)
@@ -283,7 +644,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         }
       }
 
-      const updatedLeaderboard = {
+      updatedLeaderboard = {
         ...existingLeaderboard,
         [profileId]: `${displayName}|${bestTime}|${attempts}`,
       };
@@ -291,13 +652,10 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       // Skip the leaderboard write if the key asset isn't placed in the world.
       // Puzzle completion + badges still persist below; the run just won't
       // make it onto the board until the asset exists.
-      if (keyAsset) {
-        await keyAsset.updateDataObject(
-          { leaderboard: updatedLeaderboard },
-          { lock: { lockId: `leaderboard-${profileId}`, releaseLock: true } },
+      if (!keyAsset) {
+        console.warn(
+          `Key asset not found for scene ${sceneDropId}; skipping leaderboard write.`,
         );
-      } else {
-        console.warn(`Key asset not found for scene ${sceneDropId}; skipping leaderboard write.`);
       }
 
       teleport = "EscapeRoom_start_teleport";
@@ -343,18 +701,86 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     await visitor.updateDataObject(
       { [sessionKey]: game },
       {
-        lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true },
+        lock: { lockId: getVisitorDataObjectLockId(credentials), releaseLock: true },
         analytics,
       },
     );
 
+    if (teamId) {
+      const team = updatedTeams[teamId];
+      if (team) {
+        updatedTeams[teamId] = {
+          ...team,
+          puzzlesCompleted: {
+            ...(team.puzzlesCompleted || {}),
+            [puzzleNumber]: true,
+          },
+          updatedAt: new Date().toISOString(),
+          ...(puzzleNumber === finalPuzzleNumber
+            ? {
+                status: "completed" as const,
+                completionTime: game.completionTime ?? 0,
+              }
+            : {}),
+        };
+        shouldUpdateTeams = true;
+      }
+    }
+
+    if (keyAsset && (updatedLeaderboard || shouldUpdateTeams)) {
+      await keyAsset.updateDataObject(
+        {
+          ...(updatedLeaderboard ? { leaderboard: updatedLeaderboard } : {}),
+          ...(shouldUpdateTeams ? { teams: updatedTeams } : {}),
+        },
+        {
+          lock: {
+            lockId: getKeyAssetDataObjectLockId(credentials),
+            releaseLock: true,
+          },
+        },
+      );
+    }
+
+    if (teamId && puzzleNumber === finalPuzzleNumber && shouldUpdateTeams) {
+      sseManager.publish({
+        event: "GAME_COMPLETED",
+        assetId: credentials.assetId,
+        urlSlug: credentials.urlSlug,
+        visitorId: credentials.visitorId,
+        interactiveNonce: credentials.interactiveNonce,
+        groupId: teamId,
+        data: { teamId },
+      });
+    }
+
     if (teleport) {
       try {
-        await moveVisitorToAsset(credentials, teleport);
+        await moveVisitorToAsset(credentials, teleport, {
+          themeID: theme.themeID,
+          allowThemeFallback: true,
+        });
       } catch (err) {
         console.warn(`moveVisitorToAsset to "${teleport}" failed`, err);
       }
     }
+
+    sseManager.publish({
+      event: "state:update",
+      assetId: credentials.assetId,
+      urlSlug: credentials.urlSlug,
+      visitorId: credentials.visitorId,
+      interactiveNonce: credentials.interactiveNonce,
+      groupId: teamId,
+      data: {
+        kind: "puzzle",
+        visitorData: game,
+        sessionKey,
+        badgesAwarded,
+        badgesOwned,
+        badgesFailed,
+      },
+    });
 
     return res.json({
       success: true,
@@ -362,6 +788,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       badgesAwarded,
       badgesOwned,
       badgesFailed,
+      ...(updatedVisitorInventory ? { visitorInventory: updatedVisitorInventory } : {}),
     });
   } catch (error) {
     return errorHandler({

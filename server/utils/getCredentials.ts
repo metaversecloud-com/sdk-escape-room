@@ -18,6 +18,7 @@ export const getCredentials = (query: any): Credentials => {
     return {
       assetId: query.assetId as string,
       displayName: query.displayName as string,
+      groupId: (query.groupId as string | undefined) || undefined,
       identityId: query.identityId as string,
       interactiveNonce: query.interactiveNonce as string,
       interactivePublicKey: query.interactivePublicKey as string,

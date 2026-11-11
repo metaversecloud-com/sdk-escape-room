@@ -1,5 +1,6 @@
 import { DroppedAssetInterface } from "@rtsdk/topia";
 import { VisitorData } from "@shared/types/VisitorData";
+import { ThemeConfig } from "@shared/themes";
 
 export const SET_HAS_INTERACTIVE_PARAMS = "SET_HAS_INTERACTIVE_PARAMS";
 export const SET_GAME_STATE = "SET_GAME_STATE";
@@ -8,6 +9,7 @@ export const SET_ERROR = "SET_ERROR";
 export type InteractiveParams = {
   assetId: string;
   displayName: string;
+  groupId?: string;
   identityId: string;
   interactiveNonce: string;
   interactivePublicKey: string;
@@ -25,7 +27,9 @@ export interface InitialState {
   hasInteractiveParams?: boolean;
   visitorData?: VisitorData;
   droppedAsset?: DroppedAssetInterface;
+  theme?: ThemeConfig;
   leaderboard?: LeaderboardRowType[];
+  teamLeaderboard?: TeamLeaderboardRowType[];
   badges?: { [name: string]: BadgeType };
   visitorInventory?: VisitorInventoryType;
   sessionKey?: string;
@@ -61,6 +65,12 @@ export type LeaderboardRowType = {
   name: string;
   completionTime: number;
   attempts: number;
+};
+
+export type TeamLeaderboardRowType = {
+  teamId: string;
+  members: string[];
+  completionTime: number;
 };
 
 export type InventoryItemSummary = {

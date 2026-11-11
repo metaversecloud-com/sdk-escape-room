@@ -1,5 +1,14 @@
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getVisitor, moveVisitorToAsset } from "@utils/index.js";
+import {
+  errorHandler,
+  getCredentials,
+  getSessionTheme,
+  getVisitor,
+  moveVisitorToAsset,
+  getKeyAsset,
+  getKeyAssetDataObjectLockId,
+  getVisitorDataObjectLockId,
+} from "@utils/index.js";
 
 export const handleExitGame = async (req: Request, res: Response) => {
   try {
@@ -7,8 +16,8 @@ export const handleExitGame = async (req: Request, res: Response) => {
     const { assetId, sceneDropId, urlSlug, profileId } = credentials;
     const sessionKey = `${urlSlug}-${sceneDropId}`;
 
-    // getVisitor guarantees the session is initialized.
     const { visitor, session } = await getVisitor(credentials, true);
+    const theme = await getSessionTheme(credentials, session);
 
     session.sessionActive = false;
     session.endTime = new Date().toISOString();
@@ -24,11 +33,85 @@ export const handleExitGame = async (req: Request, res: Response) => {
             uniqueKey: `${profileId}-${sessionKey}`,
           },
         ],
-        lock: { lockId: `${sessionKey}-${Date.now()}-visitor`, releaseLock: true },
+        lock: {
+          lockId: getVisitorDataObjectLockId(credentials),
+          releaseLock: true,
+        },
       },
     );
 
-    await moveVisitorToAsset(credentials, "EscapeRoom_start_teleport");
+    // Remove the player from their team.
+    const keyAsset = await getKeyAsset(credentials);
+
+    if (keyAsset) {
+      const dataObject =
+        (keyAsset.dataObject as Record<string, any> | null) || {};
+
+      const teams =
+        (dataObject.teams as Record<string, any>) || {};
+
+      const teamId = session.groupId;
+
+      if (teamId && teams[teamId]) {
+        const team = teams[teamId];
+
+        const remainingMembers = (team.members || []).filter(
+          (member: any) => member.profileId !== profileId,
+        );
+
+        if (remainingMembers.length === 0) {
+          // Last player left: delete the team.
+          const { [teamId]: _removedTeam, ...remainingTeams } = teams;
+
+          await keyAsset.updateDataObject(
+            { teams: remainingTeams },
+            {
+              lock: {
+                lockId: getKeyAssetDataObjectLockId(credentials),
+                releaseLock: true,
+              },
+            },
+          );
+        } else {
+          // Other players remain: remove only this player.
+          const newLeader =
+            team.leaderProfileId === profileId
+              ? remainingMembers[0].profileId
+              : team.leaderProfileId;
+
+          const updatedTeam = {
+            ...team,
+            members: remainingMembers,
+            leaderProfileId: newLeader,
+            createdBy:
+              team.createdBy?.profileId === profileId
+                ? remainingMembers[0]
+                : team.createdBy,
+            updatedAt: new Date().toISOString(),
+          };
+
+          await keyAsset.updateDataObject(
+            {
+              teams: {
+                ...teams,
+                [teamId]: updatedTeam,
+              },
+            },
+            {
+              lock: {
+                lockId: getKeyAssetDataObjectLockId(credentials),
+                releaseLock: true,
+              },
+            },
+          );
+        }
+      }
+    }
+
+    await moveVisitorToAsset(credentials, "EscapeRoom_start_teleport", {
+      themeID: theme.themeID,
+      allowThemeFallback: true,
+    });
 
     await visitor.closeIframe(assetId);
 

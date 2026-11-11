@@ -40,6 +40,13 @@ export const handleGrantItem = async (req: Request, res: Response) => {
     }
 
     const { visitor, session, visitorInventory } = await getVisitor(credentials, true);
+    if (session.sessionActive !== true) {
+      return res.status(403).json({
+        success: false,
+        error: "An active game session is required to acquire artifacts",
+      });
+    }
+
     const alreadyHad = visitorInventory.items.some((i) => i.name === itemName);
 
     // Always need to look up the ecosystem item to read metadata.room, even
@@ -94,7 +101,6 @@ export const handleGrantItem = async (req: Request, res: Response) => {
     }
 
     const item = updatedInventory.items.find((i) => i.name === itemName) || null;
-
     return res.json({
       success: true,
       item,
