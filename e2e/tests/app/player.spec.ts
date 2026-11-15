@@ -179,7 +179,8 @@ test("exiting ends the run, sends the player home and closes the drawer", async 
   await page.getByRole("button", { name: "Exit", exact: true }).click();
 
   await expect.poll(async () => (await world.session()).sessionActive).toBe(false);
-  expect(await world.events("move")).toEqual([expect.objectContaining({ moveTo: PADS.EscapeRoom_start_teleport })]);
+  // The run is ended before the teleport home, so the move can land a moment later.
+  await expect.poll(() => world.events("move")).toEqual([expect.objectContaining({ moveTo: PADS.EscapeRoom_start_teleport })]);
   await expect.poll(async () => (await world.events("close-iframe")).length).toBe(1);
   expect((await world.events("analytics")).map((e) => e.analyticName)).toEqual(["manualGameExits"]);
 });
