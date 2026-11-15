@@ -28,7 +28,7 @@ export const handleSSE = async (req: Request, res: Response) => {
       groupId,
     });
 
-    res.write(`retry: 5000\ndata: ${JSON.stringify({ success: true })}\n\n`);
+    res.write(`retry: 5000\ndata: ${JSON.stringify({ kind: "connected", data: {} })}\n\n`);
 
     req.on("close", () => {
       sseManager.removeConnection(res);

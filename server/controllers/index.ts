@@ -13,3 +13,4 @@ export * from "./handleTeleport.js";
 export * from "./handleWalkToAsset.js";
 export * from "./handleWrongAttempt.js";
 export * from "./handleTeamPuzzleSolved.js";
+export * from "./handleTeamGameCompleted.js";

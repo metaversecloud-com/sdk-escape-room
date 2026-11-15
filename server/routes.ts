@@ -17,6 +17,7 @@ import {
   handleStartGame,
   handleStartTeam,
   handleSubmitPuzzle,
+  handleTeamGameCompleted,
   handleTeamPuzzleSolved,
   handleTeleport,
   handleWalkToAsset,
@@ -59,6 +60,7 @@ router.post("/teleport", handleTeleport);
 router.post("/walk-to-asset", handleWalkToAsset);
 router.post("/start-game", handleStartGame);
 router.post("/submit-puzzle", handleSubmitPuzzle);
+router.post("/team-game-completed", handleTeamGameCompleted);
 router.post("/team-puzzle-solved", handleTeamPuzzleSolved);
 router.post("/puzzle-draft", handleSavePuzzleDraft);
 router.post("/grant-item", handleGrantItem);

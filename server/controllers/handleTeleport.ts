@@ -5,6 +5,7 @@ import {
   getKeyAsset,
   getVisitor,
   getVisitorDataObjectLockId,
+  getVisitorSessionDataForUpdate,
   moveVisitorToAsset,
   fireToast,
   getSessionTheme,
@@ -31,21 +32,16 @@ export const handleTeleport = async (req: Request, res: Response) => {
 
     const keyAsset = await getKeyAsset(credentials);
 
-      let effectivePuzzlesCompleted = session.puzzlesCompleted;
-      const keyAssetDataObject =
-        (keyAsset?.dataObject as KeyAssetDataObject | null) || {};
+    let effectivePuzzlesCompleted = session.puzzlesCompleted;
+    const keyAssetDataObject =
+      (keyAsset?.dataObject as KeyAssetDataObject | null) || {};
 
-      if (session.groupId) {
-
+    if (session.groupId) {
       const team = keyAssetDataObject.teams?.[session.groupId];
-
-        if (team?.puzzlesCompleted) {
-          effectivePuzzlesCompleted = {
-            ...session.puzzlesCompleted,
-            ...team.puzzlesCompleted,
-          };
-        }
+      if (team?.puzzlesCompleted) {
+        effectivePuzzlesCompleted = team.puzzlesCompleted;
       }
+    }
 
     const team = session.groupId ? keyAssetDataObject.teams?.[session.groupId] : undefined;
     const isTeamMember = team?.members.some((member) => member.profileId === credentials.profileId) === true;
@@ -80,10 +76,7 @@ export const handleTeleport = async (req: Request, res: Response) => {
       }
 
       try {
-        await moveVisitorToAsset(credentials, "EscapeRoom_start_teleport", {
-          themeID: theme.themeID,
-          allowThemeFallback: true,
-        });
+        await moveVisitorToAsset(credentials, "EscapeRoom_start_teleport");
 
         const completedSession: VisitorData = {
           ...session,
@@ -93,7 +86,7 @@ export const handleTeleport = async (req: Request, res: Response) => {
           physicalRoom: null,
         };
         await visitor.updateDataObject(
-          { [sessionKey]: completedSession },
+          { [sessionKey]: getVisitorSessionDataForUpdate(completedSession) },
           { lock: { lockId: getVisitorDataObjectLockId(credentials), releaseLock: true } },
         );
 
@@ -154,7 +147,7 @@ export const handleTeleport = async (req: Request, res: Response) => {
     let teleportSucceeded = true;
 
     try {
-      await moveVisitorToAsset(credentials, def.spawnUniqueName, { themeID: theme.themeID });
+      await moveVisitorToAsset(credentials, def.spawnUniqueName);
 
     } catch (err) {
       teleportSucceeded = false;
@@ -172,7 +165,7 @@ export const handleTeleport = async (req: Request, res: Response) => {
 
     if (teleportSucceeded && session.physicalRoom !== def.id) {
       await visitor.updateDataObject(
-        { [sessionKey]: updatedSession },
+        { [sessionKey]: getVisitorSessionDataForUpdate(updatedSession) },
         { lock: { lockId: getVisitorDataObjectLockId(credentials), releaseLock: true } },
       );
     }

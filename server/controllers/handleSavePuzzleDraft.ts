@@ -2,11 +2,14 @@ import { Request, Response } from "express";
 import {
   errorHandler,
   getCredentials,
+  getKeyAsset,
   getSessionTheme,
   getVisitor,
   getVisitorDataObjectLockId,
+  getVisitorSessionDataForUpdate,
   isPuzzleInTheme,
 } from "@utils/index.js";
+import { KeyAssetDataObject } from "../types/index.js";
 
 type PuzzleNumber = number;
 const isPuzzleNumber = (value: unknown): value is PuzzleNumber =>
@@ -50,14 +53,25 @@ export const handleSavePuzzleDraft = async (req: Request, res: Response) => {
         error: `Puzzle ${puzzleNumber} is not part of the ${theme.themeID} theme.`,
       });
     }
-    if (session.puzzlesCompleted?.[puzzleNumber]) {
+    const teamId = session.groupId || credentials.groupId;
+    let puzzleCompleted = session.puzzlesCompleted?.[puzzleNumber];
+    if (teamId) {
+      const keyAsset = await getKeyAsset(credentials);
+      const keyAssetDataObject =
+        (keyAsset?.dataObject as KeyAssetDataObject | null) || {};
+      puzzleCompleted =
+        keyAssetDataObject.teams?.[teamId]?.puzzlesCompleted?.[puzzleNumber] ??
+        puzzleCompleted;
+    }
+
+    if (puzzleCompleted) {
       return res.json({ success: true, saved: false, reason: "puzzleAlreadyComplete" });
     }
 
     session.puzzleDrafts = { ...(session.puzzleDrafts || {}), [puzzleNumber]: draft };
 
     await visitor.updateDataObject(
-      { [sessionKey]: session },
+      { [sessionKey]: getVisitorSessionDataForUpdate(session, teamId) },
       { lock: { lockId: getVisitorDataObjectLockId(credentials), releaseLock: true } },
     );
 

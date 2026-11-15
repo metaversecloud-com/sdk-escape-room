@@ -3,6 +3,10 @@ export const initialState = {
   gameState: {},
   hasInteractiveParams: false,
   isAdmin: false,
+  profileId:
+    typeof window === "undefined"
+      ? ""
+      : new URLSearchParams(window.location.search).get("profileId") || "",
   visitorData: undefined,
   droppedAsset: undefined,
   leaderboard: [],

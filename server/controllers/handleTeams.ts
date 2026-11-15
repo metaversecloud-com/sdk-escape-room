@@ -5,13 +5,16 @@ import {
   getDroppedAsset,
   getKeyAsset,
   getKeyAssetDataObjectLockId,
+  getTeamDataObjectLockId,
   getVisitor,
   getVisitorDataObjectLockId,
+  getVisitorSessionDataForUpdate,
   getTheme,
 } from "@utils/index.js";
 import { KeyAssetDataObject} from "../types/index.js";
 import { TeamData } from "../types/DroppedAssetTypes.js"
 import { getInitialRoom, ThemeConfig } from "@shared/themes.js";
+import { sseManager } from "../utils/sseManager.js";
 
 type TeamMember = {
   profileId: string;
@@ -31,18 +34,19 @@ const makeMember = (credentials: ReturnType<typeof getCredentials>): TeamMember 
   visitorId: credentials.visitorId,
 });
 
-const buildGroupProgress = (groupId: string, theme: ThemeConfig, members: TeamMember[] = []) => ({
-  groupId,
-  puzzlesCompleted: { ...theme.defaultPuzzles },
-  currentRoom: getInitialRoom(theme).id,
-  sessionActive: false,
-  startTime: null,
-  completionTime: null,
-  items: [],
-  badges: {},
-  members,
-  keyItems: [],
-});
+const publishTeamsUpdated = (
+  credentials: ReturnType<typeof getCredentials>,
+  teamId: string,
+) => {
+  sseManager.publish({
+    event: "TEAMS_UPDATED",
+    assetId: credentials.assetId,
+    urlSlug: credentials.urlSlug,
+    visitorId: credentials.visitorId,
+    interactiveNonce: credentials.interactiveNonce,
+    data: { teamId },
+  });
+};
 
 const getTeamState = async (credentials: ReturnType<typeof getCredentials>) => {
   const keyAsset = await getKeyAsset(credentials);
@@ -101,21 +105,14 @@ const pruneInactiveTeams = (teams: Record<string, TeamData> = {}, now = Date.now
 const upsertVisitorTeamSession = async (
   credentials: ReturnType<typeof getCredentials>,
   teamId: string,
-  members: TeamMember[],
   theme: ThemeConfig,
   started = false,
 ) => {
-  const { visitor, session, visitorDataObject } = await getVisitor(credentials, true);
+  const { visitor, session } = await getVisitor(credentials, true);
   const sessionKey = `${credentials.urlSlug}-${credentials.sceneDropId}`;
-  const groupProgress = {
-    ...(visitorDataObject[sessionKey]?.groupProgress || {}),
-    [teamId]: buildGroupProgress(teamId, theme, members),
-  };
-
   const nextSession = {
     ...session,
     groupId: teamId,
-    groupProgress,
     sessionActive: started,
   };
 
@@ -125,7 +122,7 @@ const upsertVisitorTeamSession = async (
   }
 
   await visitor.updateDataObject(
-    { [sessionKey]: nextSession },
+    { [sessionKey]: getVisitorSessionDataForUpdate(nextSession) },
     { lock: { lockId: getVisitorDataObjectLockId(credentials), releaseLock: true } },
   );
   return nextSession;
@@ -137,10 +134,11 @@ export const handleGetTeams = async (req: Request, res: Response) => {
     const { keyAsset, teams } = await getTeamState(credentials);
     const { session } = await getVisitor(credentials, true);
     const cleanedTeams = pruneInactiveTeams(teams);
+    const inactiveTeamIds = Object.keys(teams).filter((teamId) => !cleanedTeams[teamId]);
 
-    if (keyAsset && Object.keys(cleanedTeams).length !== Object.keys(teams).length) {
+    if (keyAsset && inactiveTeamIds.length > 0) {
       await keyAsset.updateDataObject(
-        { teams: cleanedTeams },
+        Object.fromEntries(inactiveTeamIds.map((teamId) => [`teams.${teamId}`, undefined])),
         { lock: { lockId: getKeyAssetDataObjectLockId(credentials), releaseLock: true } },
       );
     }
@@ -195,19 +193,26 @@ export const handleCreateTeam = async (req: Request, res: Response) => {
       leaderProfileId: member.profileId,
       members: [member],
       status: "waiting",
-      started: false,
       createdAt: now,
       updatedAt: now,
       puzzlesCompleted: { ...theme.defaultPuzzles },
       keyItems: [],
     };
 
-    const updatedTeams = { ...pruneInactiveTeams(teams), [teamId]: team };
+    const activeTeams = pruneInactiveTeams(teams);
+    const updatedTeams = { ...activeTeams, [teamId]: team };
+    const teamUpdates = Object.fromEntries([
+      ...Object.keys(teams)
+        .filter((existingTeamId) => !activeTeams[existingTeamId])
+        .map((inactiveTeamId) => [`teams.${inactiveTeamId}`, undefined]),
+      [`teams.${teamId}`, team],
+    ]);
     await keyAsset.updateDataObject(
-      { teams: updatedTeams },
-      { lock: { lockId: getKeyAssetDataObjectLockId(credentials), releaseLock: true } },
+      teamUpdates,
+      { lock: { lockId: getTeamDataObjectLockId(credentials, teamId), releaseLock: true } },
     );
-    await upsertVisitorTeamSession(credentials, teamId, [member], theme, false);
+    await upsertVisitorTeamSession(credentials, teamId, theme, false);
+    publishTeamsUpdated(credentials, teamId);
 
     return res.json({ success: true, team, teams: Object.values(updatedTeams) });
   } catch (error) {
@@ -236,6 +241,9 @@ export const handleJoinTeam = async (req: Request, res: Response) => {
     }
 
     const activeTeams = pruneInactiveTeams(teams);
+    const inactiveTeamIds = Object.keys(teams).filter(
+      (existingTeamId) => existingTeamId !== teamId && !activeTeams[existingTeamId],
+    );
     const { session } = await getVisitor(credentials, true);
     const existingTeam = findTeamForProfile(activeTeams, credentials.profileId, session.groupId);
     if (existingTeam && existingTeam.id !== teamId) {
@@ -272,12 +280,17 @@ export const handleJoinTeam = async (req: Request, res: Response) => {
       updatedAt: now,
     };
 
-    const updatedTeams = { ...pruneInactiveTeams(teams), [teamId]: nextTeam };
     await keyAsset.updateDataObject(
-      { teams: updatedTeams },
-      { lock: { lockId: getKeyAssetDataObjectLockId(credentials), releaseLock: true } },
+      {
+        ...Object.fromEntries(inactiveTeamIds.map((inactiveTeamId) => [`teams.${inactiveTeamId}`, undefined])),
+        [`teams.${teamId}.members`]: nextTeam.members,
+        [`teams.${teamId}.leaderProfileId`]: nextTeam.leaderProfileId,
+        [`teams.${teamId}.updatedAt`]: nextTeam.updatedAt,
+      },
+      { lock: { lockId: getTeamDataObjectLockId(credentials, teamId), releaseLock: true } },
     );
-    await upsertVisitorTeamSession(credentials, teamId, nextMembers, theme, false);
+    await upsertVisitorTeamSession(credentials, teamId, theme, false);
+    publishTeamsUpdated(credentials, teamId);
 
     return res.json({ success: true, team: nextTeam, joined: !memberExists, alreadyMember: memberExists });
   } catch (error) {
@@ -307,9 +320,11 @@ export const handlePrepareRestart = async (req: Request, res: Response) => {
           (member) => member.profileId !== credentials.profileId,
         );
 
-        const nextTeams = { ...teams };
         if (remainingMembers.length === 0) {
-          delete nextTeams[teamId];
+          await keyAsset.updateDataObject(
+            { [`teams.${teamId}`]: undefined },
+            { lock: { lockId: getTeamDataObjectLockId(credentials, teamId), releaseLock: true } },
+          );
         } else {
           const nextLeaderProfileId =
             team.leaderProfileId === credentials.profileId
@@ -325,13 +340,16 @@ export const handlePrepareRestart = async (req: Request, res: Response) => {
                 : team.createdBy,
             updatedAt: new Date().toISOString(),
           };
-          nextTeams[teamId] = nextTeam;
+          await keyAsset.updateDataObject(
+            {
+              [`teams.${teamId}.members`]: nextTeam.members,
+              [`teams.${teamId}.leaderProfileId`]: nextTeam.leaderProfileId,
+              [`teams.${teamId}.createdBy`]: nextTeam.createdBy,
+              [`teams.${teamId}.updatedAt`]: nextTeam.updatedAt,
+            },
+            { lock: { lockId: getTeamDataObjectLockId(credentials, teamId), releaseLock: true } },
+          );
         }
-
-        await keyAsset.updateDataObject(
-          { teams: nextTeams },
-          { lock: { lockId: getKeyAssetDataObjectLockId(credentials), releaseLock: true } },
-        );
       }
     }
 
@@ -342,7 +360,7 @@ export const handlePrepareRestart = async (req: Request, res: Response) => {
       groupId: undefined,
     };
     await visitor.updateDataObject(
-      { [sessionKey]: nextSession },
+      { [sessionKey]: getVisitorSessionDataForUpdate(nextSession) },
       { lock: { lockId: getVisitorDataObjectLockId(credentials), releaseLock: true } },
     );
 
@@ -385,22 +403,27 @@ export const handleStartTeam = async (req: Request, res: Response) => {
       ...team,
       leaderProfileId: team.leaderProfileId || team.createdBy.profileId,
       status: "started",
-      started: true,
       startedAt,
       updatedAt: startedAt,
       puzzlesCompleted: { ...theme.defaultPuzzles },
     };
-
-    const updatedTeams = {
-      ...pruneInactiveTeams(teams),
-      [teamId]: startedTeam,
-    };
+    const activeTeams = pruneInactiveTeams(teams);
+    const inactiveTeamIds = Object.keys(teams).filter(
+      (existingTeamId) => existingTeamId !== teamId && !activeTeams[existingTeamId],
+    );
 
     await keyAsset.updateDataObject(
-      { teams: updatedTeams },
+      {
+        ...Object.fromEntries(inactiveTeamIds.map((inactiveTeamId) => [`teams.${inactiveTeamId}`, undefined])),
+        [`teams.${teamId}.leaderProfileId`]: startedTeam.leaderProfileId,
+        [`teams.${teamId}.status`]: startedTeam.status,
+        [`teams.${teamId}.startedAt`]: startedTeam.startedAt,
+        [`teams.${teamId}.updatedAt`]: startedTeam.updatedAt,
+        [`teams.${teamId}.puzzlesCompleted`]: startedTeam.puzzlesCompleted,
+      },
       {
         lock: {
-          lockId: getKeyAssetDataObjectLockId(credentials),
+          lockId: getTeamDataObjectLockId(credentials, teamId),
           releaseLock: true,
         },
       },
@@ -409,10 +432,10 @@ export const handleStartTeam = async (req: Request, res: Response) => {
     await upsertVisitorTeamSession(
       credentials,
       teamId,
-      startedTeam.members,
       theme,
       true,
     );
+    publishTeamsUpdated(credentials, teamId);
 
     return res.json({
       success: true,

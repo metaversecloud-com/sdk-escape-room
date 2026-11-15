@@ -27,7 +27,7 @@ const libraryAsset = {
 const mockMoveVisitor = jest.fn().mockResolvedValue(undefined);
 const mockFetchAssets = jest.fn();
 
-describe("moveVisitorToAsset theme matching", () => {
+describe("moveVisitorToAsset scene-scoped lookup", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (World.create as jest.Mock).mockReturnValue({ fetchDroppedAssetsBySceneDropId: mockFetchAssets });
@@ -35,46 +35,29 @@ describe("moveVisitorToAsset theme matching", () => {
     mockFetchAssets.mockResolvedValue([spaceAsset, libraryAsset]);
   });
 
-  test("selects the LIBRARY asset with a matching unique name", async () => {
-    await moveVisitorToAsset(credentials, "EscapeRoom_room1_teleport", { themeID: "LIBRARY" });
-
-    expect(mockMoveVisitor).toHaveBeenCalledWith({
-      shouldTeleportVisitor: true,
-      x: 30,
-      y: 40,
-    });
-  });
-
-  test("selects the unthemed SPACE asset instead of the first same-name result", async () => {
-    await moveVisitorToAsset(credentials, "EscapeRoom_room1_teleport", { themeID: "SPACE" });
+  test("uses the first same-name result without fetching asset data objects", async () => {
+    await moveVisitorToAsset(credentials, "EscapeRoom_room1_teleport");
 
     expect(mockMoveVisitor).toHaveBeenCalledWith({
       shouldTeleportVisitor: true,
       x: 10,
       y: 20,
     });
+    expect(mockFetchAssets).toHaveBeenCalledWith({
+      sceneDropId: credentials.sceneDropId,
+      uniqueName: "EscapeRoom_room1_teleport",
+    });
+    expect(spaceAsset.fetchDataObject).not.toHaveBeenCalled();
+    expect(libraryAsset.fetchDataObject).not.toHaveBeenCalled();
   });
 
-  test("refuses to start when the requested theme's named asset is missing", async () => {
-    mockFetchAssets.mockResolvedValue([spaceAsset]);
-
-    await expect(
-      moveVisitorToAsset(credentials, "EscapeRoom_room1_teleport", { themeID: "LIBRARY" }),
-    ).rejects.toThrow('No asset "EscapeRoom_room1_teleport" in scene scene-1 matches theme "LIBRARY"');
-    expect(Visitor.create).not.toHaveBeenCalled();
-    expect(mockMoveVisitor).not.toHaveBeenCalled();
-  });
-
-  test("allows an exit/return to fall back to an asset with the right name", async () => {
-    mockFetchAssets.mockResolvedValue([spaceAsset]);
-
-    await moveVisitorToAsset(credentials, "EscapeRoom_start_teleport", {
-      themeID: "LIBRARY",
-      allowThemeFallback: true,
+  test("preserves walk movement options", async () => {
+    await moveVisitorToAsset(credentials, "EscapeRoom_room1_teleport", {
+      shouldTeleportVisitor: false,
     });
 
     expect(mockMoveVisitor).toHaveBeenCalledWith({
-      shouldTeleportVisitor: true,
+      shouldTeleportVisitor: false,
       x: 10,
       y: 20,
     });

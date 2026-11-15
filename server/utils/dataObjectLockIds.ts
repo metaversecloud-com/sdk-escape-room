@@ -11,3 +11,9 @@ export const getKeyAssetDataObjectLockId = (
   credentials: Pick<Credentials, "urlSlug" | "sceneDropId">,
 ) =>
   `${credentials.urlSlug}-${credentials.sceneDropId}-key-asset-${getLockWindow()}`;
+
+export const getTeamDataObjectLockId = (
+  credentials: Pick<Credentials, "urlSlug" | "sceneDropId">,
+  teamId: string,
+) =>
+  `${credentials.urlSlug}-${credentials.sceneDropId}-teams-${teamId}`;

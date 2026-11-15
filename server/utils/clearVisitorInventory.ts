@@ -19,12 +19,14 @@ export const clearVisitorInventory = async ({
   visitor: VisitorInterface;
 }): Promise<void> => {
   await visitor.fetchInventoryItems();
-  for (const ownedItem of visitor.inventoryItems || []) {
+  const itemsToClear = (visitor.inventoryItems || []).filter((ownedItem) => {
     const itemType = ownedItem.item?.type ?? ownedItem.type;
-    if (ownedItem.status !== "ACTIVE" || itemType === "BADGE" || ownedItem.quantity <= 0) {
-      continue;
-    }
+    return ownedItem.status === "ACTIVE" && itemType !== "BADGE" && ownedItem.quantity > 0;
+  });
 
-    await visitor.modifyInventoryItemQuantity(ownedItem, -ownedItem.quantity);
-  }
+  await Promise.all(
+    itemsToClear.map((ownedItem) =>
+      visitor.modifyInventoryItemQuantity(ownedItem, -ownedItem.quantity),
+    ),
+  );
 };

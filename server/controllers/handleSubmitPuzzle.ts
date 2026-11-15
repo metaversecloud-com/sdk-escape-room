@@ -11,10 +11,13 @@ import {
   getCredentials,
   getKeyAsset,
   getKeyAssetDataObjectLockId,
+  getTeamDataObjectLockId,
   getSessionTheme,
   getVisitor,
   getVisitorDataObjectLockId,
   getVisitorInventory,
+  getVisitorSessionDataForUpdate,
+  inferLibraryRewardItemIds,
   isPuzzleInTheme,
   moveVisitorToAsset,
 } from "@utils/index.js";
@@ -35,6 +38,22 @@ interface PuzzleRewardResult {
   teamKeyItems?: TeamKeyItem[];
   itemId?: string;
 }
+
+const toTeamKeyItem = (
+  item: Awaited<ReturnType<typeof getCachedInventoryItems>>[number],
+  fallbackName: string,
+  metadata: Record<string, unknown> = {},
+): TeamKeyItem => ({
+  id: item.id,
+  name: item.name || fallbackName,
+  imageUrl: item.image_url || item.image_path || null,
+  description: item.description,
+  metadata: {
+    ...((item.metadata as Record<string, unknown> | undefined) || {}),
+    ...metadata,
+  },
+  quantity: 1,
+});
 
 const applyNamedPuzzleReward = async ({
   credentials,
@@ -77,15 +96,7 @@ const applyNamedPuzzleReward = async ({
     // Keep the shared team inventory in sync, but never make it a
     // prerequisite for the visitor's own item reward.
     if (team && !existingKeyItems.some((item) => item.id === match.id)) {
-      const keyItem = {
-        id: match.id,
-        name: match.name || itemName,
-        imageUrl: match.image_url || match.image_path || null,
-        description: match.description,
-        metadata: { ...((match.metadata as Record<string, unknown> | undefined) || {}) },
-        quantity: 1,
-      };
-
+      const keyItem = toTeamKeyItem(match, itemName);
       teamKeyItems = [...existingKeyItems, keyItem];
     }
   }
@@ -231,18 +242,10 @@ const grantLibraryPuzzleReward = async ({
     const team = teams[teamId];
 
     if (team) {
-      const keyItem = {
-        id: item.id,
-        name: item.name || "Paper",
-        imageUrl: item.image_url || item.image_path || null,
-        description: item.description,
-        metadata: {
-          ...(item.metadata || {}),
-          type: "keyItem",
-          escapeRoomReward: selector,
-        },
-        quantity: 1,
-      };
+      const keyItem = toTeamKeyItem(item, "Paper", {
+        type: "keyItem",
+        escapeRoomReward: selector,
+      });
       const keyItems = team.keyItems || [];
       const hasUpdatedKeyItem = keyItems.some(
         (teamItem) => teamItem.id === item.id &&
@@ -310,6 +313,35 @@ const applyConfiguredPuzzleReward = async ({
   return { granted: false, visitorInventory };
 };
 
+const includeTeamKeyItems = (
+  visitorInventory: VisitorInventory,
+  teamKeyItems: TeamKeyItem[] = [],
+): VisitorInventory => {
+  const existingIds = new Set(visitorInventory.items.map((item) => item.id));
+  const sharedKeyItems: VisitorInventory["items"] = [];
+  for (const item of teamKeyItems) {
+    if (existingIds.has(item.id)) continue;
+    existingIds.add(item.id);
+    sharedKeyItems.push({
+      id: item.id,
+      name: item.name,
+      type: "ITEM",
+      imageUrl: item.imageUrl ?? null,
+      description: item.description,
+      metadata: {
+        ...(item.metadata || {}),
+        type: "keyItem",
+      },
+      quantity: item.quantity ?? 1,
+      status: "ACTIVE",
+    });
+  }
+
+  return sharedKeyItems.length
+    ? { ...visitorInventory, items: [...visitorInventory.items, ...sharedKeyItems] }
+    : visitorInventory;
+};
+
 export const handleSubmitPuzzle = async (req: Request, res: Response) => {
   try {
     const credentials = getCredentials(req.query);
@@ -345,14 +377,52 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     }
     const game = session;
     const teamId = game.groupId || credentials.groupId;
+    const shouldLoadKeyAsset =
+      Boolean(teamId) || !game.puzzlesCompleted?.[puzzleNumber];
+    const keyAsset = shouldLoadKeyAsset ? await getKeyAsset(credentials) : null;
+    const keyAssetDataObject =
+      (keyAsset?.dataObject as KeyAssetDataObject | null) || null;
+    const teamPuzzlesCompleted = teamId
+      ? keyAssetDataObject?.teams?.[teamId]?.puzzlesCompleted
+      : undefined;
+    if (teamPuzzlesCompleted) {
+      game.puzzlesCompleted = { ...teamPuzzlesCompleted };
+    }
+
+    const hasLibraryRewards = Object.values(theme.puzzleRewards).some((reward) => reward.selector);
+    let hasRepairedLibraryRewardIds = false;
+    if (hasLibraryRewards) {
+      const rewardRepairInventory = includeTeamKeyItems(
+        visitorInventory,
+        teamId ? keyAssetDataObject?.teams?.[teamId]?.keyItems : undefined,
+      );
+      const repairedLibraryRewardItemIds = inferLibraryRewardItemIds(
+        rewardRepairInventory,
+        game.puzzlesCompleted || {},
+        game.libraryRewardItemIds,
+      );
+      hasRepairedLibraryRewardIds = Object.entries(repairedLibraryRewardItemIds).some(
+        ([puzzleNumber, itemId]) =>
+          game.libraryRewardItemIds?.[Number(puzzleNumber)] !== itemId,
+      );
+
+      if (Object.keys(repairedLibraryRewardItemIds).length > 0) {
+        game.libraryRewardItemIds = repairedLibraryRewardItemIds;
+      }
+    }
 
     if (game.puzzlesCompleted?.[puzzleNumber]) {
       const rewardDefinition = theme.puzzleRewards[puzzleNumber];
       if (!rewardDefinition) {
+        if (hasRepairedLibraryRewardIds) {
+          await visitor.updateDataObject(
+            { [sessionKey]: getVisitorSessionDataForUpdate(game, teamId) },
+            { lock: { lockId: getVisitorDataObjectLockId(credentials), releaseLock: true } },
+          );
+        }
         return res.json({ success: true, alreadyCompleted: true, visitorData: game });
       }
 
-      const keyAsset = teamId ? await getKeyAsset(credentials) : null;
       const reward = await applyConfiguredPuzzleReward({
         reward: rewardDefinition,
         rewardSelectors,
@@ -364,13 +434,15 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         keyAsset,
       });
 
-      if (reward.itemId) {
-        game.libraryRewardItemIds = {
-          ...(game.libraryRewardItemIds || {}),
-          [puzzleNumber]: reward.itemId,
-        };
+      if (reward.itemId || hasRepairedLibraryRewardIds) {
+        if (reward.itemId) {
+          game.libraryRewardItemIds = {
+            ...(game.libraryRewardItemIds || {}),
+            [puzzleNumber]: reward.itemId,
+          };
+        }
         await visitor.updateDataObject(
-          { [sessionKey]: game },
+          { [sessionKey]: getVisitorSessionDataForUpdate(game, teamId) },
           { lock: { lockId: getVisitorDataObjectLockId(credentials), releaseLock: true } },
         );
       }
@@ -382,18 +454,12 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         if (team) {
           await keyAsset.updateDataObject(
             {
-              teams: {
-                ...teams,
-                [teamId]: {
-                  ...team,
-                  keyItems: reward.teamKeyItems,
-                  updatedAt: new Date().toISOString(),
-                },
-              },
+              [`teams.${teamId}.keyItems`]: reward.teamKeyItems,
+              [`teams.${teamId}.updatedAt`]: new Date().toISOString(),
             },
             {
               lock: {
-                lockId: getKeyAssetDataObjectLockId(credentials),
+                lockId: getTeamDataObjectLockId(credentials, teamId),
                 releaseLock: true,
               },
             },
@@ -418,20 +484,14 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       });
     }
 
-    // Look up the key asset (start terminal) where the leaderboard lives.
-    // Found by uniqueName within the scene — no world data needed. For
-    // pre-puzzle-7 submissions this just gets us the asset handle in case
-    // we end up writing the leaderboard below.
-    const keyAsset = await getKeyAsset(credentials);
-    const keyAssetDataObject = (keyAsset?.dataObject as KeyAssetDataObject | null) || null;
-    const updatedTeams: NonNullable<KeyAssetDataObject["teams"]> = {
-      ...(keyAssetDataObject?.teams || {}),
-    };
-    let shouldUpdateTeams = false;
+    const teamUpdates: Record<string, unknown> = {};
     let updatedLeaderboard: Record<string, string> | undefined;
 
     // Mutate the in-memory session.
-    game.puzzlesCompleted[puzzleNumber] = true;
+    game.puzzlesCompleted = {
+      ...(game.puzzlesCompleted || {}),
+      [puzzleNumber]: true,
+    };
     // Drop the in-progress draft for this puzzle — it's no longer "in progress".
     if (game.puzzleDrafts) delete game.puzzleDrafts[puzzleNumber];
     let granted = false;
@@ -449,13 +509,9 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     });
     granted = reward.granted;
     updatedVisitorInventory = reward.visitorInventory;
-    if (teamId && reward.teamKeyItems && updatedTeams[teamId]) {
-      updatedTeams[teamId] = {
-        ...updatedTeams[teamId],
-        keyItems: reward.teamKeyItems,
-        updatedAt: new Date().toISOString(),
-      };
-      shouldUpdateTeams = true;
+    if (teamId && reward.teamKeyItems && keyAssetDataObject?.teams?.[teamId]) {
+      teamUpdates[`teams.${teamId}.keyItems`] = reward.teamKeyItems;
+      teamUpdates[`teams.${teamId}.updatedAt`] = new Date().toISOString();
     }
     if (reward.itemId) {
       game.libraryRewardItemIds = {
@@ -470,7 +526,9 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         credentials: { ...credentials, groupId: teamId },
         visitor,
         visitorInventory: updatedVisitorInventory,
-        pendingTeamKeyItems: teamId ? updatedTeams[teamId]?.keyItems : undefined,
+        pendingTeamKeyItems: teamId
+          ? reward.teamKeyItems ?? keyAssetDataObject?.teams?.[teamId]?.keyItems
+          : undefined,
       });
     } else if (granted) {
       await visitor.fetchInventoryItems();
@@ -479,7 +537,9 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         credentials: { ...credentials, groupId: teamId },
         visitor,
         visitorInventory: freshInventory,
-        pendingTeamKeyItems: teamId ? updatedTeams[teamId]?.keyItems : undefined,
+        pendingTeamKeyItems: teamId
+          ? reward.teamKeyItems ?? keyAssetDataObject?.teams?.[teamId]?.keyItems
+          : undefined,
       });
     }
 
@@ -574,7 +634,6 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       try {
         await moveVisitorToAsset(credentials, padUniqueName, {
           shouldTeleportVisitor: false,
-          themeID: theme.themeID,
         });
       } catch (err) {
         console.warn(`Walk to "${padUniqueName}" failed`, err);
@@ -699,50 +758,40 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
     // (and any room transition) reflected on the server so the client UI
     // can refresh into the complete-card state.
     await visitor.updateDataObject(
-      { [sessionKey]: game },
+      { [sessionKey]: getVisitorSessionDataForUpdate(game, teamId) },
       {
         lock: { lockId: getVisitorDataObjectLockId(credentials), releaseLock: true },
         analytics,
       },
     );
 
-    if (teamId) {
-      const team = updatedTeams[teamId];
-      if (team) {
-        updatedTeams[teamId] = {
-          ...team,
-          puzzlesCompleted: {
-            ...(team.puzzlesCompleted || {}),
-            [puzzleNumber]: true,
-          },
-          updatedAt: new Date().toISOString(),
-          ...(puzzleNumber === finalPuzzleNumber
-            ? {
-                status: "completed" as const,
-                completionTime: game.completionTime ?? 0,
-              }
-            : {}),
-        };
-        shouldUpdateTeams = true;
+    if (teamId && keyAssetDataObject?.teams?.[teamId]) {
+      teamUpdates[`teams.${teamId}.puzzlesCompleted.${puzzleNumber}`] = true;
+      teamUpdates[`teams.${teamId}.updatedAt`] = new Date().toISOString();
+      if (puzzleNumber === finalPuzzleNumber) {
+        teamUpdates[`teams.${teamId}.status`] = "completed";
+        teamUpdates[`teams.${teamId}.completionTime`] = game.completionTime ?? 0;
       }
     }
 
-    if (keyAsset && (updatedLeaderboard || shouldUpdateTeams)) {
+    if (keyAsset && (updatedLeaderboard || Object.keys(teamUpdates).length > 0)) {
       await keyAsset.updateDataObject(
         {
           ...(updatedLeaderboard ? { leaderboard: updatedLeaderboard } : {}),
-          ...(shouldUpdateTeams ? { teams: updatedTeams } : {}),
+          ...teamUpdates,
         },
         {
           lock: {
-            lockId: getKeyAssetDataObjectLockId(credentials),
+            lockId: teamId && Object.keys(teamUpdates).length > 0
+              ? getTeamDataObjectLockId(credentials, teamId)
+              : getKeyAssetDataObjectLockId(credentials),
             releaseLock: true,
           },
         },
       );
     }
 
-    if (teamId && puzzleNumber === finalPuzzleNumber && shouldUpdateTeams) {
+    if (teamId && puzzleNumber === finalPuzzleNumber && Object.keys(teamUpdates).length > 0) {
       sseManager.publish({
         event: "GAME_COMPLETED",
         assetId: credentials.assetId,
@@ -756,10 +805,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
 
     if (teleport) {
       try {
-        await moveVisitorToAsset(credentials, teleport, {
-          themeID: theme.themeID,
-          allowThemeFallback: true,
-        });
+        await moveVisitorToAsset(credentials, teleport);
       } catch (err) {
         console.warn(`moveVisitorToAsset to "${teleport}" failed`, err);
       }

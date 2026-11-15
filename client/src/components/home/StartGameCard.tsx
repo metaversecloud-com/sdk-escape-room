@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useContext, useEffect, useState, useRef } from "react";
 
 import { content } from "@/constants";
 import { ThemeConfig } from "@shared/themes";
 import { backendAPI } from "@/utils";
+import { GlobalStateContext } from "@/context/GlobalContext";
 import { StatusPill } from "./StatusPill";
 import { LibraryStartScreen } from "./LibraryStartScreen";
+import { StartGameControls } from "./StartGameControls";
+import type { StartMode, TeamSummary } from "./StartGameControls";
 import commanderVegaImg from "@/assets/CommanderVega.png";
 
 interface StartGameCardProps {
@@ -13,28 +16,23 @@ interface StartGameCardProps {
   isLoading: boolean;
 }
 
-type StartMode = "solo" | "multiplayer";
-
-type TeamSummary = {
-  id: string;
-  leaderProfileId?: string;
-  status?: "waiting" | "started" | "completed";
-  createdBy?: { displayName?: string; username?: string };
-  members?: Array<{ profileId?: string; displayName?: string; username?: string }>;
-};
-
 const { briefing } = content;
 
 export const StartGameCard = ({ theme, onStart, isLoading }: StartGameCardProps) => {
+  const { profileId = "" } = useContext(GlobalStateContext);
   const [mode, setMode] = useState<StartMode>("solo");
   const [teams, setTeams] = useState<TeamSummary[]>([]);
   const [activeTeam, setActiveTeam] = useState<TeamSummary | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<string>("");
   const [teamMessage, setTeamMessage] = useState<string>("");
-  const [isRefreshingTeams, setIsRefreshingTeams] = useState(false);
   const hasStartedTeamSession = useRef(false);
+  const activeTeamRef = useRef<TeamSummary | null>(null);
+  const selectedTeamIdRef = useRef("");
+  const onStartRef = useRef(onStart);
 
-  const currentProfileId = new URLSearchParams(window.location.search).get("profileId");
+  useEffect(() => {
+    onStartRef.current = onStart;
+  }, [onStart]);
 
   const selectedTeam = teams.find((team) => team.id === selectedTeamId);
   const isSpaceTheme = theme.themeID === "SPACE";
@@ -44,7 +42,7 @@ export const StartGameCard = ({ theme, onStart, isLoading }: StartGameCardProps)
 
   const isTeamLeader =
     !!selectedTeam &&
-    selectedTeam.leaderProfileId === currentProfileId;
+    selectedTeam.leaderProfileId === profileId;
 
   const canStartTeam =
     mode !== "multiplayer" ||
@@ -53,19 +51,21 @@ export const StartGameCard = ({ theme, onStart, isLoading }: StartGameCardProps)
     isTeamLeader;
 
   const refreshTeams = useCallback(async () => {
-    setIsRefreshingTeams(true);
     try {
       const response = await backendAPI.get("/teams");
       const nextTeams: TeamSummary[] = response.data?.teams ?? [];
-      const currentProfileId = new URLSearchParams(window.location.search).get("profileId");
       const activeTeamForPlayer = nextTeams.find((team) =>
-        team.members?.some((member) => member.profileId === currentProfileId),
+        team.members?.some((member) => member.profileId === profileId),
       );
+      const previousActiveTeam = activeTeamRef.current;
+      const previousSelectedTeamId = selectedTeamIdRef.current;
 
       setTeams(nextTeams);
 
       if (activeTeamForPlayer?.id) {
+        activeTeamRef.current = activeTeamForPlayer;
         setActiveTeam(activeTeamForPlayer);
+        selectedTeamIdRef.current = activeTeamForPlayer.id;
         setSelectedTeamId(activeTeamForPlayer.id);
 
         if (activeTeamForPlayer.status === "started") {
@@ -74,62 +74,63 @@ export const StartGameCard = ({ theme, onStart, isLoading }: StartGameCardProps)
           if (!hasStartedTeamSession.current) {
             hasStartedTeamSession.current = true;
 
-            await onStart({
+            await onStartRef.current({
               multiplayer: true,
               teamId: activeTeamForPlayer.id,
             });
           }
         }
-      } else if (activeTeam?.id) {
+      } else if (previousActiveTeam?.id) {
         // The player's team may have started and disappeared
         // from the list of open teams.
-        setSelectedTeamId(activeTeam.id);
+        selectedTeamIdRef.current = previousActiveTeam.id;
+        setSelectedTeamId(previousActiveTeam.id);
 
-        if (activeTeam.status === "started") {
+        if (previousActiveTeam.status === "started") {
           setTeamMessage("The team run has started!");
         }
-      } else if (nextTeams.length > 0 && !selectedTeamId) {
+      } else if (nextTeams.length > 0 && !previousSelectedTeamId) {
+        selectedTeamIdRef.current = nextTeams[0].id;
         setSelectedTeamId(nextTeams[0].id);
       }
     } catch {
       setTeams([]);
       setTeamMessage("Unable to load team list right now.");
-    } finally {
-      setIsRefreshingTeams(false);
     }
-  }, [activeTeam?.id, selectedTeamId]);
+  }, [profileId]);
 
   useEffect(() => {
-    console.log("START GAME EFFECT", { mode });
-
-    if (mode !== "multiplayer") {
-      setSelectedTeamId("");
-      return;
-    }
-
     void refreshTeams();
 
-    const interval = window.setInterval(() => {
+    const handleTeamsUpdated = () => {
       void refreshTeams();
-    }, 2000);
+    };
+    window.addEventListener("teams-updated", handleTeamsUpdated);
 
     return () => {
-      window.clearInterval(interval);
+      window.removeEventListener("teams-updated", handleTeamsUpdated);
     };
-  }, [mode, refreshTeams]);
+  }, [refreshTeams]);
 
   const handleCreateTeam = async () => {
     try {
       setTeamMessage("Creating your team…");
       const response = await backendAPI.post("/teams/create");
-      const nextTeamId = response.data?.team?.id;
+      const createdTeam = response.data?.team as TeamSummary | undefined;
+      const nextTeamId = createdTeam?.id;
       if (nextTeamId) {
+        activeTeamRef.current = createdTeam;
+        setActiveTeam(createdTeam);
+        setTeams((currentTeams) => [
+          ...currentTeams.filter((team) => team.id !== nextTeamId),
+          createdTeam,
+        ]);
+        selectedTeamIdRef.current = nextTeamId;
         setSelectedTeamId(nextTeamId);
         setTeamMessage("Team created. Start when ready.");
       } else {
         setTeamMessage("Team creation returned no team id.");
       }
-      await refreshTeams();
     } catch (error) {
       const message = (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
       setTeamMessage(message || "Unable to create a team right now.");
@@ -141,7 +142,17 @@ export const StartGameCard = ({ theme, onStart, isLoading }: StartGameCardProps)
 
     try {
       setTeamMessage("Joining team…");
-      await backendAPI.post("/teams/join", { teamId });
+      const response = await backendAPI.post("/teams/join", { teamId });
+      const joinedTeam = response.data?.team as TeamSummary | undefined;
+      if (joinedTeam) {
+        activeTeamRef.current = joinedTeam;
+        setActiveTeam(joinedTeam);
+        setTeams((currentTeams) => [
+          ...currentTeams.filter((team) => team.id !== teamId),
+          joinedTeam,
+        ]);
+      }
+      selectedTeamIdRef.current = teamId;
       setSelectedTeamId(teamId);
       setMode("multiplayer");
       setTeamMessage("Team joined. Wait for the leader to start the run.");
@@ -163,104 +174,26 @@ export const StartGameCard = ({ theme, onStart, isLoading }: StartGameCardProps)
   };
 
   const controls = (
-    <>
-      {!teamHasStarted && (
-        <>
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              className={mode === "solo" ? "btn er-btn-primary" : "btn btn-outline"}
-              onClick={() => setMode("solo")}
-            >
-              Solo
-            </button>
-
-            <button
-              type="button"
-              className={mode === "multiplayer" ? "btn er-btn-primary" : "btn btn-outline"}
-              onClick={() => setMode("multiplayer")}
-            >
-              Multiplayer
-            </button>
-          </div>
-
-          {mode === "multiplayer" && (
-            <div className="grid gap-3 rounded-lg border border-slate-600/70 p-3">
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={handleCreateTeam}
-                  disabled={isLoading}
-                >
-                  Create team
-                </button>
-
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={() => void refreshTeams()}
-                  disabled={isRefreshingTeams || isLoading}
-                >
-                  {isRefreshingTeams ? "Refreshing…" : "Refresh teams"}
-                </button>
-              </div>
-
-              {teams.length > 0 ? (
-                <div className="grid gap-2">
-                  <label className="p2 er-text" htmlFor="team-select">
-                    Join an open team
-                  </label>
-
-                  <select
-                    id="team-select"
-                    className="input"
-                    value={selectedTeamId}
-                    onChange={(event) => setSelectedTeamId(event.target.value)}
-                    disabled={isLoading}
-                  >
-                    <option value="">Select a team</option>
-
-                    {teams.map((team) => (
-                      <option key={team.id} value={team.id}>
-                        {team.createdBy?.displayName || team.createdBy?.username || "Team"} ·{" "}
-                        {team.members?.length ?? 0} member
-                        {team.members?.length === 1 ? "" : "s"}
-                      </option>
-                    ))}
-                  </select>
-
-                  {selectedTeamId && (
-                    <button
-                      type="button"
-                      className="btn btn-outline w-full sm:w-auto"
-                      onClick={() => void handleJoinTeam(selectedTeamId)}
-                      disabled={isLoading}
-                    >
-                      Join selected team
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <p className="p2 er-text">No teams are open yet. Create a team to invite others.</p>
-              )}
-            </div>
-          )}
-        </>
-      )}
-
-      {teamMessage && !teamHasStarted && <p className="p2 er-text">{teamMessage}</p>}
-
-      <div className="card-actions mt-2">
-        <button
-          className="btn er-btn-primary w-full sm:w-auto"
-          onClick={() => void handleStart()}
-          disabled={isLoading || !canStartTeam}
-        >
-          {mode === "multiplayer" ? "Start team run" : briefing.startButton}
-        </button>
-      </div>
-    </>
+    <StartGameControls
+      mode={mode}
+      onModeChange={setMode}
+      teams={teams}
+      activeTeam={activeTeam}
+      selectedTeamId={selectedTeamId}
+      onSelectedTeamIdChange={(teamId) => {
+        selectedTeamIdRef.current = teamId;
+        setSelectedTeamId(teamId);
+      }}
+      onCreateTeam={handleCreateTeam}
+      onJoinTeam={handleJoinTeam}
+      onStart={handleStart}
+      teamMessage={teamMessage}
+      teamHasStarted={teamHasStarted}
+      canStartTeam={canStartTeam}
+      isLoading={isLoading}
+      startButtonLabel={briefing.startButton}
+      isSpaceTheme={isSpaceTheme}
+    />
   );
 
   if (!isSpaceTheme) {
@@ -297,112 +230,7 @@ export const StartGameCard = ({ theme, onStart, isLoading }: StartGameCardProps)
           ))}
         </div>
 
-        <div className="card-details mt-2 grid gap-3">
-
-
-          {!teamHasStarted && (
-            <>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  className={mode === "solo" ? "btn er-btn-primary" : "btn btn-outline"}
-                  onClick={() => setMode("solo")}
-                >
-                  Solo
-                </button>
-
-                <button
-                  type="button"
-                  className={mode === "multiplayer" ? "btn er-btn-primary" : "btn btn-outline"}
-                  onClick={() => setMode("multiplayer")}
-                >
-                  Multiplayer
-                </button>
-              </div>
-
-              {mode === "multiplayer" && (
-                <div className="grid gap-3 rounded-lg border border-slate-600/70 p-3">
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="btn btn-outline"
-                      onClick={handleCreateTeam}
-                      disabled={isLoading}
-                    >
-                      Create team
-                    </button>
-
-                    <button
-                      type="button"
-                      className="btn btn-outline"
-                      onClick={() => void refreshTeams()}
-                      disabled={isRefreshingTeams || isLoading}
-                    >
-                      {isRefreshingTeams ? "Refreshing…" : "Refresh teams"}
-                    </button>
-                  </div>
-
-                  {teams.length > 0 ? (
-                    <div className="grid gap-2">
-                      <label className="p2 er-text" htmlFor="team-select">
-                        Join an open team
-                      </label>
-
-                      <select
-                        id="team-select"
-                        className="input"
-                        value={selectedTeamId}
-                        onChange={(event) => setSelectedTeamId(event.target.value)}
-                        disabled={isLoading}
-                      >
-                        <option value="">Select a team</option>
-
-                        {teams.map((team) => (
-                          <option key={team.id} value={team.id}>
-                            {team.createdBy?.displayName ||
-                              team.createdBy?.username ||
-                              "Team"}{" "}
-                            · {team.members?.length ?? 0} member
-                            {team.members?.length === 1 ? "" : "s"}
-                          </option>
-                        ))}
-                      </select>
-
-                      {selectedTeamId && (
-                        <button
-                          type="button"
-                          className="btn btn-outline w-full sm:w-auto"
-                          onClick={() => void handleJoinTeam(selectedTeamId)}
-                          disabled={isLoading}
-                        >
-                          Join selected team
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="p2 er-text">
-                      No teams are open yet. Create a team to invite others.
-                    </p>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-
-          {teamMessage && (
-            <p className="p2 er-text">{teamMessage}</p>
-          )}
-        </div>
-
-        <div className="card-actions mt-2">
-          <button
-            className="btn er-btn-primary w-full sm:w-auto"
-            onClick={() => void handleStart()}
-            disabled={isLoading || !canStartTeam}
-          >
-            {mode === "multiplayer" ? "Start team run" : briefing.startButton}
-          </button>
-        </div>
+        {controls}
       </div>
     </div>
   );

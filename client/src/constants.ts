@@ -615,3 +615,11 @@ export const content = {
     },
   },
 };
+
+export const getPuzzleTitle = (puzzleNumber: number, themeID?: string): string | undefined => {
+  const puzzle =
+    themeID === "LIBRARY"
+      ? content.libraryPuzzles[puzzleNumber as keyof typeof content.libraryPuzzles]
+      : content.puzzles[puzzleNumber as keyof typeof content.puzzles];
+  return typeof puzzle?.title === "string" && puzzle.title.trim() ? puzzle.title : undefined;
+};

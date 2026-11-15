@@ -2,11 +2,11 @@ import { Request, Response } from "express";
 import {
   errorHandler,
   getCredentials,
-  getSessionTheme,
   getVisitor,
   moveVisitorToAsset,
   getKeyAsset,
-  getKeyAssetDataObjectLockId,
+  getTeamDataObjectLockId,
+  getVisitorSessionDataForUpdate,
   getVisitorDataObjectLockId,
 } from "@utils/index.js";
 
@@ -17,13 +17,12 @@ export const handleExitGame = async (req: Request, res: Response) => {
     const sessionKey = `${urlSlug}-${sceneDropId}`;
 
     const { visitor, session } = await getVisitor(credentials, true);
-    const theme = await getSessionTheme(credentials, session);
 
     session.sessionActive = false;
     session.endTime = new Date().toISOString();
 
     await visitor.updateDataObject(
-      { [sessionKey]: session },
+      { [sessionKey]: getVisitorSessionDataForUpdate(session) },
       {
         analytics: [
           {
@@ -61,13 +60,11 @@ export const handleExitGame = async (req: Request, res: Response) => {
 
         if (remainingMembers.length === 0) {
           // Last player left: delete the team.
-          const { [teamId]: _removedTeam, ...remainingTeams } = teams;
-
           await keyAsset.updateDataObject(
-            { teams: remainingTeams },
+            { [`teams.${teamId}`]: undefined },
             {
               lock: {
-                lockId: getKeyAssetDataObjectLockId(credentials),
+                lockId: getTeamDataObjectLockId(credentials, teamId),
                 releaseLock: true,
               },
             },
@@ -92,14 +89,14 @@ export const handleExitGame = async (req: Request, res: Response) => {
 
           await keyAsset.updateDataObject(
             {
-              teams: {
-                ...teams,
-                [teamId]: updatedTeam,
-              },
+              [`teams.${teamId}.members`]: updatedTeam.members,
+              [`teams.${teamId}.leaderProfileId`]: updatedTeam.leaderProfileId,
+              [`teams.${teamId}.createdBy`]: updatedTeam.createdBy,
+              [`teams.${teamId}.updatedAt`]: updatedTeam.updatedAt,
             },
             {
               lock: {
-                lockId: getKeyAssetDataObjectLockId(credentials),
+                lockId: getTeamDataObjectLockId(credentials, teamId),
                 releaseLock: true,
               },
             },
@@ -108,10 +105,7 @@ export const handleExitGame = async (req: Request, res: Response) => {
       }
     }
 
-    await moveVisitorToAsset(credentials, "EscapeRoom_start_teleport", {
-      themeID: theme.themeID,
-      allowThemeFallback: true,
-    });
+    await moveVisitorToAsset(credentials, "EscapeRoom_start_teleport");
 
     await visitor.closeIframe(assetId);
 

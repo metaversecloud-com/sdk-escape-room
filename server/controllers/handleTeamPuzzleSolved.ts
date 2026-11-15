@@ -53,17 +53,25 @@ export const handleTeamPuzzleSolved = async (
     const completedBy = team.members.find(
       (member) => member.profileId === completedByProfileId,
     );
+    const puzzleTitle =
+      typeof req.body.puzzleTitle === "string"
+        ? req.body.puzzleTitle.trim()
+        : "";
+    const memberName = completedBy?.displayName || "A teammate";
+    const text = puzzleTitle
+      ? toasts.teammatePuzzleSolved.textTemplate
+          .replace("{member}", memberName)
+          .replace("{puzzle}", puzzleTitle)
+      : toasts.teammatePuzzleSolved.fallbackTextTemplate.replace(
+          "{member}",
+          memberName,
+        );
 
     await fireToast({
       visitor,
       groupId: toasts.teammatePuzzleSolved.groupId,
       title: toasts.teammatePuzzleSolved.title,
-      text: toasts.teammatePuzzleSolved.textTemplate
-        .replace(
-          "{member}",
-          completedBy?.displayName || "A teammate",
-        )
-        .replace("{puzzle}", String(puzzleNumber)),
+      text,
     });
 
     return res.json({ success: true });

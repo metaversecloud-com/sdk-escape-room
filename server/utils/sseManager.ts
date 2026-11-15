@@ -71,31 +71,6 @@ class SSEManager {
     }
     }
 
-    getVisitorIdForProfile(
-        profileId: string,
-        urlSlug: string,
-        ): number | undefined {
-        console.log("SSE LOOKUP", {
-            lookingFor: {
-            profileId,
-            urlSlug,
-            },
-            connections: this.connections.map((c) => ({
-            profileId: c.profileId,
-            visitorId: c.visitorId,
-            urlSlug: c.urlSlug,
-            })),
-        });
-
-        const conn = this.connections.find(
-            (c) =>
-            c.profileId === profileId &&
-            c.urlSlug === urlSlug,
-        );
-
-        return conn?.visitorId;
-        }
-
   /**
    * Publish an event to all connections for the same asset/world and, when a
    * group is present, to everyone in that group. The sender is always excluded.
@@ -143,10 +118,7 @@ class SSEManager {
    */
   private prune() {
     const now = Date.now();
-    const before = this.connections.length;
     this.connections = this.connections.filter((c) => now - c.lastHeartbeatTime < STALE_THRESHOLD_MS);
-    const removed = before - this.connections.length;
-    if (removed > 0) console.log(`SSE: pruned ${removed} stale connection(s), ${this.connections.length} active`);
   }
 
   get connectionCount() {

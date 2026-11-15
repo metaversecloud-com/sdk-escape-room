@@ -24,7 +24,6 @@ export type TeamData = {
   leaderProfileId: string;
   members: TeamMember[];
   status: "waiting" | "started" | "completed";
-  started: boolean;
   createdAt: string;
   updatedAt?: string;
   startedAt?: string;

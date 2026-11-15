@@ -14,8 +14,6 @@ function checkEnvVariables() {
 
   if (missingVariables.length > 0) {
     throw new Error(`Missing required environment variables in the .env file: ${missingVariables.join(", ")}`);
-  } else {
-    console.log("All required environment variables provided.");
   }
 }
 checkEnvVariables();
@@ -81,6 +79,4 @@ process.on("uncaughtException", (error) => {
   process.exit(1);
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port: ${PORT}`);
-});
+app.listen(PORT);

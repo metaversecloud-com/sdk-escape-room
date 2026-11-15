@@ -89,8 +89,6 @@ export const checkTrashPandaBadge = async ({
 
   if (!hasAllKeyItems) return false;
 
-  console.log("trash panda awarded")
-
   await awardBadge({ credentials, visitor, visitorInventory, badgeName: BADGES.TRASH_PANDA });
   return true;
 };

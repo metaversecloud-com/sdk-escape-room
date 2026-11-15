@@ -7,6 +7,7 @@ import {
   getSessionTheme,
   getVisitor,
   getVisitorDataObjectLockId,
+  getVisitorSessionDataForUpdate,
   getVisitorInventory,
   isPuzzleInTheme,
 } from "@utils/index.js";
@@ -57,7 +58,7 @@ export const handleWrongAttempt = async (req: Request, res: Response) => {
     const updatedSession = { ...session, wrongAttempts };
 
     await visitor.updateDataObject(
-      { [sessionKey]: updatedSession },
+      { [sessionKey]: getVisitorSessionDataForUpdate(updatedSession) },
       { lock: { lockId: getVisitorDataObjectLockId(credentials), releaseLock: true } },
     );
 

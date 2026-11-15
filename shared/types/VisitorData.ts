@@ -16,7 +16,6 @@ export interface VisitorData {
    * Used when an ecosystem Paper cannot carry its reward selector metadata.
    */
   libraryRewardItemIds?: Record<number, string>;
-  groupProgress?: Record<string, { groupId: string; puzzlesCompleted: Record<number, boolean>; currentRoom: number; sessionActive: boolean; startTime: string | null; completionTime: number | null; items: unknown[]; badges: Record<string, unknown>; members: unknown[]; }>;
 
   // Progression — highest unlocked room (advances on puzzle completion).
   currentRoom: number | null;

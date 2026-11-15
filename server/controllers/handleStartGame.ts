@@ -5,15 +5,18 @@ import {
   getCredentials,
   getDefaultVisitorData,
   getDroppedAsset,
-  getKeyAssetDataObjectLockId,
+  getTeamDataObjectLockId,
   getKeyAsset,
   getTheme,
   getVisitor,
   getVisitorInventory,
+  getVisitorSessionDataForUpdate,
   getVisitorDataObjectLockId,
   moveVisitorToAsset,
 } from "@utils/index.js";
 import { getInitialRoom } from "@shared/themes.js";
+import { sseManager } from "../utils/sseManager.js";
+import type { KeyAssetDataObject, TeamData, TeamMember } from "../types/index.js";
 
 const startVisitorSession = async ({
   credentials,
@@ -35,9 +38,7 @@ const startVisitorSession = async ({
   await visitor.fetchInventoryItems();
   const visitorInventory = getVisitorInventory(visitor.inventoryItems || []);
 
-  await moveVisitorToAsset(credentials, firstRoom.spawnUniqueName, {
-    themeID,
-  });
+  await moveVisitorToAsset(credentials, firstRoom.spawnUniqueName);
 
   const newSession = {
     ...getDefaultVisitorData(getTheme(themeID)),
@@ -50,7 +51,7 @@ const startVisitorSession = async ({
   };
 
   await visitor.updateDataObject(
-    { [sessionKey]: newSession },
+    { [sessionKey]: getVisitorSessionDataForUpdate(newSession, teamId) },
     {
       lock: { lockId: getVisitorDataObjectLockId(credentials), releaseLock: true },
       analytics: [
@@ -70,7 +71,10 @@ const startVisitorSession = async ({
     },
   );
 
-  return { visitorData: newSession, visitorInventory };
+  return {
+    visitorData: getVisitorSessionDataForUpdate(newSession, teamId),
+    visitorInventory,
+  };
 };
 
 export const handleStartGame = async (req: Request, res: Response) => {
@@ -80,20 +84,20 @@ export const handleStartGame = async (req: Request, res: Response) => {
     const isMultiplayer = req.body?.multiplayer === true;
     const droppedAsset = await getDroppedAsset(credentials);
     const keyAsset = await getKeyAsset(credentials);
-    const keyData = (keyAsset?.dataObject as Record<string, any> | null) || {};
+    const keyData = (keyAsset?.dataObject as KeyAssetDataObject | null) || {};
     const theme = getTheme(droppedAsset.dataObject?.themeID);
-    const teams = (keyData.teams || {}) as Record<string, any>;
-    const activeTeam = Object.values(teams).find((candidate: any) =>
+    const teams: Record<string, TeamData> = keyData.teams || {};
+    const activeTeam = Object.values(teams).find((candidate: TeamData) =>
       candidate?.status !== "completed" &&
       Array.isArray(candidate?.members) &&
-      candidate.members.some((member: any) => member.profileId === credentials.profileId),
+      candidate.members.some((member: TeamMember) => member.profileId === credentials.profileId),
     );
 
     const teamId = isMultiplayer ? requestedTeamId || activeTeam?.id : undefined;
     const { sceneDropId, urlSlug } = credentials;
     const sessionKey = `${urlSlug}-${sceneDropId}`;
 
-    let resolvedTeam: any = undefined;
+    let resolvedTeam: TeamData | undefined;
     let isLeader = false;
 
     if (isMultiplayer) {
@@ -105,13 +109,15 @@ export const handleStartGame = async (req: Request, res: Response) => {
       if (!resolvedTeam) {
         return res.status(404).json({ success: false, error: "Team not found." });
       }
-      if (!resolvedTeam.members?.some((member: any) => member.profileId === credentials.profileId)) {
+      if (!resolvedTeam.members?.some((member: TeamMember) => member.profileId === credentials.profileId)) {
         return res.status(403).json({ success: false, error: "You must be a team member to start this run." });
       }
 
       if (resolvedTeam) {
-        isLeader = resolvedTeam.leaderProfileId === credentials.profileId || resolvedTeam.createdBy?.profileId === credentials.profileId;
-        if (!resolvedTeam.started && !isLeader) {
+        isLeader =
+          resolvedTeam.leaderProfileId === credentials.profileId ||
+          resolvedTeam.createdBy?.profileId === credentials.profileId;
+        if (resolvedTeam.status === "waiting" && !isLeader) {
           return res.status(200).json({
             success: false,
             waitingForLeader: true,
@@ -137,19 +143,31 @@ export const handleStartGame = async (req: Request, res: Response) => {
         resolvedTeam = {
           ...resolvedTeam,
           status: "started",
-          started: true,
           startedAt,
           updatedAt: startedAt,
           puzzlesCompleted: { ...theme.defaultPuzzles },
           keyItems: [],
           completionTime: undefined,
         };
-        const nextTeams = { ...teams, [resolvedTeam.id]: resolvedTeam };
-
         await keyAsset.updateDataObject(
-          { teams: nextTeams },
-          { lock: { lockId: getKeyAssetDataObjectLockId(credentials), releaseLock: true } },
+          {
+            [`teams.${resolvedTeam.id}.status`]: resolvedTeam.status,
+            [`teams.${resolvedTeam.id}.startedAt`]: resolvedTeam.startedAt,
+            [`teams.${resolvedTeam.id}.updatedAt`]: resolvedTeam.updatedAt,
+            [`teams.${resolvedTeam.id}.puzzlesCompleted`]: resolvedTeam.puzzlesCompleted,
+            [`teams.${resolvedTeam.id}.keyItems`]: resolvedTeam.keyItems,
+            [`teams.${resolvedTeam.id}.completionTime`]: undefined,
+          },
+          { lock: { lockId: getTeamDataObjectLockId(credentials, resolvedTeam.id), releaseLock: true } },
         );
+        sseManager.publish({
+          event: "TEAMS_UPDATED",
+          assetId: credentials.assetId,
+          urlSlug: credentials.urlSlug,
+          visitorId: credentials.visitorId,
+          interactiveNonce: credentials.interactiveNonce,
+          data: { teamId: resolvedTeam.id },
+        });
       }
     }
 

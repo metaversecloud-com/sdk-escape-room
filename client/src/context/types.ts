@@ -25,6 +25,7 @@ export interface InitialState {
   isAdmin?: boolean;
   error?: string;
   hasInteractiveParams?: boolean;
+  profileId?: string;
   visitorData?: VisitorData;
   droppedAsset?: DroppedAssetInterface;
   theme?: ThemeConfig;

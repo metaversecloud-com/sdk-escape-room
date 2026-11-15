@@ -19,7 +19,7 @@ import {
   StatusBar,
   ThemePuzzleScreen,
 } from "@/components";
-import { content } from "@/constants";
+import { content, getPuzzleTitle } from "@/constants";
 import { GlobalDispatchContext, GlobalStateContext } from "@/context/GlobalContext";
 import { ErrorType } from "@/context/types";
 import { backendAPI, formatElapsedFromTimestamp, setErrorMessage, setGameState } from "@/utils";
@@ -71,6 +71,7 @@ export const Home = () => {
     theme: configuredTheme,
   } = useContext(GlobalStateContext);
   const theme = configuredTheme ?? SPACE_THEME;
+  const themeID = theme.themeID;
   const configuredThemeID = configuredTheme?.themeID;
   const visitorSession = visitorData || null;
   const puzzlesCompleted = visitorSession?.puzzlesCompleted;
@@ -197,6 +198,11 @@ export const Home = () => {
       try {
         const payload = JSON.parse(event.data);
 
+        if (payload?.kind === "TEAMS_UPDATED") {
+          window.dispatchEvent(new Event("teams-updated"));
+          return;
+        }
+
         if (payload?.kind === "TEAM_ROOM_ADVANCE") {
           const targetRoom = payload?.data?.targetRoom;
 
@@ -221,6 +227,7 @@ export const Home = () => {
             await backendAPI.post("/team-puzzle-solved", {
               completedByProfileId: payload?.data?.completedByProfileId,
               puzzleNumber: payload?.data?.puzzleNumber,
+              puzzleTitle: getPuzzleTitle(payload?.data?.puzzleNumber, themeID),
             });
           } catch (error) {
             console.error("TEAM PUZZLE TOAST FAILED", error);
@@ -231,12 +238,18 @@ export const Home = () => {
         }
 
         if (payload?.kind === "GAME_COMPLETED") {
+          try {
+            await backendAPI.post("/team-game-completed");
+          } catch (error) {
+            console.error("TEAM COMPLETION TOAST FAILED", error);
+          }
+
           await teleportHomeAfterTeamCompletion();
           await refreshGameState();
           return;
         }
 
-        if (payload?.kind === "state:update" || payload?.success === true) {
+        if (payload?.kind === "state:update") {
           await refreshGameState();
         }
       } catch {
@@ -252,7 +265,7 @@ export const Home = () => {
       eventSource.close();
       window.clearInterval(heartbeat);
     };
-  }, [hasInteractiveParams, refreshGameState, teleportHomeAfterTeamCompletion]);
+  }, [hasInteractiveParams, refreshGameState, teleportHomeAfterTeamCompletion, themeID]);
 
   // Sticky for the lifetime of this iframe — flips true the first time the
   // player hits the Start button so the post-click render shows the Room 1
@@ -351,7 +364,6 @@ export const Home = () => {
     backendAPI
       .post("/teleport", { room: targetRoom })
       .then((res) => {
-        console.log("FRONTEND TELEPORT RESPONSE", res.data);
         // Dispatch so visitorData stays in sync with the server response.
         setGameState(dispatch, res.data);
         if (res.data?.teleported) {

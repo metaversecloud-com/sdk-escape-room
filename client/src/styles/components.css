@@ -1029,6 +1029,10 @@ body[data-theme="LIBRARY"] {
   overflow-wrap: anywhere;
 }
 
+.er-library-start .er-team-roster__text {
+  color: #49351f;
+}
+
 /* Keep buttons and other controls legible inside the start screen. */
 .er-library-start button {
   color: #342d25;
@@ -1266,6 +1270,13 @@ body[data-theme="LIBRARY"] {
 .library-book-page.is-flipping {
   animation: library-page-flip 550ms ease-in forwards;
   pointer-events: none;
+}
+
+.library-book-answer-input {
+  width: 100%;
+  min-height: 50px;
+  padding: 12px 16px;
+  font-size: 1.1rem;
 }
 
 @keyframes library-page-flip {

@@ -8,9 +8,7 @@ import {
   getLeaderboard,
   getTheme,
   getVisitor,
-  getVisitorDataObjectLockId,
   applyLibraryRewardSelectors,
-  inferLibraryRewardItemIds,
 } from "@utils/index.js";
 import { KeyAssetDataObject } from "../types/index.js";
 import { getCurrentRoomFromProgress } from "@shared/themes.js";
@@ -47,7 +45,7 @@ export const handleGetGameState = async (req: Request, res: Response) => {
       
     // Visitor (data + inventory). getVisitor guarantees session defaults exist
     // and builds visitorInventory with both badges and items.
-    const { visitor, visitorDataObject, visitorInventory } = await getVisitor(credentials, true);
+    const { visitorDataObject, visitorInventory } = await getVisitor(credentials, true);
     let session = visitorDataObject[sessionKey];
     let responseInventory = visitorInventory;
     const sessionThemeID = session.sessionActive ? session.themeID : undefined;
@@ -59,10 +57,7 @@ export const handleGetGameState = async (req: Request, res: Response) => {
         const team = keyAssetData?.teams?.[session.groupId];
 
         if (team?.puzzlesCompleted) {
-          const puzzlesCompleted = {
-            ...session.puzzlesCompleted,
-            ...team.puzzlesCompleted,
-          };
+          const puzzlesCompleted = team.puzzlesCompleted;
 
           const currentRoom = getCurrentRoomFromProgress(theme, puzzlesCompleted);
 
@@ -111,32 +106,9 @@ export const handleGetGameState = async (req: Request, res: Response) => {
       }
 
     if (Object.values(theme.puzzleRewards).some((reward) => reward.selector)) {
-      const libraryRewardItemIds = inferLibraryRewardItemIds(
-        responseInventory,
-        session.puzzlesCompleted || {},
-        session.libraryRewardItemIds,
-      );
-      const hasNewRewardIds = Object.entries(libraryRewardItemIds).some(
-        ([puzzleNumber, itemId]) =>
-          session.libraryRewardItemIds?.[Number(puzzleNumber)] !== itemId,
-      );
-
-      if (hasNewRewardIds) {
-        session = { ...session, libraryRewardItemIds };
-        await visitor.updateDataObject(
-          { [sessionKey]: session },
-          {
-            lock: {
-              lockId: getVisitorDataObjectLockId(credentials),
-              releaseLock: true,
-            },
-          },
-        );
-      }
-
       responseInventory = applyLibraryRewardSelectors(
         responseInventory,
-        libraryRewardItemIds,
+        session.libraryRewardItemIds,
       );
     }
 
