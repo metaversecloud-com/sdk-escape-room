@@ -64,10 +64,6 @@ export type RouteSpec = {
   knownBugs?: KnownBugs;
 };
 
-// cleanReturnPayload is registered after the routes (server/index.ts), so it never runs: GET /game-state
-// returns the raw DroppedAsset with topia.interactiveSecret, credentials and a signed InteractiveJWT.
-const GAME_STATE_LEAKS = "EXP-429: /game-state returns the raw DroppedAsset (topia.interactiveSecret, InteractiveJWT)";
-
 /**
  * API routes that read the session credentials (getCredentials). Each one must reject missing or
  * foreign credentials and must never send the interactive secret to the browser. List them all.
@@ -76,7 +72,7 @@ const GAME_STATE_LEAKS = "EXP-429: /game-state returns the raw DroppedAsset (top
  * the platform checks can't read its body. tests/app/security.spec.ts covers its credential checks.
  */
 export const CREDENTIALED_ROUTES: RouteSpec[] = [
-  { method: "get", path: "/game-state", knownBugs: { leaksSecret: GAME_STATE_LEAKS } },
+  { method: "get", path: "/game-state" },
   { method: "get", path: "/session" },
   { method: "get", path: "/teams" },
   { method: "get", path: "/heartbeat" },
@@ -108,7 +104,7 @@ export const ENTRY_PAGE: string | null = "/";
  * the page sends /api (or any localhost) requests somewhere other than the app's own origin, typically a
  * hardcoded API base such as http://localhost:3000 that only works in local development.
  */
-export const ENTRY_PAGE_KNOWN_BUGS: Pick<KnownBugs, "leaksSecret"> & { callsOtherOrigin?: string } = { leaksSecret: GAME_STATE_LEAKS };
+export const ENTRY_PAGE_KNOWN_BUGS: Pick<KnownBugs, "leaksSecret"> & { callsOtherOrigin?: string } = {};
 
 /**
  * What the page-load secret scan reads. "api" (default): the page's /api responses, at least one required.
@@ -151,10 +147,7 @@ export const HEALTH_KNOWN_BUGS: { incompleteContract?: string } = {};
  * registers its own logging handler. Fix: process.removeAllListeners("unhandledRejection") before
  * registering the app's handler.
  */
-export const PROCESS_KNOWN_BUGS: { exitsOnUnhandledRejection?: string } = {
-  exitsOnUnhandledRejection:
-    "EXP-472: @rtsdk/topia's unhandledRejection hook calls process.exit(1); server/index.ts's handler doesn't stop it",
-};
+export const PROCESS_KNOWN_BUGS: { exitsOnUnhandledRejection?: string } = {};
 
 /**
  * The request system.spec sends a malformed JSON body to. Default: the first POST/PUT route in
@@ -170,9 +163,7 @@ export const MALFORMED_JSON_REQUEST: { method: "post" | "put"; path: string } | 
  * middleware after express.json()). Fix: an error middleware that answers body-parser errors
  * (err.type === "entity.parse.failed") with res.status(400).json({ success: false, error: "Invalid JSON" }).
  */
-export const ERROR_KNOWN_BUGS: { malformedJson?: string } = {
-  malformedJson: "EXP-473: no error middleware: Express' default error page shows the stack trace (NODE_ENV isn't production)",
-};
+export const ERROR_KNOWN_BUGS: { malformedJson?: string } = {};
 
 /**
  * true starts mock-redis/server.mjs (an in-memory Redis) next to mock-topia and points REDIS_URL at it
