@@ -4,7 +4,7 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 
 interface Props {
   /** The room the player should currently be in (progression — drives the teleport-back). */
-  currentRoom: 1 | 2 | 3 | null | undefined;
+  currentRoom: number | null | undefined;
   /** True while either action's network call is in flight; disables both buttons. */
   isLoading: boolean;
   onTeleportBack: () => Promise<void> | void;

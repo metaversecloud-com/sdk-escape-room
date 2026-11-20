@@ -1,0 +1,190 @@
+[
+  {
+    "id": "badge-1",
+    "name": "Power Restored",
+    "type": "BADGE",
+    "status": "ACTIVE",
+    "description": "Power Restored badge",
+    "image_path": "https://example.invalid/items/badge-1.png",
+    "metadata": {}
+  },
+  {
+    "id": "badge-2",
+    "name": "Signal Recovered",
+    "type": "BADGE",
+    "status": "ACTIVE",
+    "description": "Signal Recovered badge",
+    "image_path": "https://example.invalid/items/badge-2.png",
+    "metadata": {}
+  },
+  {
+    "id": "badge-3",
+    "name": "Airlock Engineer",
+    "type": "BADGE",
+    "status": "ACTIVE",
+    "description": "Airlock Engineer badge",
+    "image_path": "https://example.invalid/items/badge-3.png",
+    "metadata": {}
+  },
+  {
+    "id": "badge-4",
+    "name": "Station Survivor",
+    "type": "BADGE",
+    "status": "ACTIVE",
+    "description": "Station Survivor badge",
+    "image_path": "https://example.invalid/items/badge-4.png",
+    "metadata": {}
+  },
+  {
+    "id": "badge-5",
+    "name": "Warp Speed",
+    "type": "BADGE",
+    "status": "ACTIVE",
+    "description": "Warp Speed badge",
+    "image_path": "https://example.invalid/items/badge-5.png",
+    "metadata": {}
+  },
+  {
+    "id": "badge-6",
+    "name": "Trash Digger",
+    "type": "BADGE",
+    "status": "ACTIVE",
+    "description": "Trash Digger badge",
+    "image_path": "https://example.invalid/items/badge-6.png",
+    "metadata": {}
+  },
+  {
+    "id": "badge-7",
+    "name": "Trash Panda",
+    "type": "BADGE",
+    "status": "ACTIVE",
+    "description": "Trash Panda badge",
+    "image_path": "https://example.invalid/items/badge-7.png",
+    "metadata": {}
+  },
+  {
+    "id": "badge-8",
+    "name": "Button Masher",
+    "type": "BADGE",
+    "status": "ACTIVE",
+    "description": "Button Masher badge",
+    "image_path": "https://example.invalid/items/badge-8.png",
+    "metadata": {}
+  },
+  {
+    "id": "key-1",
+    "name": "Battery",
+    "type": "ITEM",
+    "status": "ACTIVE",
+    "description": "Battery item",
+    "image_path": "https://example.invalid/items/key-1.png",
+    "metadata": {
+      "type": "keyItem"
+    }
+  },
+  {
+    "id": "key-2",
+    "name": "Fuse",
+    "type": "ITEM",
+    "status": "ACTIVE",
+    "description": "Fuse item",
+    "image_path": "https://example.invalid/items/key-2.png",
+    "metadata": {
+      "type": "keyItem"
+    }
+  },
+  {
+    "id": "key-3",
+    "name": "Wrench",
+    "type": "ITEM",
+    "status": "ACTIVE",
+    "description": "Wrench item",
+    "image_path": "https://example.invalid/items/key-3.png",
+    "metadata": {
+      "type": "keyItem"
+    }
+  },
+  {
+    "id": "key-4",
+    "name": "Circuit Chip",
+    "type": "ITEM",
+    "status": "ACTIVE",
+    "description": "Circuit Chip item",
+    "image_path": "https://example.invalid/items/key-4.png",
+    "metadata": {
+      "type": "keyItem"
+    }
+  },
+  {
+    "id": "artifact-1",
+    "name": "Room 1 Artifact",
+    "type": "ITEM",
+    "status": "ACTIVE",
+    "description": "Room 1 Artifact item",
+    "image_path": "https://example.invalid/items/artifact-1.png",
+    "metadata": {
+      "type": "artifact",
+      "room": 1
+    }
+  },
+  {
+    "id": "artifact-2",
+    "name": "Crew Portrait 1",
+    "type": "ITEM",
+    "status": "ACTIVE",
+    "description": "Crew Portrait 1 item",
+    "image_path": "https://example.invalid/items/artifact-2.png",
+    "metadata": {
+      "type": "artifact",
+      "room": 2
+    }
+  },
+  {
+    "id": "artifact-3",
+    "name": "Room 3 Artifact",
+    "type": "ITEM",
+    "status": "ACTIVE",
+    "description": "Room 3 Artifact item",
+    "image_path": "https://example.invalid/items/artifact-3.png",
+    "metadata": {
+      "type": "artifact",
+      "room": 3
+    }
+  },
+  {
+    "id": "paper-1",
+    "name": "Paper",
+    "type": "ITEM",
+    "status": "ACTIVE",
+    "description": "Paper item",
+    "image_path": "https://example.invalid/items/paper-1.png",
+    "metadata": {
+      "type": "keyItem",
+      "escapeRoomReward": "library-9f31"
+    }
+  },
+  {
+    "id": "paper-2",
+    "name": "Paper",
+    "type": "ITEM",
+    "status": "ACTIVE",
+    "description": "Paper item",
+    "image_path": "https://example.invalid/items/paper-2.png",
+    "metadata": {
+      "type": "keyItem",
+      "escapeRoomReward": "library-4c82"
+    }
+  },
+  {
+    "id": "paper-3",
+    "name": "Paper",
+    "type": "ITEM",
+    "status": "ACTIVE",
+    "description": "Paper item",
+    "image_path": "https://example.invalid/items/paper-3.png",
+    "metadata": {
+      "type": "keyItem",
+      "escapeRoomReward": "library-d7a6"
+    }
+  }
+]

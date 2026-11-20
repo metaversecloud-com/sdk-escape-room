@@ -31,8 +31,7 @@ export interface BadgeContext {
   visitor: VisitorInterface;
   visitorInventory: VisitorInventory;
   game: VisitorData;
-  puzzleNumber: 1 | 2 | 3 | 4 | 5 | 6 | 7;
-  badgeKey?: keyof typeof BADGES;
+  badgeKey: keyof typeof BADGES;
 }
 
 export const checkEscapeBadges = async ({
@@ -40,7 +39,6 @@ export const checkEscapeBadges = async ({
   visitor,
   visitorInventory,
   game,
-  puzzleNumber,
   badgeKey,
 }: BadgeContext) => {
   const promises: Promise<{ success: boolean }>[] = [];
@@ -68,29 +66,19 @@ export const checkEscapeBadges = async ({
     );
   };
 
-  maybeAward(
-    "POWER_RESTORED",
-    (badgeKey === "POWER_RESTORED" || badgeKey === undefined) && game.puzzlesCompleted[1] && game.puzzlesCompleted[2],
-  );
+  maybeAward("POWER_RESTORED", badgeKey === "POWER_RESTORED");
 
-  maybeAward(
-    "SIGNAL_RECOVERED",
-    (badgeKey === "SIGNAL_RECOVERED" || badgeKey === undefined) &&
-      game.puzzlesCompleted[3] &&
-      game.puzzlesCompleted[4] &&
-      game.puzzlesCompleted[5],
-  );
+  maybeAward("SIGNAL_RECOVERED", badgeKey === "SIGNAL_RECOVERED");
 
-  maybeAward("AIRLOCK_ENGINEER", (badgeKey === "AIRLOCK_ENGINEER" || badgeKey === undefined) && puzzleNumber === 6);
+  maybeAward("AIRLOCK_ENGINEER", badgeKey === "AIRLOCK_ENGINEER");
 
-  maybeAward("STATION_SURVIVOR", (badgeKey === "STATION_SURVIVOR" || badgeKey === undefined) && puzzleNumber === 7);
+  maybeAward("STATION_SURVIVOR", badgeKey === "STATION_SURVIVOR");
 
   // Warp Speed — full escape under the threshold. Read completionTime off
   // the game object (set by handleSubmitPuzzle just before this is called).
   maybeAward(
     "WARP_SPEED",
-    (badgeKey === "WARP_SPEED" || badgeKey === undefined) &&
-      puzzleNumber === 7 &&
+    badgeKey === "WARP_SPEED" &&
       typeof game.completionTime === "number" &&
       game.completionTime > 0 &&
       game.completionTime < WARP_SPEED_THRESHOLD_SECONDS,

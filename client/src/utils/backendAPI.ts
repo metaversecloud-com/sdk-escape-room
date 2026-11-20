@@ -18,6 +18,7 @@ const setupBackendAPI = async (interactiveParams: InteractiveParams) => {
       config.params = { ...config.params };
       config.params["assetId"] = interactiveParams.assetId;
       config.params["displayName"] = interactiveParams.displayName;
+      config.params["groupId"] = interactiveParams.groupId;
       config.params["identityId"] = interactiveParams.identityId;
       config.params["interactiveNonce"] = interactiveParams.interactiveNonce;
       config.params["interactivePublicKey"] = interactiveParams.interactivePublicKey;

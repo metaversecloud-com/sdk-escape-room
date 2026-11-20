@@ -3,13 +3,22 @@ import { getVersion } from "./utils/getVersion.js";
 import {
   handleCheckSession,
   handleCloseIframe,
+  handleCreateTeam,
   handleDiscoverDecoy,
   handleExitGame,
   handleGetGameState,
+  handleGetTeams,
   handleGrantItem,
+  handleHeartbeat,
+  handleJoinTeam,
+  handlePrepareRestart,
+  handleSSE,
   handleSavePuzzleDraft,
   handleStartGame,
+  handleStartTeam,
   handleSubmitPuzzle,
+  handleTeamGameCompleted,
+  handleTeamPuzzleSolved,
   handleTeleport,
   handleWalkToAsset,
   handleWrongAttempt,
@@ -40,10 +49,19 @@ router.get("/system/health", (_req, res) => {
 
 router.get("/game-state", handleGetGameState);
 router.get("/session", handleCheckSession);
+router.get("/teams", handleGetTeams);
+router.get("/sse", handleSSE);
+router.get("/heartbeat", handleHeartbeat);
+router.post("/teams/create", handleCreateTeam);
+router.post("/teams/join", handleJoinTeam);
+router.post("/prepare-restart", handlePrepareRestart);
+router.post("/teams/start", handleStartTeam);
 router.post("/teleport", handleTeleport);
 router.post("/walk-to-asset", handleWalkToAsset);
 router.post("/start-game", handleStartGame);
 router.post("/submit-puzzle", handleSubmitPuzzle);
+router.post("/team-game-completed", handleTeamGameCompleted);
+router.post("/team-puzzle-solved", handleTeamPuzzleSolved);
 router.post("/puzzle-draft", handleSavePuzzleDraft);
 router.post("/grant-item", handleGrantItem);
 router.post("/discover-decoy", handleDiscoverDecoy);
