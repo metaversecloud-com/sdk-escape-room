@@ -7,6 +7,7 @@ import { getCachedInventoryItems } from "./inventoryCache.js";
 import { KeyAssetDataObject} from "../types/index.js";
 import { getKeyAsset } from "@utils/index.js";
 import type { TeamKeyItem } from "../types/DroppedAssetTypes.js";
+import { getArtifactItemName, THEME_CONFIGS } from "@shared/themes.js";
 
 interface Args {
   credentials: Credentials;
@@ -16,14 +17,24 @@ interface Args {
   pendingTeamKeyItems?: TeamKeyItem[];
 }
 
+const SPACE_THEME = THEME_CONFIGS.SPACE;
+const SPACE_ARTIFACT_NAMES = new Set(SPACE_THEME.artifactScreens.map(getArtifactItemName));
+const SPACE_KEY_ITEM_NAMES = new Set(
+  Object.values(SPACE_THEME.puzzleRewards).flatMap(({ itemName }) => (itemName ? [itemName] : [])),
+);
+
+const getItemMetadata = (item: { metadata?: object | null }): Record<string, unknown> =>
+  (item.metadata || {}) as Record<string, unknown>;
+
 /**
- * Awards the **Trash Panda** badge when the visitor owns every ITEM-typed
- * ecosystem entry (puzzle rewards + artifacts). Ignores BADGE-typed entries.
+ * Awards the **Trash Panda** badge when the team has all four SPACE puzzle
+ * rewards and the visitor owns all eight SPACE artifacts. Library rewards and
+ * artifacts are excluded so separate themes do not inflate the required set.
  *
  * Call after any item grant — handleGrantItem (artifact pickup) and
  * handleSubmitPuzzle (SPACE puzzle rewards or LIBRARY Papers). Safe to call
  * on every submit; short-circuits cheaply if the badge is already owned or
- * the player hasn't collected the full set yet.
+ * the required SPACE items have not all been collected.
  *
  * `awardBadge` itself short-circuits on already-owned, so the toast fires
  * exactly once.
@@ -38,29 +49,26 @@ export const checkTrashPandaBadge = async ({
 
   const ecosystem = await getCachedInventoryItems({ credentials });
 
-  const activeItems = ecosystem.filter(
-    (i: any) =>
-      i.type === "ITEM" &&
-      i.status === "ACTIVE" &&
-      typeof i.name === "string",
-  );
+  const spaceArtifacts = ecosystem.filter((item) => {
+    const metadata = getItemMetadata(item);
+    return (
+      item.type === "ITEM" &&
+      item.status === "ACTIVE" &&
+      typeof item.name === "string" &&
+      SPACE_ARTIFACT_NAMES.has(item.name) &&
+      metadata.type === "artifact" &&
+      !metadata.themeID
+    );
+  });
 
-  const artifactNames = activeItems
-    .filter((i: any) => i.metadata?.type === "artifact")
-    .map((i: any) => i.name as string);
-
-  const keyItemIds = activeItems
-    .filter((i: any) => i.metadata?.type === "keyItem")
-    .map((i: any) => i.id as string);
-
-  const playerArtifactNames = new Set(
+  const visitorArtifactIds = new Set(
     visitorInventory.items
       .filter((item) => item.metadata?.type === "artifact")
-      .map((item) => item.name),
+      .map((item) => item.id),
   );
 
-  const hasAllArtifacts = artifactNames.every((name) =>
-    playerArtifactNames.has(name),
+  const hasAllArtifacts = [...SPACE_ARTIFACT_NAMES].every((name) =>
+    spaceArtifacts.some((item) => item.name === name && visitorArtifactIds.has(item.id)),
   );
 
   if (!hasAllArtifacts) return false;
@@ -78,13 +86,22 @@ export const checkTrashPandaBadge = async ({
 
   if (!team) return false;
 
-  const teamKeyItemIds = new Set(
-    (team.keyItems || []).map((item) => item.id),
-  );
+  const spaceKeyItems = ecosystem.filter((item) => {
+    const metadata = getItemMetadata(item);
+    return (
+      item.type === "ITEM" &&
+      item.status === "ACTIVE" &&
+      typeof item.name === "string" &&
+      SPACE_KEY_ITEM_NAMES.has(item.name) &&
+      metadata.type === "keyItem" &&
+      !metadata.themeID
+    );
+  });
+  const teamKeyItemIds = new Set((team.keyItems || []).map((item) => item.id));
   pendingTeamKeyItems.forEach((item) => teamKeyItemIds.add(item.id));
 
-  const hasAllKeyItems = keyItemIds.every((id) =>
-    teamKeyItemIds.has(id),
+  const hasAllKeyItems = [...SPACE_KEY_ITEM_NAMES].every((name) =>
+    spaceKeyItems.some((item) => item.name === name && teamKeyItemIds.has(item.id)),
   );
 
   if (!hasAllKeyItems) return false;

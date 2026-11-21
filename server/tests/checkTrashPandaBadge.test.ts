@@ -1,4 +1,5 @@
 import { getKeyAsset } from "@utils/index.js";
+import { getArtifactItemName, THEME_CONFIGS } from "@shared/themes.js";
 import { getCachedInventoryItems } from "../utils/inventoryCache.js";
 import { awardBadge } from "../utils/awardBadge.js";
 import { checkTrashPandaBadge } from "../utils/checkTrashPandaBadge.js";
@@ -19,11 +20,38 @@ jest.mock("../utils/awardBadge.js", () => ({
   awardBadge: jest.fn().mockResolvedValue({ success: true }),
 }));
 
-const libraryKeyItems = [
-  { id: "paper-a", name: "Paper", type: "ITEM", status: "ACTIVE", metadata: { type: "keyItem" } },
-  { id: "paper-b", name: "Paper", type: "ITEM", status: "ACTIVE", metadata: { type: "keyItem" } },
-  { id: "paper-c", name: "Paper", type: "ITEM", status: "ACTIVE", metadata: { type: "keyItem" } },
-] as unknown as InventoryItemInterface[];
+const spaceKeyItems = ["Battery", "Fuse", "Wrench", "Circuit Chip"].map((name, index) => ({
+  id: `space-key-${index}`,
+  name,
+  type: "ITEM",
+  status: "ACTIVE",
+  metadata: { type: "keyItem" },
+}));
+
+const spaceArtifacts = THEME_CONFIGS.SPACE.artifactScreens.map((screen, index) => ({
+  id: `space-artifact-${index}`,
+  name: getArtifactItemName(screen),
+  type: "ITEM",
+  status: "ACTIVE",
+  metadata: { type: "artifact" },
+}));
+
+const libraryItems = [
+  ...["paper-a", "paper-b", "paper-c"].map((id) => ({
+    id,
+    name: "Paper",
+    type: "ITEM",
+    status: "ACTIVE",
+    metadata: { type: "keyItem", themeID: "LIBRARY" },
+  })),
+  {
+    id: "library-artifact",
+    name: "Bookcase",
+    type: "ITEM",
+    status: "ACTIVE",
+    metadata: { type: "artifact", themeID: "LIBRARY" },
+  },
+];
 
 const credentials = {
   assetId: "asset-1",
@@ -40,46 +68,71 @@ const credentials = {
   visitorId: 1,
 } satisfies Credentials;
 
-const visitorInventory = { badges: {}, items: [] };
+const completeVisitorInventory = {
+  badges: {},
+  items: spaceArtifacts.map(({ id, name, metadata }) => ({
+    id,
+    name,
+    type: "ITEM",
+    status: "ACTIVE",
+    metadata,
+  })),
+};
 const visitor = {} as unknown as VisitorInterface;
 
 const mockUtils = jest.mocked(require("@utils/index.js"));
 const mockAwardBadge = jest.mocked(awardBadge);
 const mockGetCachedInventoryItems = jest.mocked(getCachedInventoryItems);
 
-describe("checkTrashPandaBadge with same-named key items", () => {
+describe("checkTrashPandaBadge for SPACE items", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetCachedInventoryItems.mockResolvedValue(libraryKeyItems);
-  });
-
-  test("requires every same-named key item ID before awarding the badge", async () => {
+    mockGetCachedInventoryItems.mockResolvedValue(
+      [...spaceKeyItems, ...spaceArtifacts, ...libraryItems] as unknown as InventoryItemInterface[],
+    );
     mockUtils.getKeyAsset.mockResolvedValue({
       dataObject: {
         teams: {
           "team-1": {
-            keyItems: [libraryKeyItems[0], libraryKeyItems[1]],
+            keyItems: spaceKeyItems,
           },
         },
       },
     });
+  });
 
+  test("does not require Library items when all Space artifacts and key items are collected", async () => {
     await expect(
       checkTrashPandaBadge({
         credentials,
         visitor,
-        visitorInventory,
+        visitorInventory: completeVisitorInventory,
       }),
+    ).resolves.toBe(true);
+
+    expect(mockAwardBadge).toHaveBeenCalledWith(
+      expect.objectContaining({ badgeName: BADGES.TRASH_PANDA }),
+    );
+  });
+
+  test("requires all eight Space artifacts", async () => {
+    const visitorInventory = {
+      ...completeVisitorInventory,
+      items: completeVisitorInventory.items.slice(1),
+    };
+
+    await expect(
+      checkTrashPandaBadge({ credentials, visitor, visitorInventory }),
     ).resolves.toBe(false);
     expect(mockAwardBadge).not.toHaveBeenCalled();
   });
 
-  test("awards the badge once all same-named key item IDs are collected", async () => {
+  test("requires all four Space key items", async () => {
     mockUtils.getKeyAsset.mockResolvedValue({
       dataObject: {
         teams: {
           "team-1": {
-            keyItems: libraryKeyItems,
+            keyItems: spaceKeyItems.slice(1),
           },
         },
       },
@@ -89,11 +142,9 @@ describe("checkTrashPandaBadge with same-named key items", () => {
       checkTrashPandaBadge({
         credentials,
         visitor,
-        visitorInventory,
+        visitorInventory: completeVisitorInventory,
       }),
-    ).resolves.toBe(true);
-    expect(mockAwardBadge).toHaveBeenCalledWith(
-      expect.objectContaining({ badgeName: BADGES.TRASH_PANDA }),
-    );
+    ).resolves.toBe(false);
+    expect(mockAwardBadge).not.toHaveBeenCalled();
   });
 });

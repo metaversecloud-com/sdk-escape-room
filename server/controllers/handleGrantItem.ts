@@ -89,8 +89,8 @@ export const handleGrantItem = async (req: Request, res: Response) => {
 
     let updatedInventory = getVisitorInventory(visitor.inventoryItems || []);
 
-    // After a fresh grant, check whether the player now owns every ecosystem
-    // ITEM — that's the trigger for the **Trash Panda** badge. Skip on
+    // After a fresh grant, check whether the player now owns all SPACE
+    // artifacts and their team has all four SPACE puzzle rewards. Skip on
     // re-clicks (alreadyHad) since the inventory didn't change.
     if (!alreadyHad) {
       const awarded = await checkTrashPandaBadge({ credentials, visitor, visitorInventory: updatedInventory });
