@@ -2,9 +2,24 @@ process.env.INTERACTIVE_KEY = "test-key";
 process.env.INTERACTIVE_SECRET = "test-secret";
 
 import express from "express";
+import type { Request, Response } from "express";
 import request from "supertest";
+import { THEME_CONFIGS } from "@shared/themes.js";
+
+jest.mock("../utils/sseManager.js", () => ({
+  sseManager: {
+    addConnection: jest.fn(),
+    removeConnection: jest.fn(),
+    heartbeat: jest.fn(),
+    publish: jest.fn(),
+    get connectionCount() {
+      return 0;
+    },
+  },
+}));
 
 import router from "../routes.js";
+import { handleSSE } from "../controllers/handleSSE.js";
 
 function makeApp() {
   const app = express();
@@ -12,6 +27,24 @@ function makeApp() {
   app.use("/api", router);
   return app;
 }
+
+const applyDataObjectUpdates = (dataObject: Record<string, any>, updates: Record<string, any>) => {
+  for (const [path, value] of Object.entries(updates)) {
+    const segments = path.split(".");
+    let target = dataObject;
+    for (const segment of segments.slice(0, -1)) {
+      target[segment] = target[segment] || {};
+      target = target[segment];
+    }
+
+    const finalSegment = segments[segments.length - 1];
+    if (value === undefined) {
+      delete target[finalSegment];
+    } else {
+      target[finalSegment] = value;
+    }
+  }
+};
 
 const baseCreds = {
   assetId: "asset-123",
@@ -59,7 +92,7 @@ const droppedAssetMock = {
   id: "asset-123",
   uniqueName: "keyAsset",
   position: { x: 0, y: 0 },
-  dataObject: { leaderboard: {} as Record<string, string> },
+  dataObject: { themeID: undefined as string | undefined, leaderboard: {} as Record<string, string> },
   fetchDataObject: jest.fn().mockResolvedValue({}),
   setDataObject: jest.fn().mockResolvedValue(undefined),
   updateDataObject: jest.fn().mockResolvedValue(undefined),
@@ -77,10 +110,37 @@ jest.mock("@utils/index.js", () => ({
   getCredentials: jest.fn(),
   getDroppedAsset: jest.fn(),
   getKeyAsset: jest.fn(),
+  getKeyAssetDataObjectLockId: jest.fn(() => "key-asset-lock"),
+  getTeamDataObjectLockId: jest.fn((_credentials: any, teamId: string) => `team-${teamId}-lock`),
+  getVisitorDataObjectLockId: jest.fn(() => "visitor-lock"),
+  getVisitorSessionDataForUpdate: jest.fn((session: any, teamId?: string) => {
+    const { groupProgress: _legacyGroupProgress, ...sessionWithoutGroupProgress } = session;
+    if (!teamId && !session.groupId) return sessionWithoutGroupProgress;
+    const { puzzlesCompleted: _teamProgress, ...visitorSession } = sessionWithoutGroupProgress;
+    return visitorSession;
+  }),
+  getTheme: jest.fn().mockReturnValue({
+    themeID: "SPACE",
+    displayName: "SPACE",
+    roomCount: 3,
+    puzzleCount: 7,
+    rooms: [
+      { id: 1, puzzleNumbers: [1, 2] },
+      { id: 2, puzzleNumbers: [3, 4, 5] },
+      { id: 3, puzzleNumbers: [6, 7] },
+    ],
+  }),
+  getSessionTheme: jest.fn(),
+  isPuzzleInTheme: jest.fn((theme: any, puzzleNumber: unknown) =>
+    typeof puzzleNumber === "number" &&
+    theme.rooms.some((room: any) => room.puzzleNumbers.includes(puzzleNumber)),
+  ),
   getVisitor: jest.fn(),
   getBadges: jest.fn().mockResolvedValue({}),
   getLeaderboard: jest.fn().mockReturnValue([]),
   getVisitorInventory: jest.fn().mockReturnValue({ badges: {}, items: [] }),
+  applyLibraryRewardSelectors: jest.fn((inventory: any) => inventory),
+  inferLibraryRewardItemIds: jest.fn((_inventory: any, _completed: any, existing: any) => existing || {}),
   checkEscapeBadges: jest.fn().mockResolvedValue({ awarded: [], alreadyOwned: [], failed: [] }),
   checkTrashPandaBadge: jest.fn().mockResolvedValue(false),
   fireToast: jest.fn().mockResolvedValue(undefined),
@@ -102,12 +162,47 @@ jest.mock("@utils/index.js", () => ({
 }));
 
 const mockUtils = jest.mocked(require("@utils/index.js"));
+const mockSseManager = jest.mocked(require("../utils/sseManager.js").sseManager);
+const expectTeamsUpdated = (teamId: string) => {
+  const event = mockSseManager.publish.mock.calls
+    .map((call: any[]) => call[0] as Record<string, any>)
+    .find((publishedEvent: Record<string, any>) => publishedEvent.event === "TEAMS_UPDATED");
+
+  expect(event).toEqual(expect.objectContaining({
+    event: "TEAMS_UPDATED",
+    assetId: baseCreds.assetId,
+    urlSlug: baseCreds.urlSlug,
+    visitorId: baseCreds.visitorId,
+    interactiveNonce: baseCreds.interactiveNonce,
+    data: { teamId },
+  }));
+  expect(event).not.toHaveProperty("groupId");
+};
+const spaceTheme = THEME_CONFIGS.SPACE;
+const libraryTheme = THEME_CONFIGS.LIBRARY;
 
 describe("escape-room routes", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSseManager.publish.mockReset();
+    mockUtils.applyLibraryRewardSelectors.mockImplementation(
+      require("../utils/getVisitorInventory.js").applyLibraryRewardSelectors,
+    );
+    mockUtils.inferLibraryRewardItemIds.mockImplementation(
+      require("../utils/getVisitorInventory.js").inferLibraryRewardItemIds,
+    );
     mockUtils.getCredentials.mockReturnValue(baseCreds);
+    droppedAssetMock.dataObject = { themeID: undefined, leaderboard: {} };
     mockUtils.getDroppedAsset.mockResolvedValue(droppedAssetMock);
+    mockUtils.getTheme.mockReturnValue(spaceTheme);
+    mockUtils.getKeyAsset.mockResolvedValue(null);
+    mockUtils.moveVisitorToAsset.mockResolvedValue(undefined);
+    mockUtils.getTheme.mockReturnValue(spaceTheme);
+    mockUtils.getSessionTheme.mockImplementation(async (_credentials: any, session: any) => {
+      const theme = session.themeID === "LIBRARY" ? libraryTheme : spaceTheme;
+      session.themeID = theme.themeID;
+      return theme;
+    });
     mockUtils.World.create.mockReturnValue(worldMock);
     mockUtils.DroppedAsset.create.mockReturnValue(droppedAssetMock);
   });
@@ -116,6 +211,21 @@ describe("escape-room routes", () => {
     const res = await request(makeApp()).get("/api/system/health");
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("OK");
+  });
+
+  test("GET /sse sends the connection handshake in the event envelope", async () => {
+    mockUtils.getVisitor.mockResolvedValue({
+      session: { groupId: undefined },
+    });
+    const req = { query: {}, on: jest.fn() } as unknown as Request;
+    const res = { writeHead: jest.fn(), write: jest.fn() } as unknown as Response;
+
+    await handleSSE(req, res);
+
+    expect(res.write).toHaveBeenCalledWith(
+      `retry: 5000\ndata: ${JSON.stringify({ kind: "connected", data: {} })}\n\n`,
+    );
+    expect(mockSseManager.addConnection).toHaveBeenCalledTimes(1);
   });
 
   test("GET /game-state returns visitor session, badges, leaderboard", async () => {
@@ -134,10 +244,189 @@ describe("escape-room routes", () => {
     expect(res.body.visitorData).toBeDefined();
     expect(res.body.leaderboard).toEqual([]);
     expect(res.body.badges).toEqual({});
+    expect(mockUtils.getTheme).toHaveBeenCalledWith(undefined);
+    expect(res.body.themeID).toBe("SPACE");
+  });
+
+  test("GET /game-state uses team puzzle progress without merging visitor progress", async () => {
+    const teamProgress = { 1: false, 2: true, 3: false, 4: false };
+    const { visitor, session } = buildVisitorMock({
+      sessionActive: true,
+      themeID: "LIBRARY",
+      groupId: "team-1",
+      puzzlesCompleted: { 1: true, 2: false, 3: true, 4: true },
+    });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    mockUtils.getKeyAsset.mockResolvedValue({
+      dataObject: { teams: { "team-1": { puzzlesCompleted: teamProgress } } },
+    });
+
+    const res = await request(makeApp()).get("/api/game-state").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(res.body.visitorData.puzzlesCompleted).toEqual(teamProgress);
+  });
+
+  test("GET /game-state restores inferred Library reward selectors by ecosystem item ID", async () => {
+    const { visitor, session } = buildVisitorMock({
+      themeID: "LIBRARY",
+      sessionActive: true,
+      libraryRewardItemIds: { 3: "paper-c" },
+    });
+    droppedAssetMock.dataObject = { themeID: "LIBRARY", leaderboard: {} };
+    mockUtils.getTheme.mockReturnValue(libraryTheme);
+    mockUtils.getKeyAsset.mockResolvedValue(null);
+
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: {
+        badges: {},
+        items: [{ id: "paper-c", name: "Paper", metadata: {} }],
+      },
+    });
+
+    const res = await request(makeApp()).get("/api/game-state").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(res.body.visitorInventory.items).toEqual([
+      expect.objectContaining({
+        id: "paper-c",
+        metadata: expect.objectContaining({
+          type: "keyItem",
+          escapeRoomReward: "library-d7a6",
+        }),
+      }),
+    ]);
+  });
+
+  test("GET /game-state does not repair missing Library reward mappings", async () => {
+    const { visitor, session } = buildVisitorMock({
+      themeID: "LIBRARY",
+      sessionActive: true,
+      puzzlesCompleted: {
+        1: true,
+        2: true,
+        3: true,
+        4: false,
+        5: false,
+        6: false,
+        7: false,
+      },
+    });
+    droppedAssetMock.dataObject = { themeID: "LIBRARY", leaderboard: {} };
+    mockUtils.getTheme.mockReturnValue(libraryTheme);
+    mockUtils.getKeyAsset.mockResolvedValue(null);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: {
+        badges: {},
+        items: [
+          { id: "paper-a", name: "Paper", status: "ACTIVE", metadata: { escapeRoomReward: "library-9f31" } },
+          { id: "paper-b", name: "Paper", status: "ACTIVE", metadata: { escapeRoomReward: "library-4c82" } },
+          { id: "paper-c", name: "Paper", status: "ACTIVE", metadata: {} },
+        ],
+      },
+    });
+
+    const res = await request(makeApp()).get("/api/game-state").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(res.body.visitorData.libraryRewardItemIds).toBeUndefined();
+    expect(res.body.visitorInventory.items[2].metadata.escapeRoomReward).toBeUndefined();
+    expect(visitor.updateDataObject).not.toHaveBeenCalled();
+  });
+
+  test("GET /game-state uses the clicked asset theme instead of another start asset", async () => {
+    const libraryTheme = THEME_CONFIGS.LIBRARY;
+    const { visitor, session } = buildVisitorMock();
+    droppedAssetMock.dataObject = { themeID: "LIBRARY", leaderboard: {} };
+    mockUtils.getKeyAsset.mockResolvedValue({ dataObject: { themeID: "SPACE" } } as any);
+    mockUtils.getTheme.mockReturnValue(libraryTheme);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).get("/api/game-state").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(mockUtils.getTheme).toHaveBeenCalledWith("LIBRARY");
+    expect(res.body.themeID).toBe("LIBRARY");
+    expect(res.body.theme).toEqual(libraryTheme);
+  });
+
+  test("GET /game-state prefers the interacted asset theme over the key asset theme", async () => {
+    const libraryTheme = THEME_CONFIGS.LIBRARY;
+    const { visitor, session } = buildVisitorMock();
+    droppedAssetMock.dataObject = { themeID: "LIBRARY", leaderboard: {} };
+    mockUtils.getKeyAsset.mockResolvedValue({ dataObject: { themeID: "SPACE", leaderboard: {} } } as any);
+    mockUtils.getTheme.mockReturnValue(libraryTheme);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).get("/api/game-state").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(mockUtils.getTheme).toHaveBeenCalledWith("LIBRARY");
+    expect(res.body.themeID).toBe("LIBRARY");
+    expect(res.body.theme).toEqual(libraryTheme);
+  });
+
+  test("GET /game-state keeps the theme bound to an active session", async () => {
+    const { visitor, session } = buildVisitorMock({ themeID: "LIBRARY", sessionActive: true });
+    mockUtils.getKeyAsset.mockResolvedValue({ dataObject: { themeID: "SPACE" } } as any);
+    mockUtils.getTheme.mockReturnValue(libraryTheme);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).get("/api/game-state").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(mockUtils.getTheme).toHaveBeenCalledWith("LIBRARY");
+    expect(res.body.themeID).toBe("LIBRARY");
+  });
+
+  test("GET /game-state defaults an inactive session to SPACE when the clicked asset has no theme", async () => {
+    const { visitor, session } = buildVisitorMock({ themeID: "LIBRARY" });
+    droppedAssetMock.dataObject = { themeID: undefined, leaderboard: {} };
+    mockUtils.getKeyAsset.mockResolvedValue({ dataObject: { themeID: "LIBRARY" } } as any);
+    mockUtils.getTheme.mockReturnValue(spaceTheme);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).get("/api/game-state").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(mockUtils.getTheme).toHaveBeenCalledWith(undefined);
+    expect(res.body.themeID).toBe("SPACE");
   });
 
   test("POST /start-game initializes a fresh session and teleports the player", async () => {
     const { visitor, session } = buildVisitorMock();
+    mockUtils.getKeyAsset.mockResolvedValue({ dataObject: { themeID: "LIBRARY" } } as any);
     mockUtils.getVisitor.mockResolvedValue({
       visitor,
       visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
@@ -151,7 +440,592 @@ describe("escape-room routes", () => {
     expect(res.body.visitorData.sessionActive).toBe(true);
     expect(res.body.visitorData.currentRoom).toBe(1);
     expect(visitor.updateDataObject).toHaveBeenCalled();
-    expect(mockUtils.moveVisitorToAsset).toHaveBeenCalledWith(baseCreds, "EscapeRoom_room1_teleport");
+    expect(mockUtils.moveVisitorToAsset).toHaveBeenCalledWith(
+      baseCreds,
+      "EscapeRoom_room1_teleport",
+    );
+    expect(res.body.visitorData.themeID).toBe("SPACE");
+    const analyticNames = visitor.updateDataObject.mock.calls[0][1].analytics.map(
+      ({ analyticName }: { analyticName: string }) => analyticName,
+    );
+    expect(analyticNames).toEqual(expect.arrayContaining(["gameStarts", "room1Entries"]));
+    expect(analyticNames).not.toContain("libraryGameStarts");
+  });
+
+  test("POST /start-game starts a solo run without restarting a completed team", async () => {
+    const { visitor, session } = buildVisitorMock();
+    const team = {
+      id: "team-1",
+      createdBy: { profileId: baseCreds.profileId, displayName: "Alice", visitorId: 1 },
+      leaderProfileId: baseCreds.profileId,
+      members: [
+        { profileId: baseCreds.profileId, displayName: "Alice", visitorId: 1 },
+        { profileId: "profile-2", displayName: "Bob", visitorId: 2 },
+      ],
+      status: "completed",
+      puzzlesCompleted: { 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true },
+      keyItems: [{ id: "paper-a", name: "Paper" }, { id: "paper-b", name: "Paper" }],
+      completionTime: 120,
+    };
+    const keyAsset = {
+      dataObject: { teams: { "team-1": team } },
+      updateDataObject: jest.fn().mockImplementation(async (updates: any) => {
+        applyDataObjectUpdates(keyAsset.dataObject, updates);
+      }),
+    };
+    mockUtils.getKeyAsset.mockResolvedValue(keyAsset);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/start-game").query(baseCreds).send({ multiplayer: false });
+
+    expect(res.status).toBe(200);
+    expect(keyAsset.dataObject.teams["team-1"]).toMatchObject({
+      status: "completed",
+      puzzlesCompleted: { 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true },
+      keyItems: [{ id: "paper-a", name: "Paper" }, { id: "paper-b", name: "Paper" }],
+      completionTime: 120,
+    });
+    expect(keyAsset.updateDataObject).not.toHaveBeenCalled();
+    expect(mockUtils.clearVisitorInventory).toHaveBeenCalledTimes(1);
+    expect(mockUtils.getVisitor).toHaveBeenCalledTimes(1);
+    expect(mockUtils.getVisitor).toHaveBeenCalledWith(baseCreds, true);
+    expect(mockUtils.moveVisitorToAsset).toHaveBeenCalledTimes(1);
+    expect(mockUtils.moveVisitorToAsset).toHaveBeenCalledWith(
+      baseCreds,
+      "EscapeRoom_room1_teleport",
+    );
+    expect(visitor.updateDataObject).toHaveBeenCalledTimes(1);
+    expect(res.body.visitorData.groupId).toBeUndefined();
+  });
+
+  test("POST /start-game starts only the requesting visitor when a team leader starts", async () => {
+    const { visitor, session } = buildVisitorMock();
+    const team = {
+      id: "team-1",
+      createdBy: { profileId: baseCreds.profileId, displayName: "Alice", visitorId: 1 },
+      leaderProfileId: baseCreds.profileId,
+      members: [
+        { profileId: baseCreds.profileId, displayName: "Alice", visitorId: 1 },
+        { profileId: "profile-2", displayName: "Bob", visitorId: 2 },
+      ],
+      status: "waiting",
+    };
+    const keyAsset = {
+      dataObject: { teams: { "team-1": team } },
+      updateDataObject: jest.fn().mockImplementation(async (updates: any) => {
+        applyDataObjectUpdates(keyAsset.dataObject, updates);
+      }),
+    };
+    mockUtils.getKeyAsset.mockResolvedValue(keyAsset);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp())
+      .post("/api/start-game")
+      .query(baseCreds)
+      .send({ multiplayer: true, teamId: "team-1" });
+
+    expect(res.status).toBe(200);
+    expect(keyAsset.dataObject.teams["team-1"].status).toBe("started");
+    expect(keyAsset.dataObject.teams["team-1"]).not.toHaveProperty("started");
+    expectTeamsUpdated("team-1");
+    expect(mockUtils.getVisitor).toHaveBeenCalledTimes(1);
+    expect(mockUtils.getVisitor).toHaveBeenCalledWith(baseCreds, true);
+    expect(mockUtils.clearVisitorInventory).toHaveBeenCalledTimes(1);
+    expect(mockUtils.moveVisitorToAsset).toHaveBeenCalledTimes(1);
+    expect(mockUtils.moveVisitorToAsset).toHaveBeenCalledWith(
+      baseCreds,
+      "EscapeRoom_room1_teleport",
+    );
+    expect(visitor.updateDataObject).toHaveBeenCalledTimes(1);
+    expect(res.body.visitorData.groupId).toBe("team-1");
+  });
+
+  test("POST /start-game trusts started status instead of a legacy started flag", async () => {
+    const credentials = {
+      ...baseCreds,
+      profileId: "profile-2",
+      displayName: "Bob",
+      username: "bob",
+      visitorId: 2,
+    };
+    mockUtils.getCredentials.mockReturnValue(credentials);
+    const { visitor, session } = buildVisitorMock();
+    const team = {
+      id: "team-1",
+      createdBy: { profileId: baseCreds.profileId, displayName: "Alice", visitorId: 1 },
+      leaderProfileId: baseCreds.profileId,
+      members: [{ profileId: credentials.profileId, displayName: credentials.displayName }],
+      status: "started",
+      started: false,
+    };
+    const keyAsset = {
+      dataObject: { teams: { "team-1": team } },
+      updateDataObject: jest.fn().mockImplementation(async (updates: any) => {
+        applyDataObjectUpdates(keyAsset.dataObject, updates);
+      }),
+    };
+    mockUtils.getKeyAsset.mockResolvedValue(keyAsset);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${credentials.urlSlug}-${credentials.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp())
+      .post("/api/start-game")
+      .query(credentials)
+      .send({ multiplayer: true, teamId: "team-1" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.waitingForLeader).toBeUndefined();
+    expect(visitor.updateDataObject).toHaveBeenCalledTimes(1);
+    expect(keyAsset.updateDataObject).not.toHaveBeenCalled();
+  });
+
+  test("POST /prepare-restart leaves the active team and returns the visitor to the start menu", async () => {
+    const { visitor, session } = buildVisitorMock({
+      sessionActive: true,
+      groupId: "team-1",
+    });
+    const team = {
+      id: "team-1",
+      createdBy: { profileId: "profile-2", displayName: "Bob" },
+      leaderProfileId: "profile-2",
+      members: [
+        { profileId: "profile-2", displayName: "Bob" },
+        { profileId: baseCreds.profileId, displayName: baseCreds.displayName },
+      ],
+      status: "started",
+      createdAt: new Date().toISOString(),
+      puzzlesCompleted: { 1: true },
+      keyItems: [],
+    };
+    const keyAsset = {
+      dataObject: { teams: { "team-1": team } },
+      updateDataObject: jest.fn().mockImplementation(async (updates: any) => {
+        applyDataObjectUpdates(keyAsset.dataObject, updates);
+      }),
+    };
+    mockUtils.getKeyAsset.mockResolvedValue(keyAsset);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/prepare-restart").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.visitorData).toMatchObject({ sessionActive: false });
+    expect(res.body.visitorData.groupId).toBeUndefined();
+    expect(keyAsset.dataObject.teams["team-1"].members).toEqual([
+      { profileId: "profile-2", displayName: "Bob" },
+    ]);
+    expect(visitor.updateDataObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: expect.objectContaining({
+          sessionActive: false,
+          groupId: undefined,
+        }),
+      }),
+      expect.any(Object),
+    );
+    expect(mockUtils.moveVisitorToAsset).not.toHaveBeenCalled();
+    expect(visitor.closeIframe).not.toHaveBeenCalled();
+  });
+
+  test("GET /teams does not treat an old team roster as the visitor's active team", async () => {
+    const { visitor, session } = buildVisitorMock();
+    const oldTeam = {
+      id: "old-team",
+      status: "started",
+      startedAt: new Date().toISOString(),
+      createdBy: { profileId: "profile-2", displayName: "Bob" },
+      members: [{ profileId: baseCreds.profileId, displayName: "Alice" }],
+      updatedAt: new Date().toISOString(),
+    };
+    const openTeam = {
+      id: "open-team",
+      status: "waiting",
+      createdBy: { profileId: "profile-2", displayName: "Bob" },
+      members: [{ profileId: "profile-2", displayName: "Bob" }],
+      updatedAt: new Date().toISOString(),
+    };
+    mockUtils.getKeyAsset.mockResolvedValue({
+      dataObject: { teams: { "old-team": oldTeam, "open-team": openTeam } },
+      updateDataObject: jest.fn(),
+    } as any);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).get("/api/teams").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(res.body.teams.map((team: any) => team.id)).toEqual(["open-team"]);
+  });
+
+  test("POST /teams/create broadcasts a lobby update", async () => {
+    const { visitor, session } = buildVisitorMock();
+    const keyAsset = {
+      dataObject: { teams: {} },
+      updateDataObject: jest.fn().mockImplementation(async (updates: any) => {
+        applyDataObjectUpdates(keyAsset.dataObject, updates);
+      }),
+    };
+    mockUtils.getKeyAsset.mockResolvedValue(keyAsset);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/teams/create").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expectTeamsUpdated(res.body.team.id);
+  });
+
+  test("POST /teams/join allows joining a new team when only an old roster lists the visitor", async () => {
+    const { visitor, session } = buildVisitorMock();
+    Object.assign(session, { groupProgress: { "old-team": { puzzlesCompleted: { 1: true } } } });
+    const oldTeam = {
+      id: "old-team",
+      status: "started",
+      startedAt: new Date().toISOString(),
+      createdBy: { profileId: "profile-2", displayName: "Bob" },
+      members: [{ profileId: baseCreds.profileId, displayName: "Alice" }],
+      updatedAt: new Date().toISOString(),
+    };
+    const openTeam = {
+      id: "open-team",
+      status: "waiting",
+      createdBy: { profileId: "profile-2", displayName: "Bob" },
+      leaderProfileId: "profile-2",
+      members: [{ profileId: "profile-2", displayName: "Bob" }],
+      updatedAt: new Date().toISOString(),
+    };
+    const keyAsset = {
+      dataObject: { teams: { "old-team": oldTeam, "open-team": openTeam } },
+      updateDataObject: jest.fn().mockImplementation(async (updates: any) => {
+        applyDataObjectUpdates(keyAsset.dataObject, updates);
+      }),
+    };
+    mockUtils.getKeyAsset.mockResolvedValue(keyAsset as any);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp())
+      .post("/api/teams/join")
+      .query(baseCreds)
+      .send({ teamId: "open-team" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.joined).toBe(true);
+    expect(keyAsset.dataObject.teams["open-team"].members).toEqual([
+      { profileId: "profile-2", displayName: "Bob" },
+      {
+        profileId: baseCreds.profileId,
+        displayName: baseCreds.displayName,
+        username: baseCreds.username,
+        visitorId: baseCreds.visitorId,
+      },
+    ]);
+    expect(
+      visitor.updateDataObject.mock.calls[0][0][
+        `${baseCreds.urlSlug}-${baseCreds.sceneDropId}`
+      ],
+    ).not.toHaveProperty("groupProgress");
+    expectTeamsUpdated("open-team");
+  });
+
+  test("POST /teams/leave removes the member, transfers leadership, and broadcasts a lobby update", async () => {
+    const { visitor, session } = buildVisitorMock({ groupId: "team-1" });
+    const alice = {
+      profileId: baseCreds.profileId,
+      displayName: baseCreds.displayName,
+    };
+    const bob = { profileId: "profile-2", displayName: "Bob" };
+    const keyAsset = {
+      dataObject: {
+        teams: {
+          "team-1": {
+            id: "team-1",
+            createdBy: alice,
+            leaderProfileId: alice.profileId,
+            members: [alice, bob],
+            status: "waiting",
+            createdAt: new Date().toISOString(),
+            keyItems: [],
+          },
+        },
+      },
+      updateDataObject: jest.fn().mockImplementation(async (updates: any) => {
+        applyDataObjectUpdates(keyAsset.dataObject, updates);
+      }),
+    };
+    mockUtils.getKeyAsset.mockResolvedValue(keyAsset as any);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/teams/leave").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(keyAsset.dataObject.teams["team-1"]).toMatchObject({
+      createdBy: bob,
+      leaderProfileId: bob.profileId,
+      members: [bob],
+    });
+    expect(visitor.updateDataObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: expect.objectContaining({
+          groupId: undefined,
+        }),
+      }),
+      expect.any(Object),
+    );
+    expectTeamsUpdated("team-1");
+  });
+
+  test("POST /teams/leave makes a team unavailable when its last member leaves", async () => {
+    const { visitor, session } = buildVisitorMock({ groupId: "team-1" });
+    const keyAsset = {
+      dataObject: {
+        teams: {
+          "team-1": {
+            id: "team-1",
+            createdBy: { profileId: baseCreds.profileId, displayName: baseCreds.displayName },
+            leaderProfileId: baseCreds.profileId,
+            members: [{ profileId: baseCreds.profileId, displayName: baseCreds.displayName }],
+            status: "waiting",
+            createdAt: new Date().toISOString(),
+            keyItems: [],
+          },
+        },
+      },
+      updateDataObject: jest.fn().mockImplementation(async (updates: any) => {
+        applyDataObjectUpdates(keyAsset.dataObject, updates);
+      }),
+    };
+    mockUtils.getKeyAsset.mockResolvedValue(keyAsset as any);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/teams/leave").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(res.body.team).toBeNull();
+    expect(keyAsset.dataObject.teams["team-1"].members).toEqual([]);
+    expect(res.body.teams).toEqual([]);
+    expectTeamsUpdated("team-1");
+
+    Object.assign(session, { groupId: undefined });
+    const listRes = await request(makeApp()).get("/api/teams").query(baseCreds);
+    expect(listRes.status).toBe(200);
+    expect(listRes.body.teams).toEqual([]);
+  });
+
+  test("POST /teams/join rejects a team with an empty roster", async () => {
+    const { visitor, session } = buildVisitorMock();
+    const keyAsset = {
+      dataObject: {
+        teams: {
+          "team-1": {
+            id: "team-1",
+            createdBy: { profileId: "profile-2", displayName: "Bob" },
+            leaderProfileId: "profile-2",
+            members: [],
+            status: "waiting",
+            createdAt: new Date().toISOString(),
+            keyItems: [],
+          },
+        },
+      },
+      updateDataObject: jest.fn(),
+    };
+    mockUtils.getKeyAsset.mockResolvedValue(keyAsset as any);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp())
+      .post("/api/teams/join")
+      .query(baseCreds)
+      .send({ teamId: "team-1" });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe("This team is no longer available.");
+    expect(keyAsset.updateDataObject).not.toHaveBeenCalled();
+  });
+
+  test("POST /teams/leave rejects leaving after the team run starts", async () => {
+    const { visitor, session } = buildVisitorMock({ groupId: "team-1" });
+    const keyAsset = {
+      dataObject: {
+        teams: {
+          "team-1": {
+            id: "team-1",
+            createdBy: { profileId: baseCreds.profileId, displayName: baseCreds.displayName },
+            leaderProfileId: baseCreds.profileId,
+            members: [{ profileId: baseCreds.profileId, displayName: baseCreds.displayName }],
+            status: "started",
+            createdAt: new Date().toISOString(),
+            keyItems: [],
+          },
+        },
+      },
+      updateDataObject: jest.fn(),
+    };
+    mockUtils.getKeyAsset.mockResolvedValue(keyAsset as any);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/teams/leave").query(baseCreds);
+
+    expect(res.status).toBe(409);
+    expect(keyAsset.updateDataObject).not.toHaveBeenCalled();
+    expect(visitor.updateDataObject).not.toHaveBeenCalled();
+  });
+
+  test("POST /teams/start broadcasts a lobby update", async () => {
+    const { visitor, session } = buildVisitorMock();
+    const team = {
+      id: "team-1",
+      createdBy: { profileId: baseCreds.profileId, displayName: baseCreds.displayName },
+      leaderProfileId: baseCreds.profileId,
+      members: [{ profileId: baseCreds.profileId, displayName: baseCreds.displayName }],
+      status: "waiting",
+      createdAt: new Date().toISOString(),
+      puzzlesCompleted: { ...spaceTheme.defaultPuzzles },
+      keyItems: [],
+    };
+    const keyAsset = {
+      dataObject: { teams: { "team-1": team } },
+      updateDataObject: jest.fn().mockImplementation(async (updates: any) => {
+        applyDataObjectUpdates(keyAsset.dataObject, updates);
+      }),
+    };
+    mockUtils.getKeyAsset.mockResolvedValue(keyAsset);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp())
+      .post("/api/teams/start")
+      .query(baseCreds)
+      .send({ teamId: team.id });
+
+    expect(res.status).toBe(200);
+    expect(keyAsset.dataObject.teams["team-1"].status).toBe("started");
+    expectTeamsUpdated("team-1");
+  });
+
+  test("POST /start-game stores the theme from the clicked start asset", async () => {
+    const { visitor, session } = buildVisitorMock();
+    droppedAssetMock.dataObject = { themeID: "LIBRARY", leaderboard: {} };
+    mockUtils.getKeyAsset.mockResolvedValue({ dataObject: { themeID: "SPACE" } } as any);
+    mockUtils.getTheme.mockReturnValue(libraryTheme);
+    mockUtils.getDefaultVisitorData.mockImplementationOnce((theme: any) => ({
+      startTime: null,
+      endTime: null,
+      sessionActive: false,
+      currentRoom: null,
+      physicalRoom: null,
+      puzzlesCompleted: theme.defaultPuzzles,
+      completionTime: null,
+      puzzleDrafts: {},
+      wrongAttempts: {},
+    }));
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/start-game").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(res.body.visitorData.themeID).toBe("LIBRARY");
+    expect(res.body.visitorData.puzzlesCompleted).toEqual({ 1: false, 2: false, 3: false, 4: false });
+    expect(mockUtils.moveVisitorToAsset).toHaveBeenCalledWith(
+      baseCreds,
+      "EscapeRoom_room1_teleport",
+    );
+    expect(visitor.updateDataObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: expect.objectContaining({ themeID: "LIBRARY" }),
+      }),
+      expect.objectContaining({
+        analytics: expect.arrayContaining([
+          expect.objectContaining({ analyticName: "libraryGameStarts" }),
+        ]),
+      }),
+    );
+    const analyticNames = visitor.updateDataObject.mock.calls[0][1].analytics.map(
+      ({ analyticName }: { analyticName: string }) => analyticName,
+    );
+    expect(analyticNames).not.toContain("gameStarts");
+    expect(analyticNames).not.toContain("room1Entries");
+  });
+
+  test("POST /start-game fails instead of using another theme's room entry asset", async () => {
+    const { visitor, session } = buildVisitorMock();
+    droppedAssetMock.dataObject = { themeID: "LIBRARY", leaderboard: {} };
+    mockUtils.getTheme.mockReturnValue(libraryTheme);
+    mockUtils.moveVisitorToAsset.mockRejectedValue(new Error("No matching themed asset"));
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/start-game").query(baseCreds);
+
+    expect(res.status).toBe(500);
+    expect(visitor.updateDataObject).not.toHaveBeenCalled();
   });
 
   test("POST /submit-puzzle rejects invalid puzzleNumber", async () => {
@@ -172,7 +1046,7 @@ describe("escape-room routes", () => {
     expect(res.body.success).toBe(false);
   });
 
-  test("POST /submit-puzzle marks puzzle complete and writes once", async () => {
+  test("POST /submit-puzzle grants the SPACE reward to a solo player", async () => {
     const { visitor, session } = buildVisitorMock({
       sessionActive: true,
       startTime: new Date().toISOString(),
@@ -184,6 +1058,12 @@ describe("escape-room routes", () => {
       session,
       visitorInventory: { badges: {}, items: [] },
     });
+    const battery = { id: "battery-id", name: "Battery", type: "ITEM" };
+    mockUtils.getCachedInventoryItems.mockResolvedValue([battery]);
+    mockUtils.getVisitorInventory.mockReturnValue({
+      badges: {},
+      items: [{ id: battery.id, name: battery.name }],
+    });
 
     const res = await request(makeApp()).post("/api/submit-puzzle").query(baseCreds).send({ puzzleNumber: 1 });
 
@@ -192,6 +1072,119 @@ describe("escape-room routes", () => {
     expect(res.body.visitorData.puzzlesCompleted[1]).toBe(true);
     // exactly one final visitor write per submission
     expect(visitor.updateDataObject).toHaveBeenCalledTimes(1);
+    expect(visitor.grantInventoryItem).toHaveBeenCalledWith(battery, 1);
+    expect(visitor.fetchInventoryItems).toHaveBeenCalledTimes(1);
+    expect(res.body.visitorInventory.items).toEqual([{ id: battery.id, name: battery.name }]);
+    const analyticNames = visitor.updateDataObject.mock.calls[0][1].analytics.map(
+      ({ analyticName }: { analyticName: string }) => analyticName,
+    );
+    expect(analyticNames).toContain("puzzle1Completed");
+    expect(analyticNames).not.toContain("libraryPuzzle1Completed");
+  });
+
+  test("POST /submit-puzzle backfills a missing SPACE reward on an already-completed puzzle", async () => {
+    const { visitor, session } = buildVisitorMock({
+      sessionActive: true,
+      currentRoom: 1,
+      puzzlesCompleted: { 1: true, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false },
+    });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    const battery = { id: "battery-id", name: "Battery", type: "ITEM" };
+    mockUtils.getCachedInventoryItems.mockResolvedValue([battery]);
+    mockUtils.getVisitorInventory.mockReturnValue({
+      badges: {},
+      items: [{ id: battery.id, name: battery.name }],
+    });
+
+    const res = await request(makeApp()).post("/api/submit-puzzle").query(baseCreds).send({ puzzleNumber: 1 });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      success: true,
+      alreadyCompleted: true,
+      visitorData: { puzzlesCompleted: { 1: true } },
+    });
+    expect(visitor.updateDataObject).not.toHaveBeenCalled();
+    expect(visitor.grantInventoryItem).toHaveBeenCalledWith(battery, 1);
+    expect(mockUtils.getKeyAsset).not.toHaveBeenCalled();
+    expect(res.body.visitorInventory.items[0].id).toBe(battery.id);
+  });
+
+  test("POST /submit-puzzle grants every configured SPACE key item to solo players", async () => {
+    const { visitor, session } = buildVisitorMock({
+      sessionActive: true,
+      startTime: new Date().toISOString(),
+      currentRoom: 1,
+    });
+    const rewards = [
+      { puzzleNumber: 1, id: "battery-id", name: "Battery" },
+      { puzzleNumber: 2, id: "fuse-id", name: "Fuse" },
+      { puzzleNumber: 3, id: "wrench-id", name: "Wrench" },
+      { puzzleNumber: 5, id: "circuit-chip-id", name: "Circuit Chip" },
+    ];
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    for (const { puzzleNumber, id, name } of rewards) {
+      const item = { id, name, type: "ITEM" };
+      mockUtils.getCachedInventoryItems.mockResolvedValueOnce([item]);
+      mockUtils.getVisitorInventory.mockReturnValueOnce({
+        badges: {},
+        items: [{ id, name }],
+      });
+
+      const res = await request(makeApp())
+        .post("/api/submit-puzzle")
+        .query(baseCreds)
+        .send({ puzzleNumber });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.visitorInventory.items).toContainEqual({ id, name });
+      expect(visitor.grantInventoryItem).toHaveBeenLastCalledWith(item, 1);
+    }
+
+    expect(visitor.grantInventoryItem).toHaveBeenCalledTimes(rewards.length);
+    expect(visitor.fetchInventoryItems).toHaveBeenCalledTimes(rewards.length);
+  });
+
+  test("POST /submit-puzzle grants the SPACE reward even if the team key asset is unavailable", async () => {
+    const { visitor, session } = buildVisitorMock({
+      groupId: "team-1",
+      sessionActive: true,
+      currentRoom: 1,
+    });
+    const battery = { id: "battery-id", name: "Battery", type: "ITEM" };
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    mockUtils.getCachedInventoryItems.mockResolvedValue([battery]);
+    mockUtils.getVisitorInventory.mockReturnValue({
+      badges: {},
+      items: [{ id: battery.id, name: battery.name }],
+    });
+    mockUtils.getKeyAsset.mockResolvedValue(null);
+
+    const res = await request(makeApp())
+      .post("/api/submit-puzzle")
+      .query(baseCreds)
+      .send({ puzzleNumber: 1 });
+
+    expect(res.status).toBe(200);
+    expect(visitor.grantInventoryItem).toHaveBeenCalledWith(battery, 1);
+    expect(res.body.visitorInventory.items[0].id).toBe(battery.id);
   });
 
   test("POST /submit-puzzle no-ops when the session isn't active", async () => {
@@ -207,6 +1200,548 @@ describe("escape-room routes", () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(false);
     expect(res.body.message).toBe("No active session.");
+    expect(visitor.updateDataObject).not.toHaveBeenCalled();
+  });
+
+  test("POST /submit-puzzle completes LIBRARY on puzzle 4 without SPACE-only rewards", async () => {
+    const { visitor, session } = buildVisitorMock({
+      themeID: "LIBRARY",
+      sessionActive: true,
+      startTime: new Date(Date.now() - 60000).toISOString(),
+      currentRoom: 1,
+    });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/submit-puzzle").query(baseCreds).send({ puzzleNumber: 4 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.visitorData.puzzlesCompleted[4]).toBe(true);
+    expect(res.body.visitorData.sessionActive).toBe(false);
+    expect(res.body.visitorData.completionTime).toEqual(expect.any(Number));
+    expect(mockUtils.checkEscapeBadges).not.toHaveBeenCalled();
+    expect(mockUtils.getCachedInventoryItems).not.toHaveBeenCalled();
+    expect(mockUtils.fireToast).toHaveBeenCalledWith(
+      expect.objectContaining({ text: expect.stringContaining("Library's final puzzle") }),
+    );
+    expect(mockUtils.moveVisitorToAsset).toHaveBeenCalledWith(
+      baseCreds,
+      "EscapeRoom_start_teleport",
+    );
+    expect(visitor.updateDataObject).toHaveBeenCalledTimes(1);
+    const analyticNames = visitor.updateDataObject.mock.calls[0][1].analytics.map(
+      ({ analyticName }: { analyticName: string }) => analyticName,
+    );
+    expect(analyticNames).toEqual(
+      expect.arrayContaining(["libraryPuzzle4Completed", "libraryGameCompleted"]),
+    );
+    expect(analyticNames).not.toContain("puzzle4Completed");
+    expect(analyticNames).not.toContain("gameCompleted");
+  });
+
+  test("POST /submit-puzzle keeps the SPACE completion analytics on puzzle 7", async () => {
+    const { visitor, session } = buildVisitorMock({
+      themeID: "SPACE",
+      sessionActive: true,
+      startTime: new Date(Date.now() - 60000).toISOString(),
+      currentRoom: 3,
+      puzzlesCompleted: {
+        1: true,
+        2: true,
+        3: true,
+        4: true,
+        5: true,
+        6: true,
+        7: false,
+      },
+    });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/submit-puzzle").query(baseCreds).send({ puzzleNumber: 7 });
+
+    expect(res.status).toBe(200);
+    const analyticNames = visitor.updateDataObject.mock.calls[0][1].analytics.map(
+      ({ analyticName }: { analyticName: string }) => analyticName,
+    );
+    expect(analyticNames).toEqual(expect.arrayContaining(["puzzle7Completed", "gameCompleted"]));
+    expect(analyticNames).not.toContain("libraryPuzzle7Completed");
+    expect(analyticNames).not.toContain("libraryGameCompleted");
+  });
+
+  test("POST /submit-puzzle publishes team completion after shared state is complete", async () => {
+    const { visitor, session } = buildVisitorMock({
+      themeID: "LIBRARY",
+      groupId: "team-1",
+      sessionActive: true,
+      startTime: new Date(Date.now() - 60000).toISOString(),
+      currentRoom: 1,
+    });
+    session.puzzlesCompleted[4] = true;
+    const team = {
+      id: "team-1",
+      status: "started",
+      members: [{ profileId: baseCreds.profileId }],
+      puzzlesCompleted: { 1: true, 2: true, 3: true, 4: false },
+      keyItems: [],
+    };
+    const keyAsset = {
+      dataObject: { teams: { "team-1": team } },
+      updateDataObject: jest.fn().mockImplementation(async (updates: any) => {
+        applyDataObjectUpdates(keyAsset.dataObject, updates);
+      }),
+    };
+    const completedTeamsAtBroadcast: any[] = [];
+    mockSseManager.publish.mockImplementation((event: any) => {
+      if (event.event === "GAME_COMPLETED") {
+        completedTeamsAtBroadcast.push(keyAsset.dataObject.teams["team-1"]);
+      }
+    });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    mockUtils.getKeyAsset.mockResolvedValue(keyAsset);
+
+    const res = await request(makeApp())
+      .post("/api/submit-puzzle")
+      .query(baseCreds)
+      .send({ puzzleNumber: 4 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.alreadyCompleted).toBeUndefined();
+    expect(completedTeamsAtBroadcast).toHaveLength(1);
+    expect(completedTeamsAtBroadcast[0]).toMatchObject({
+      status: "completed",
+      puzzlesCompleted: { 1: true, 2: true, 3: true, 4: true },
+    });
+    expect(visitor.updateDataObject).toHaveBeenCalledTimes(1);
+    expect(mockUtils.getKeyAsset).toHaveBeenCalledTimes(1);
+    const visitorUpdate = visitor.updateDataObject.mock.calls[0][0][
+      `${baseCreds.urlSlug}-${baseCreds.sceneDropId}`
+    ];
+    expect(visitorUpdate).not.toHaveProperty("puzzlesCompleted");
+    expect(keyAsset.updateDataObject).toHaveBeenCalledTimes(1);
+    expect(keyAsset.updateDataObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ["teams.team-1.puzzlesCompleted.4"]: true,
+        ["teams.team-1.status"]: "completed",
+      }),
+      { lock: { lockId: "team-team-1-lock", releaseLock: true } },
+    );
+    expect(keyAsset.updateDataObject.mock.calls[0][0]).not.toHaveProperty("teams");
+  });
+
+  test("POST /submit-puzzle grants each same-named LIBRARY key item by metadata selector", async () => {
+    const { visitor, session } = buildVisitorMock({
+      themeID: "LIBRARY",
+      groupId: "team-1",
+      sessionActive: true,
+      startTime: new Date().toISOString(),
+      currentRoom: 1,
+    });
+    const team = {
+      id: "team-1",
+      keyItems: [],
+      puzzlesCompleted: {},
+    };
+    const keyAsset = {
+      dataObject: { teams: { "team-1": team } },
+      updateDataObject: jest.fn().mockImplementation(async (updates: any) => {
+        applyDataObjectUpdates(keyAsset.dataObject, updates);
+      }),
+    };
+    const paperItems = [
+      { id: "paper-a", name: "Paper", type: "ITEM", status: "ACTIVE", metadata: { type: "keyItem", escapeRoomReward: "library-9f31" } },
+      { id: "paper-b", name: "Paper", type: "ITEM", status: "ACTIVE", metadata: { type: "keyItem", escapeRoomReward: "library-4c82" } },
+      { id: "paper-c", name: "Paper", type: "ITEM", status: "ACTIVE", metadata: { type: "keyItem", escapeRoomReward: "library-d7a6" } },
+    ];
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    mockUtils.getKeyAsset.mockResolvedValue(keyAsset);
+    mockUtils.getCachedInventoryItems.mockResolvedValue(paperItems);
+
+    for (const puzzleNumber of [1, 2, 3]) {
+      const res = await request(makeApp())
+        .post("/api/submit-puzzle")
+        .query(baseCreds)
+        .send({ puzzleNumber });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+    }
+
+    const grantedItems = keyAsset.dataObject.teams["team-1"].keyItems;
+    expect(grantedItems.map((item: any) => item.id)).toEqual(["paper-a", "paper-b", "paper-c"]);
+    expect(grantedItems.map((item: any) => item.name)).toEqual(["Paper", "Paper", "Paper"]);
+    expect(keyAsset.updateDataObject).toHaveBeenCalledTimes(3);
+    expect(visitor.updateDataObject).toHaveBeenCalledTimes(3);
+    expect(mockUtils.checkTrashPandaBadge).toHaveBeenCalledTimes(3);
+    expect(mockUtils.checkTrashPandaBadge).toHaveBeenCalledWith(
+      expect.objectContaining({ credentials: expect.objectContaining({ groupId: "team-1" }) }),
+    );
+  });
+
+  test("POST /submit-puzzle grants Library papers to an individual player without a team", async () => {
+    const { visitor, session } = buildVisitorMock({
+      themeID: "LIBRARY",
+      sessionActive: true,
+      startTime: new Date().toISOString(),
+      currentRoom: 1,
+    });
+    const paperItems = [
+      { id: "paper-a", name: "Paper", type: "ITEM", status: "ACTIVE", metadata: { type: "keyItem", escapeRoomReward: "library-9f31" } },
+      { id: "paper-b", name: "Paper", type: "ITEM", status: "ACTIVE", metadata: { type: "keyItem", escapeRoomReward: "library-4c82" } },
+      { id: "paper-c", name: "Paper", type: "ITEM", status: "ACTIVE", metadata: { type: "keyItem", escapeRoomReward: "library-d7a6" } },
+    ];
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    mockUtils.getCachedInventoryItems.mockResolvedValue(paperItems);
+    mockUtils.getKeyAsset.mockResolvedValue(null);
+
+    for (const [index, puzzleNumber] of [1, 2, 3].entries()) {
+      const expectedPaper = paperItems[index];
+      mockUtils.getVisitorInventory.mockReturnValueOnce({
+        badges: {},
+        items: [
+          {
+            id: expectedPaper.id,
+            name: expectedPaper.name,
+            metadata: expectedPaper.metadata,
+          },
+        ],
+      });
+
+      const res = await request(makeApp())
+        .post("/api/submit-puzzle")
+        .query(baseCreds)
+        .send({ puzzleNumber });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.visitorInventory).toBeDefined();
+      expect(res.body.visitorInventory.items[0].metadata.escapeRoomReward).toBe(
+        expectedPaper.metadata.escapeRoomReward,
+      );
+    }
+
+    expect(visitor.grantInventoryItem.mock.calls.map(([item]) => item.id)).toEqual([
+      "paper-a",
+      "paper-b",
+      "paper-c",
+    ]);
+    expect(visitor.fetchInventoryItems).toHaveBeenCalledTimes(3);
+  });
+
+  test("POST /submit-puzzle identifies Puzzle 3 Paper by excluding the first two collected items", async () => {
+    const { visitor, session } = buildVisitorMock({
+      themeID: "LIBRARY",
+      sessionActive: true,
+      startTime: new Date().toISOString(),
+      currentRoom: 1,
+    });
+    const staleItems = [
+      { id: "paper-a", name: "Paper", type: "ITEM", status: "ACTIVE", metadata: {} },
+      { id: "paper-b", name: "Paper", type: "ITEM", status: "ACTIVE" },
+      { id: "paper-c", name: "Paper", type: "ITEM", status: "ACTIVE", metadata: { escapeRoomReward: "incorrect-selector" } },
+    ];
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: {
+        badges: {},
+        items: [
+          { id: "paper-a", name: "Paper" },
+          { id: "paper-b", name: "Paper" },
+        ],
+      },
+    });
+    mockUtils.getCachedInventoryItems
+      .mockResolvedValueOnce(staleItems)
+      .mockResolvedValueOnce(staleItems);
+    mockUtils.getKeyAsset.mockResolvedValue(null);
+    mockUtils.getVisitorInventory.mockReturnValue({
+      badges: {},
+      items: [{ id: "paper-c", name: "Paper" }],
+    });
+
+    const res = await request(makeApp())
+      .post("/api/submit-puzzle")
+      .query(baseCreds)
+      .send({ puzzleNumber: 3 });
+
+    expect(res.status).toBe(200);
+    expect(visitor.grantInventoryItem).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "paper-c" }),
+      1,
+    );
+    expect(res.body.visitorInventory.items).toEqual([
+      expect.objectContaining({
+        id: "paper-c",
+        metadata: expect.objectContaining({ escapeRoomReward: "library-d7a6" }),
+      }),
+    ]);
+    expect(res.body.visitorData.libraryRewardItemIds[3]).toBe("paper-c");
+    expect(visitor.updateDataObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: expect.objectContaining({
+          libraryRewardItemIds: expect.objectContaining({ 3: "paper-c" }),
+        }),
+      }),
+      expect.any(Object),
+    );
+    expect(mockUtils.getCachedInventoryItems).toHaveBeenNthCalledWith(2, {
+      credentials: baseCreds,
+      forceRefresh: true,
+    });
+  });
+
+  test("POST /submit-puzzle uses the Puzzle 3 selector after refreshing cached inventory", async () => {
+    const { visitor, session } = buildVisitorMock({
+      themeID: "LIBRARY",
+      sessionActive: true,
+      startTime: new Date().toISOString(),
+      currentRoom: 1,
+    });
+    const staleItems = [
+      { id: "paper-a", name: "Paper", type: "ITEM", status: "ACTIVE", metadata: { type: "keyItem", escapeRoomReward: "library-9f31" } },
+      { id: "paper-b", name: "Paper", type: "ITEM", status: "ACTIVE", metadata: { type: "keyItem", escapeRoomReward: "library-4c82" } },
+      { id: "paper-c", name: "Paper", type: "ITEM", status: "ACTIVE", metadata: { type: "keyItem" } },
+    ];
+    const refreshedItems = [
+      ...staleItems.slice(0, 2),
+      { ...staleItems[2], metadata: { type: "keyItem", escapeRoomReward: "library-d7a6" } },
+    ];
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    mockUtils.getCachedInventoryItems
+      .mockResolvedValueOnce(staleItems)
+      .mockResolvedValueOnce(refreshedItems);
+    mockUtils.getKeyAsset.mockResolvedValue(null);
+    mockUtils.getVisitorInventory.mockReturnValue({
+      badges: {},
+      items: [{ id: "paper-c", name: "Paper" }],
+    });
+
+    const res = await request(makeApp())
+      .post("/api/submit-puzzle")
+      .query(baseCreds)
+      .send({ puzzleNumber: 3 });
+
+    expect(res.status).toBe(200);
+    expect(visitor.grantInventoryItem).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "paper-c" }),
+      1,
+    );
+    expect(mockUtils.getCachedInventoryItems).toHaveBeenNthCalledWith(2, {
+      credentials: baseCreds,
+      forceRefresh: true,
+    });
+  });
+
+  test("POST /submit-puzzle backfills a missing Library reward for an already-completed puzzle", async () => {
+    const { visitor, session } = buildVisitorMock({
+      themeID: "LIBRARY",
+      sessionActive: true,
+      currentRoom: 1,
+      puzzlesCompleted: { 1: true, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false },
+    });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    mockUtils.getCachedInventoryItems.mockResolvedValue([
+      { id: "paper-a", name: "Paper", type: "ITEM", status: "ACTIVE", metadata: { type: "keyItem", escapeRoomReward: "library-9f31" } },
+    ]);
+    mockUtils.getKeyAsset.mockResolvedValue(null);
+
+    const res = await request(makeApp())
+      .post("/api/submit-puzzle")
+      .query(baseCreds)
+      .send({ puzzleNumber: 1 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.alreadyCompleted).toBe(true);
+    expect(visitor.grantInventoryItem).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "paper-a" }),
+      1,
+    );
+    expect(visitor.updateDataObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: expect.objectContaining({
+          libraryRewardItemIds: expect.objectContaining({ 1: "paper-a" }),
+        }),
+      }),
+      expect.any(Object),
+    );
+  });
+
+  test("POST /submit-puzzle repairs missing Library reward mappings on an already-completed puzzle", async () => {
+    const { visitor, session } = buildVisitorMock({
+      themeID: "LIBRARY",
+      sessionActive: true,
+      currentRoom: 2,
+      libraryRewardItemIds: { 1: "paper-a", 2: "paper-b" },
+      puzzlesCompleted: {
+        1: true,
+        2: true,
+        3: true,
+        4: true,
+        5: false,
+        6: false,
+        7: false,
+      },
+    });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: {
+        badges: {},
+        items: [
+          { id: "paper-a", name: "Paper", status: "ACTIVE", metadata: { escapeRoomReward: "library-9f31" } },
+          { id: "paper-b", name: "Paper", status: "ACTIVE", metadata: { escapeRoomReward: "library-4c82" } },
+          { id: "paper-c", name: "Paper", status: "ACTIVE", metadata: {} },
+        ],
+      },
+    });
+    mockUtils.getKeyAsset.mockResolvedValue(null);
+
+    const res = await request(makeApp())
+      .post("/api/submit-puzzle")
+      .query(baseCreds)
+      .send({ puzzleNumber: 4 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.alreadyCompleted).toBe(true);
+    expect(res.body.visitorData.libraryRewardItemIds).toEqual({
+      1: "paper-a",
+      2: "paper-b",
+      3: "paper-c",
+    });
+    expect(visitor.updateDataObject).toHaveBeenCalledTimes(1);
+    expect(visitor.updateDataObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: expect.objectContaining({
+          libraryRewardItemIds: expect.objectContaining({ 3: "paper-c" }),
+        }),
+      }),
+      expect.any(Object),
+    );
+  });
+
+  test("POST /submit-puzzle reports missing LIBRARY key item metadata", async () => {
+    const { visitor, session } = buildVisitorMock({
+      themeID: "LIBRARY",
+      groupId: "team-1",
+      sessionActive: true,
+      currentRoom: 1,
+    });
+    const keyAsset = {
+      dataObject: { teams: { "team-1": { keyItems: [] } } },
+      updateDataObject: jest.fn().mockResolvedValue(undefined),
+    };
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    mockUtils.getKeyAsset.mockResolvedValue(keyAsset);
+    mockUtils.getCachedInventoryItems.mockResolvedValue([]);
+
+    const res = await request(makeApp())
+      .post("/api/submit-puzzle")
+      .query(baseCreds)
+      .send({ puzzleNumber: 1 });
+
+    expect(res.status).toBe(500);
+    expect(visitor.updateDataObject).not.toHaveBeenCalled();
+    expect(mockUtils.errorHandler).toHaveBeenCalled();
+  });
+
+  test("POST /submit-puzzle rejects puzzle numbers outside the session theme", async () => {
+    const { visitor, session } = buildVisitorMock({
+      themeID: "LIBRARY",
+      sessionActive: true,
+      currentRoom: 1,
+    });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/submit-puzzle").query(baseCreds).send({ puzzleNumber: 5 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("not part of the LIBRARY theme");
+    expect(visitor.updateDataObject).not.toHaveBeenCalled();
+  });
+
+  test("POST /puzzle-draft rejects puzzle numbers outside the session theme", async () => {
+    const { visitor, session } = buildVisitorMock({
+      themeID: "LIBRARY",
+      sessionActive: true,
+      currentRoom: 1,
+    });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/puzzle-draft").query(baseCreds)
+      .send({ puzzleNumber: 5, draft: {} });
+
+    expect(res.status).toBe(400);
+    expect(visitor.updateDataObject).not.toHaveBeenCalled();
+  });
+
+  test("POST /wrong-attempt rejects puzzle numbers outside the session theme", async () => {
+    const { visitor, session } = buildVisitorMock({
+      themeID: "LIBRARY",
+      sessionActive: true,
+      currentRoom: 1,
+    });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/wrong-attempt").query(baseCreds).send({ puzzleNumber: 5 });
+
+    expect(res.status).toBe(400);
     expect(visitor.updateDataObject).not.toHaveBeenCalled();
   });
 
@@ -226,7 +1761,157 @@ describe("escape-room routes", () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.visitorData.sessionActive).toBe(false);
-    expect(mockUtils.moveVisitorToAsset).toHaveBeenCalledWith(baseCreds, "EscapeRoom_start_teleport");
+    expect(mockUtils.moveVisitorToAsset).toHaveBeenCalledWith(
+      baseCreds,
+      "EscapeRoom_start_teleport",
+    );
+    const analyticNames = visitor.updateDataObject.mock.calls[0][1].analytics.map(
+      ({ analyticName }: { analyticName: string }) => analyticName,
+    );
+    expect(analyticNames).toContain("manualGameExits");
+  });
+
+  test("POST /exit records the Library-specific manual exit analytic", async () => {
+    const { visitor, session } = buildVisitorMock({
+      themeID: "LIBRARY",
+      sessionActive: true,
+      startTime: new Date().toISOString(),
+    });
+    mockUtils.getTheme.mockReturnValue(libraryTheme);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/exit").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    const analyticNames = visitor.updateDataObject.mock.calls[0][1].analytics.map(
+      ({ analyticName }: { analyticName: string }) => analyticName,
+    );
+    expect(analyticNames).toContain("libraryManualExits");
+    expect(analyticNames).not.toContain("manualGameExits");
+  });
+
+  test("POST /exit removes a departing leader, promotes a teammate, and clears the session team", async () => {
+    const { visitor, session } = buildVisitorMock({
+      groupId: "team-1",
+      sessionActive: true,
+      startTime: new Date().toISOString(),
+    });
+    const alice = { profileId: baseCreds.profileId, displayName: "Alice" };
+    const bob = { profileId: "profile-2", displayName: "Bob" };
+    const keyAsset = {
+      dataObject: {
+        teams: {
+          "team-1": {
+            id: "team-1",
+            createdBy: alice,
+            leaderProfileId: alice.profileId,
+            members: [alice, bob],
+            status: "started",
+            createdAt: new Date().toISOString(),
+            puzzlesCompleted: { ...spaceTheme.defaultPuzzles },
+            keyItems: [],
+          },
+        },
+      },
+      updateDataObject: jest.fn().mockImplementation(async (updates: any) => {
+        applyDataObjectUpdates(keyAsset.dataObject, updates);
+      }),
+    };
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    mockUtils.getKeyAsset.mockResolvedValue(keyAsset as any);
+
+    const res = await request(makeApp()).post("/api/exit").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(keyAsset.dataObject.teams["team-1"]).toMatchObject({
+      createdBy: bob,
+      leaderProfileId: bob.profileId,
+      members: [bob],
+    });
+    expect(visitor.updateDataObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: expect.objectContaining({
+          groupId: undefined,
+          sessionActive: false,
+        }),
+      }),
+      expect.any(Object),
+    );
+    expect(res.body.visitorData.sessionActive).toBe(false);
+    expect(res.body.visitorData).not.toHaveProperty("groupId");
+    expectTeamsUpdated("team-1");
+  });
+
+  test("POST /exit clears the team roster when the departing player is its last member", async () => {
+    const { visitor, session } = buildVisitorMock({
+      groupId: "team-1",
+      sessionActive: true,
+    });
+    const alice = { profileId: baseCreds.profileId, displayName: "Alice" };
+    const keyAsset = {
+      dataObject: {
+        teams: {
+          "team-1": {
+            id: "team-1",
+            createdBy: alice,
+            leaderProfileId: alice.profileId,
+            members: [alice],
+            status: "started",
+            createdAt: new Date().toISOString(),
+            puzzlesCompleted: { ...spaceTheme.defaultPuzzles },
+            keyItems: [],
+          },
+        },
+      },
+      updateDataObject: jest.fn().mockImplementation(async (updates: any) => {
+        applyDataObjectUpdates(keyAsset.dataObject, updates);
+      }),
+    };
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    mockUtils.getKeyAsset.mockResolvedValue(keyAsset as any);
+
+    const res = await request(makeApp()).post("/api/exit").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(keyAsset.dataObject.teams["team-1"].members).toEqual([]);
+    expect(res.body.visitorData).not.toHaveProperty("groupId");
+    expectTeamsUpdated("team-1");
+  });
+
+  test("POST /exit reports failure when a team key asset is unavailable", async () => {
+    const { visitor, session } = buildVisitorMock({
+      groupId: "team-1",
+      sessionActive: true,
+    });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    mockUtils.getKeyAsset.mockResolvedValue(null);
+
+    const res = await request(makeApp()).post("/api/exit").query(baseCreds);
+
+    expect(res.status).toBe(500);
+    expect(visitor.updateDataObject).not.toHaveBeenCalled();
+    expect(mockUtils.moveVisitorToAsset).not.toHaveBeenCalled();
+    expect(visitor.closeIframe).not.toHaveBeenCalled();
   });
 
   test("GET /session returns inactive when no session has been started", async () => {
@@ -260,5 +1945,274 @@ describe("escape-room routes", () => {
     expect(res.body.visitorData.startTime).toBe(startTime);
     // No time limit — the endpoint must not report a countdown of any kind.
     expect(res.body.remainingMs).toBeUndefined();
+  });
+
+  test("GET /heartbeat reports completion for a member of the completed team", async () => {
+    const { visitor, session } = buildVisitorMock({ groupId: "team-1" });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    mockUtils.getKeyAsset.mockResolvedValue({
+      dataObject: {
+        teams: {
+          "team-1": {
+            status: "completed",
+            members: [{ profileId: baseCreds.profileId }],
+          },
+        },
+      },
+    });
+
+    const res = await request(makeApp()).get("/api/heartbeat").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ success: true, teamCompleted: true });
+    expect(mockUtils.getKeyAsset).toHaveBeenCalledWith(baseCreds);
+  });
+
+  test("POST /teleport lets a completed teammate return home with their own credentials", async () => {
+    const { visitor, session } = buildVisitorMock({
+      groupId: "team-1",
+      sessionActive: false,
+      themeID: "SPACE",
+    });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    mockUtils.getKeyAsset.mockResolvedValue({
+      dataObject: {
+        teams: {
+          "team-1": {
+            status: "completed",
+            updatedAt: "2026-11-05T12:00:00.000Z",
+            completionTime: 120,
+            members: [{ profileId: baseCreds.profileId }],
+          },
+        },
+      },
+    });
+
+    const res = await request(makeApp())
+      .post("/api/teleport")
+      .query(baseCreds)
+      .send({ room: "start" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.teleported).toBe(true);
+    expect(mockUtils.moveVisitorToAsset).toHaveBeenCalledWith(
+      baseCreds,
+      "EscapeRoom_start_teleport",
+    );
+    expect(visitor.updateDataObject).toHaveBeenCalledWith(
+      {
+        [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: expect.objectContaining({
+          sessionActive: false,
+          endTime: "2026-11-05T12:00:00.000Z",
+          completionTime: 120,
+          physicalRoom: null,
+        }),
+      },
+      expect.any(Object),
+    );
+  });
+
+  test("POST /team-puzzle-solved includes the supplied puzzle title in the toast", async () => {
+    const { visitor, session } = buildVisitorMock({ groupId: "team-1" });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    mockUtils.getKeyAsset.mockResolvedValue({
+      dataObject: {
+        teams: {
+          "team-1": {
+            members: [{ profileId: "profile-2", displayName: "Bob" }],
+          },
+        },
+      },
+    });
+
+    const res = await request(makeApp())
+      .post("/api/team-puzzle-solved")
+      .query(baseCreds)
+      .send({
+        completedByProfileId: "profile-2",
+        puzzleNumber: 1,
+        puzzleTitle: "Main Power Panel",
+      });
+
+    expect(res.status).toBe(200);
+    expect(mockUtils.fireToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: 'Bob has completed the puzzle "Main Power Panel".',
+      }),
+    );
+  });
+
+  test("POST /team-puzzle-solved uses generic toast text when the puzzle title is missing", async () => {
+    const { visitor, session } = buildVisitorMock({ groupId: "team-1" });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    mockUtils.getKeyAsset.mockResolvedValue({
+      dataObject: {
+        teams: {
+          "team-1": {
+            members: [{ profileId: "profile-2", displayName: "Bob" }],
+          },
+        },
+      },
+    });
+
+    const res = await request(makeApp())
+      .post("/api/team-puzzle-solved")
+      .query(baseCreds)
+      .send({ completedByProfileId: "profile-2", puzzleNumber: 1 });
+
+    expect(res.status).toBe(200);
+    expect(mockUtils.fireToast).toHaveBeenCalledWith(
+      expect.objectContaining({ text: "Bob solved a puzzle!" }),
+    );
+  });
+
+  test.each([
+    {
+      themeID: "SPACE",
+      toast: {
+        groupId: "escaped",
+        title: "Your Team Escaped!",
+        text: "The airlock is open and your team is free! Check your time on the leaderboard.",
+      },
+    },
+    {
+      themeID: "LIBRARY",
+      toast: {
+        groupId: "escaped",
+        title: "Your Team Escaped!",
+        text: "Your team solved the Library's final puzzle and escaped. Check your time on the leaderboard.",
+      },
+    },
+  ])("POST /team-game-completed uses the $themeID toast", async ({ themeID, toast }) => {
+    const { visitor, session } = buildVisitorMock({
+      groupId: "team-1",
+      themeID,
+    });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    mockUtils.getKeyAsset.mockResolvedValue({
+      dataObject: {
+        teams: {
+          "team-1": {
+            status: "completed",
+            members: [{ profileId: baseCreds.profileId }],
+          },
+        },
+      },
+    });
+
+    const res = await request(makeApp())
+      .post("/api/team-game-completed")
+      .query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(mockUtils.fireToast).toHaveBeenCalledWith(
+      expect.objectContaining({ visitor, ...toast }),
+    );
+  });
+
+  test("POST /team-game-completed does not toast before the team is completed", async () => {
+    const { visitor, session } = buildVisitorMock({
+      groupId: "team-1",
+      themeID: "SPACE",
+    });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    mockUtils.getKeyAsset.mockResolvedValue({
+      dataObject: {
+        teams: {
+          "team-1": {
+            status: "started",
+            members: [{ profileId: baseCreds.profileId }],
+          },
+        },
+      },
+    });
+
+    const res = await request(makeApp())
+      .post("/api/team-game-completed")
+      .query(baseCreds);
+
+    expect(res.status).toBe(409);
+    expect(mockUtils.fireToast).not.toHaveBeenCalled();
+  });
+
+  test("POST /grant-item rejects inactive sessions without granting or notifying", async () => {
+    const { visitor, session } = buildVisitorMock();
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp())
+      .post("/api/grant-item")
+      .query(baseCreds)
+      .send({ itemName: "Room 1 Artifact" });
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({
+      success: false,
+      error: "An active game session is required to acquire artifacts",
+    });
+    expect(visitor.grantInventoryItem).not.toHaveBeenCalled();
+    expect(mockUtils.fireToast).not.toHaveBeenCalled();
+    expect(mockSseManager.publish).not.toHaveBeenCalled();
+  });
+
+  test("POST /grant-item keeps active artifact inventory private to the visitor", async () => {
+    const { visitor, session } = buildVisitorMock({
+      groupId: "team-1",
+      sessionActive: true,
+      physicalRoom: 1,
+    });
+    const artifact = { id: "artifact-1", name: "Room 1 Artifact", type: "ITEM" };
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    mockUtils.getCachedInventoryItems.mockResolvedValue([artifact]);
+
+    const res = await request(makeApp())
+      .post("/api/grant-item")
+      .query(baseCreds)
+      .send({ itemName: artifact.name });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(visitor.grantInventoryItem).toHaveBeenCalledWith(artifact, 1);
+    expect(mockUtils.fireToast).toHaveBeenCalledTimes(1);
+    expect(mockSseManager.publish).not.toHaveBeenCalled();
   });
 });

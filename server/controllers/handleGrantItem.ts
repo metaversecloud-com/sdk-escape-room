@@ -40,6 +40,13 @@ export const handleGrantItem = async (req: Request, res: Response) => {
     }
 
     const { visitor, session, visitorInventory } = await getVisitor(credentials, true);
+    if (session.sessionActive !== true) {
+      return res.status(403).json({
+        success: false,
+        error: "An active game session is required to acquire artifacts",
+      });
+    }
+
     const alreadyHad = visitorInventory.items.some((i) => i.name === itemName);
 
     // Always need to look up the ecosystem item to read metadata.room, even
@@ -82,8 +89,8 @@ export const handleGrantItem = async (req: Request, res: Response) => {
 
     let updatedInventory = getVisitorInventory(visitor.inventoryItems || []);
 
-    // After a fresh grant, check whether the player now owns every ecosystem
-    // ITEM — that's the trigger for the **Trash Panda** badge. Skip on
+    // After a fresh grant, check whether the player now owns all SPACE
+    // artifacts and all four SPACE puzzle rewards. Skip on
     // re-clicks (alreadyHad) since the inventory didn't change.
     if (!alreadyHad) {
       const awarded = await checkTrashPandaBadge({ credentials, visitor, visitorInventory: updatedInventory });
@@ -94,7 +101,6 @@ export const handleGrantItem = async (req: Request, res: Response) => {
     }
 
     const item = updatedInventory.items.find((i) => i.name === itemName) || null;
-
     return res.json({
       success: true,
       item,

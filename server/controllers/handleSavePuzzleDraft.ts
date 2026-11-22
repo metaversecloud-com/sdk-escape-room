@@ -1,10 +1,19 @@
 import { Request, Response } from "express";
-import { errorHandler, getCredentials, getVisitor } from "@utils/index.js";
+import {
+  errorHandler,
+  getCredentials,
+  getKeyAsset,
+  getSessionTheme,
+  getVisitor,
+  getVisitorDataObjectLockId,
+  getVisitorSessionDataForUpdate,
+  isPuzzleInTheme,
+} from "@utils/index.js";
+import { KeyAssetDataObject } from "../types/index.js";
 
-type PuzzleNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7;
-const VALID_PUZZLE_NUMBERS: ReadonlySet<PuzzleNumber> = new Set([1, 2, 3, 4, 5, 6, 7]);
+type PuzzleNumber = number;
 const isPuzzleNumber = (value: unknown): value is PuzzleNumber =>
-  typeof value === "number" && VALID_PUZZLE_NUMBERS.has(value as PuzzleNumber);
+  typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 
 /**
  * Persists a puzzle's in-progress state ("draft") to the visitor's data object
@@ -27,7 +36,7 @@ export const handleSavePuzzleDraft = async (req: Request, res: Response) => {
     const draft = req.body?.draft;
 
     if (!isPuzzleNumber(puzzleNumber)) {
-      return res.status(400).json({ success: false, error: "Invalid puzzleNumber. Must be 1-7." });
+      return res.status(400).json({ success: false, error: "Invalid puzzleNumber. Must be a positive integer." });
     }
 
     const { visitor, session } = await getVisitor(credentials, false);
@@ -37,15 +46,33 @@ export const handleSavePuzzleDraft = async (req: Request, res: Response) => {
     if (!session.sessionActive) {
       return res.json({ success: true, saved: false, reason: "noActiveSession" });
     }
-    if (session.puzzlesCompleted?.[puzzleNumber]) {
+    const theme = await getSessionTheme(credentials, session);
+    if (!isPuzzleInTheme(theme, puzzleNumber)) {
+      return res.status(400).json({
+        success: false,
+        error: `Puzzle ${puzzleNumber} is not part of the ${theme.themeID} theme.`,
+      });
+    }
+    const teamId = session.groupId || credentials.groupId;
+    let puzzleCompleted = session.puzzlesCompleted?.[puzzleNumber];
+    if (teamId) {
+      const keyAsset = await getKeyAsset(credentials);
+      const keyAssetDataObject =
+        (keyAsset?.dataObject as KeyAssetDataObject | null) || {};
+      puzzleCompleted =
+        keyAssetDataObject.teams?.[teamId]?.puzzlesCompleted?.[puzzleNumber] ??
+        puzzleCompleted;
+    }
+
+    if (puzzleCompleted) {
       return res.json({ success: true, saved: false, reason: "puzzleAlreadyComplete" });
     }
 
     session.puzzleDrafts = { ...(session.puzzleDrafts || {}), [puzzleNumber]: draft };
 
     await visitor.updateDataObject(
-      { [sessionKey]: session },
-      { lock: { lockId: `${sessionKey}-draft-${puzzleNumber}-${Date.now()}`, releaseLock: true } },
+      { [sessionKey]: getVisitorSessionDataForUpdate(session, teamId) },
+      { lock: { lockId: getVisitorDataObjectLockId(credentials), releaseLock: true } },
     );
 
     return res.json({ success: true, saved: true });
