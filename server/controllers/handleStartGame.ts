@@ -50,24 +50,28 @@ const startVisitorSession = async ({
     groupId: teamId || undefined,
   };
 
+  const analytics = [
+    {
+      analyticName: themeID === "SPACE" ? "gameStarts" : "libraryGameStarts",
+      profileId,
+      urlSlug,
+      uniqueKey: `${profileId}-${sessionKey}-start`,
+    },
+  ];
+  if (themeID === "SPACE") {
+    analytics.push({
+      analyticName: firstRoom.entryAnalyticName,
+      profileId,
+      urlSlug,
+      uniqueKey: `${profileId}-${sessionKey}-start`,
+    });
+  }
+
   await visitor.updateDataObject(
     { [sessionKey]: getVisitorSessionDataForUpdate(newSession, teamId) },
     {
       lock: { lockId: getVisitorDataObjectLockId(credentials), releaseLock: true },
-      analytics: [
-        {
-          analyticName: "gameStarts",
-          profileId,
-          urlSlug,
-          uniqueKey: `${profileId}-${sessionKey}-start`,
-        },
-        {
-          analyticName: firstRoom.entryAnalyticName,
-          profileId,
-          urlSlug,
-          uniqueKey: `${profileId}-${sessionKey}-start`,
-        },
-      ],
+      analytics,
     },
   );
 

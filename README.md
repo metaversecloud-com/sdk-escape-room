@@ -8,7 +8,7 @@
 
 Escape Room is a configurable escape-room game for Topia worlds. The default `SPACE` theme retains its three-room, seven-puzzle experience. The `LIBRARY` theme configures one room and four submit-capable placeholder puzzle routes so its completion flow can be tested before the final puzzle designs are added. Starting a run stores its theme in visitor session data; subsequent puzzle, draft, and wrong-attempt requests are validated against that fixed session theme. Completing a theme's final puzzle stamps the completion time, writes the leaderboard entry, and teleports the player home.
 
-The app rewards eight distinct badges across the run — including time-based (Warp Speed for sub-3-minute completions), collection-based (Trash Panda for owning every ecosystem ITEM), and behavior-based (Button Masher for spamming wrong answers, Trash Digger for finding a hidden decoy screen).
+The app rewards eight distinct badges across the run — including time-based (Warp Speed for sub-3-minute completions), collection-based (Trash Panda for owning every SPACE ecosystem ITEM), and behavior-based (Button Masher for spamming wrong answers, Trash Digger for finding a hidden decoy screen).
 
 ## Key Features
 
@@ -107,7 +107,8 @@ All routes mount under `/api`. **No admin gating — every route runs for the au
 | `GET`  | `/game-state`     | Full state snapshot including `themeID` and `theme`, plus `droppedAsset`, `sessionKey`, `visitorData`, `uniqueName`, `badges`, `visitorInventory`, `leaderboard`, and `remainingMs`. Supports `?forceRefreshInventory=true` to bust the 6h ecosystem cache. |
 | `GET`  | `/session`        | Lightweight status: `{ active, remainingMs, visitorData }`.                                                                                                                                                        |
 | `GET`  | `/heartbeat`      | Keeps the visitor's SSE connection fresh; returns `{ success, teamCompleted }` so each connected team member can recover a missed completion event.                                                                |
-| `POST` | `/prepare-restart` | Ends the current run and returns the visitor to the start menu without teleporting or closing the iframe. Removes the visitor from an unfinished team using their own credentials; completed team records remain intact. |
+| `POST` | `/teams/leave`    | Leaves the visitor's waiting team using their own credentials and transfers leadership if needed. The last member clears the roster, making the team unavailable for selection. Leaving is not allowed after a run starts. |
+| `POST` | `/prepare-restart` | Ends the current run and returns the visitor to the start menu without teleporting or closing the iframe. Removes the visitor from an unfinished team using their own credentials; an empty roster is unavailable for selection. Completed team records remain intact. |
 | `POST` | `/start-game`     | Body: `{ multiplayer?: boolean, teamId?: string }`. Solo is the default, including for members of completed teams. Clears the requesting visitor's prior ecosystem ITEMs (badges preserved), teleports them to Room 1, and writes their fresh session. A team leader starts shared team progress; every member starts only their own visitor session using their own credentials.                                                                                                                        |
 | `POST` | `/submit-puzzle`  | Body: `{ puzzleNumber }` for a puzzle configured in the active theme. Configured SPACE rewards and LIBRARY puzzles 1–3 grant items directly to the solving visitor, regardless of team membership; if teamed, rewards are also mirrored to the shared team inventory. SPACE retains its room transitions and badges. The final puzzle in either theme stamps completion, updates shared team progress before notifying teammates, writes the solo leaderboard when applicable, and teleports the solver home. |
 | `POST` | `/puzzle-draft`   | Persists a per-puzzle draft `{ puzzleNumber, draft }` into `session.puzzleDrafts` for close-and-resume; puzzle numbers outside the active theme are rejected.                                                                    |
@@ -116,22 +117,23 @@ All routes mount under `/api`. **No admin gating — every route runs for the au
 | `POST` | `/walk-to-asset`  | Body: `{ screen }`. Walks visitor onto the artifact's asset (`y + 150`). Refuses cross-room walks with `{ walked: false, reason: "wrongRoom" }`.                                                                   |
 | `POST` | `/discover-decoy` | Idempotent: awards Trash Digger badge. No room gate.                                                                                                                                                               |
 | `POST` | `/wrong-attempt`  | Body: `{ puzzleNumber }`. Bumps `session.wrongAttempts[n]` for a puzzle in the active theme; on `=== 4` (exact) awards Button Masher.                                                                                 |
-| `POST` | `/exit`           | Marks session inactive, fires `manualGameExits`, teleports to start, closes iframe.                                                                                                                                |
+| `POST` | `/exit`           | Marks the session inactive and clears its team membership; if the departing player leads, another member becomes leader, and an empty roster is unavailable for selection. Publishes `TEAMS_UPDATED`, fires `manualGameExits`, teleports to start, and closes the iframe. |
 | `POST` | `/close-iframe`   | Just closes the iframe (used by "Stay Here" CTA).                                                                                                                                                                  |
 
 ## Analytics
 
 All events emitted via `analytics: [...]` on `visitor.updateDataObject`. `uniqueKey` pattern is `${profileId}-${sessionKey}[-suffix]`.
+Unprefixed events below are SPACE-only. LIBRARY emits its prefixed start, puzzle, completion, and manual-exit events instead; it does not emit room-entry analytics.
 
 | Event                 | Fired when                                        | Where                  |
 | --------------------- | ------------------------------------------------- | ---------------------- |
-| `gameStarts`          | Player starts a new run.                          | `POST /start-game`.    |
-| `room1Entries`        | Player starts a new run.                          | `POST /start-game`.    |
-| `room2Entries`        | Puzzle 2 completed (Room A→B transition unlocks). | `POST /submit-puzzle`. |
-| `room3Entries`        | Puzzle 5 completed (Room B→C transition unlocks). | `POST /submit-puzzle`. |
-| `puzzle${n}Completed` | Each puzzle submit for `n = 1..7`.                | `POST /submit-puzzle`. |
-| `gameCompleted`       | Puzzle 7 successfully submitted.                  | `POST /submit-puzzle`. |
-| `manualGameExits`     | Player clicks Exit.                               | `POST /exit`.          |
+| `gameStarts` / `libraryGameStarts` | Player starts a new run.                          | `POST /start-game`.    |
+| `room1Entries`        | SPACE player starts a new run.                    | `POST /start-game`.    |
+| `room2Entries`        | SPACE puzzle 2 completed (Room A→B transition).   | `POST /submit-puzzle`. |
+| `room3Entries`        | SPACE puzzle 5 completed (Room B→C transition).   | `POST /submit-puzzle`. |
+| `puzzle${n}Completed` / `libraryPuzzle${n}Completed` | Each theme's puzzle is submitted (`n = 1..7` for SPACE; `1..4` for LIBRARY). | `POST /submit-puzzle`. |
+| `gameCompleted` / `libraryGameCompleted` | The theme's final puzzle is successfully submitted. | `POST /submit-puzzle`. |
+| `manualGameExits` / `libraryManualExits` | Player clicks Exit.                               | `POST /exit`.          |
 
 **Particles + toasts:** `firework1_gold` fires on every non-P7 puzzle submit; `explosion_float` (duration 6) fires on P7 completion. In-world toasts (`fireToast` via `shared/copy/toasts.ts`) announce item earned / puzzle solved / room cleared / escaped / artifact acquired.
 
@@ -178,7 +180,7 @@ Defined in `server/utils/checkEscapeBadges.ts` (`BADGES` catalog).
 - **Physical vs. logical rooms:** `physicalRoom` (where the avatar is) is tracked separately from `currentRoom` (puzzle progression). This is what powers walk-gating — clicking an artifact from the wrong room is refused server-side.
 - **Session-in-progress card:** if the player re-opens the start terminal mid-run, `SessionInProgressCard` offers "restart" or "teleport to current room". `justStarted` sticky state hides it right after Start is pressed.
 - **Draft resume:** `session.puzzleDrafts[n]` opaquely stores the puzzle's in-progress UI state, wiped on `/start-game` and on successful `/submit-puzzle`.
-- **Exit vs Stay:** `/exit` ends session, teleports, closes iframe. `/close-iframe` just closes (used by "Stay Here").
+- **Exit vs Stay:** `/exit` ends the session, removes the player from their team (transferring leadership or clearing the final roster), teleports, and closes the iframe. `/close-iframe` just closes (used by "Stay Here").
 
 ## Environment Variables
 

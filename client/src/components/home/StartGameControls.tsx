@@ -23,6 +23,8 @@ interface StartGameControlsProps {
   onSelectedTeamIdChange: (teamId: string) => void;
   onCreateTeam: () => void;
   onJoinTeam: (teamId: string) => void;
+  onLeaveTeam: () => void;
+  isLeavingTeam: boolean;
   onStart: () => void;
   teamMessage: string;
   teamHasStarted: boolean;
@@ -44,6 +46,8 @@ export const StartGameControls = ({
   onSelectedTeamIdChange,
   onCreateTeam,
   onJoinTeam,
+  onLeaveTeam,
+  isLeavingTeam,
   onStart,
   teamMessage,
   teamHasStarted,
@@ -57,7 +61,7 @@ export const StartGameControls = ({
     (member) => member.profileId === teamLeaderProfileId,
   );
   const teamRoster =
-    mode === "multiplayer" && activeTeam ? (
+    activeTeam ? (
       <section className="card small" aria-label="Your team">
         <div className="card-details grid gap-2">
           <h4 className="card-title">Team members</h4>
@@ -86,76 +90,91 @@ export const StartGameControls = ({
     <>
       {!teamHasStarted && (
         <>
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              className={mode === "solo" ? "btn er-btn-primary" : "btn btn-outline"}
-              onClick={() => onModeChange("solo")}
-            >
-              Solo
-            </button>
-
-            <button
-              type="button"
-              className={mode === "multiplayer" ? "btn er-btn-primary" : "btn btn-outline"}
-              onClick={() => onModeChange("multiplayer")}
-            >
-              Multiplayer
-            </button>
-          </div>
-
-          {mode === "multiplayer" && (
+          {activeTeam ? (
             <div className="grid gap-3 rounded-lg border border-slate-600/70 p-3">
-              <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn btn-outline w-full sm:w-auto"
+                onClick={onLeaveTeam}
+                disabled={isLoading || isLeavingTeam}
+              >
+                {isLeavingTeam ? "Leaving team…" : "Leave team"}
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-3">
                 <button
                   type="button"
-                  className="btn btn-outline"
-                  onClick={onCreateTeam}
-                  disabled={isLoading}
+                  className={mode === "solo" ? "btn er-btn-primary" : "btn btn-outline"}
+                  onClick={() => onModeChange("solo")}
                 >
-                  Create team
+                  Solo
+                </button>
+
+                <button
+                  type="button"
+                  className={mode === "multiplayer" ? "btn er-btn-primary" : "btn btn-outline"}
+                  onClick={() => onModeChange("multiplayer")}
+                >
+                  Multiplayer
                 </button>
               </div>
 
-              {teams.length > 0 ? (
-                <div className="grid gap-2">
-                  <label className="p2 er-text" htmlFor="team-select">
-                    Join an open team
-                  </label>
-
-                  <select
-                    id="team-select"
-                    className="input"
-                    value={selectedTeamId}
-                    onChange={(event) => onSelectedTeamIdChange(event.target.value)}
-                    disabled={isLoading}
-                  >
-                    <option value="">Select a team</option>
-
-                    {teams.map((team) => (
-                      <option key={team.id} value={team.id}>
-                        {team.createdBy?.displayName || team.createdBy?.username || "Team"} ·{" "}
-                        {team.members?.length ?? 0} member
-                        {team.members?.length === 1 ? "" : "s"}
-                      </option>
-                    ))}
-                  </select>
-
-                  {selectedTeamId && (
+              {mode === "multiplayer" && (
+                <div className="grid gap-3 rounded-lg border border-slate-600/70 p-3">
+                  <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      className="btn btn-outline w-full sm:w-auto"
-                      onClick={() => onJoinTeam(selectedTeamId)}
+                      className="btn btn-outline"
+                      onClick={onCreateTeam}
                       disabled={isLoading}
                     >
-                      Join selected team
+                      Create team
                     </button>
+                  </div>
+
+                  {teams.length > 0 ? (
+                    <div className="grid gap-2">
+                      <label className="p2 er-text" htmlFor="team-select">
+                        Join an open team
+                      </label>
+
+                      <select
+                        id="team-select"
+                        className="input"
+                        value={selectedTeamId}
+                        onChange={(event) => onSelectedTeamIdChange(event.target.value)}
+                        disabled={isLoading}
+                      >
+                        <option value="">Select a team</option>
+
+                        {teams.map((team) => (
+                          <option key={team.id} value={team.id}>
+                            {team.createdBy?.displayName || team.createdBy?.username || "Team"} ·{" "}
+                            {team.members?.length ?? 0} member
+                            {team.members?.length === 1 ? "" : "s"}
+                          </option>
+                        ))}
+                      </select>
+
+                      {selectedTeamId && (
+                        <button
+                          type="button"
+                          className="btn btn-outline w-full sm:w-auto"
+                          onClick={() => onJoinTeam(selectedTeamId)}
+                          disabled={isLoading}
+                        >
+                          Join selected team
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="p2 er-text">No teams are open yet. Create a team to invite others.</p>
                   )}
                 </div>
-              ) : (
-                <p className="p2 er-text">No teams are open yet. Create a team to invite others.</p>
               )}
-            </div>
+            </>
           )}
         </>
       )}

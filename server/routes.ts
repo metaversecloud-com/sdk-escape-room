@@ -10,6 +10,7 @@ import {
   handleGetTeams,
   handleGrantItem,
   handleHeartbeat,
+  handleLeaveTeam,
   handleJoinTeam,
   handlePrepareRestart,
   handleSSE,
@@ -54,6 +55,7 @@ router.get("/sse", handleSSE);
 router.get("/heartbeat", handleHeartbeat);
 router.post("/teams/create", handleCreateTeam);
 router.post("/teams/join", handleJoinTeam);
+router.post("/teams/leave", handleLeaveTeam);
 router.post("/prepare-restart", handlePrepareRestart);
 router.post("/teams/start", handleStartTeam);
 router.post("/teleport", handleTeleport);

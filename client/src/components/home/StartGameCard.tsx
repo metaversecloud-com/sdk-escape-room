@@ -25,6 +25,7 @@ export const StartGameCard = ({ theme, onStart, isLoading }: StartGameCardProps)
   const [activeTeam, setActiveTeam] = useState<TeamSummary | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<string>("");
   const [teamMessage, setTeamMessage] = useState<string>("");
+  const [isLeavingTeam, setIsLeavingTeam] = useState(false);
   const hasStartedTeamSession = useRef(false);
   const activeTeamRef = useRef<TeamSummary | null>(null);
   const selectedTeamIdRef = useRef("");
@@ -36,9 +37,12 @@ export const StartGameCard = ({ theme, onStart, isLoading }: StartGameCardProps)
 
   const selectedTeam = teams.find((team) => team.id === selectedTeamId);
   const isSpaceTheme = theme.themeID === "SPACE";
+  const teamFromRoster = teams.find((team) =>
+    team.members?.some((member) => member.profileId === profileId),
+  );
+  const playerTeam = activeTeam || teamFromRoster || null;
 
-  const teamHasStarted =
-    activeTeam?.status === "started";
+  const teamHasStarted = playerTeam?.status === "started";
 
   const isTeamLeader =
     !!selectedTeam &&
@@ -65,6 +69,7 @@ export const StartGameCard = ({ theme, onStart, isLoading }: StartGameCardProps)
       if (activeTeamForPlayer?.id) {
         activeTeamRef.current = activeTeamForPlayer;
         setActiveTeam(activeTeamForPlayer);
+        setMode("multiplayer");
         selectedTeamIdRef.current = activeTeamForPlayer.id;
         setSelectedTeamId(activeTeamForPlayer.id);
 
@@ -80,18 +85,20 @@ export const StartGameCard = ({ theme, onStart, isLoading }: StartGameCardProps)
             });
           }
         }
-      } else if (previousActiveTeam?.id) {
-        // The player's team may have started and disappeared
-        // from the list of open teams.
-        selectedTeamIdRef.current = previousActiveTeam.id;
-        setSelectedTeamId(previousActiveTeam.id);
-
-        if (previousActiveTeam.status === "started") {
-          setTeamMessage("The team run has started!");
+      } else {
+        if (previousActiveTeam) {
+          activeTeamRef.current = null;
+          setActiveTeam(null);
+          hasStartedTeamSession.current = false;
+          setMode("multiplayer");
+          setTeamMessage("You are no longer in that team. Create or join a team to play again.");
         }
-      } else if (nextTeams.length > 0 && !previousSelectedTeamId) {
-        selectedTeamIdRef.current = nextTeams[0].id;
-        setSelectedTeamId(nextTeams[0].id);
+
+        const nextSelectedTeamId = nextTeams.some((team) => team.id === previousSelectedTeamId)
+          ? previousSelectedTeamId
+          : nextTeams[0]?.id || "";
+        selectedTeamIdRef.current = nextSelectedTeamId;
+        setSelectedTeamId(nextSelectedTeamId);
       }
     } catch {
       setTeams([]);
@@ -143,15 +150,16 @@ export const StartGameCard = ({ theme, onStart, isLoading }: StartGameCardProps)
     try {
       setTeamMessage("Joining team…");
       const response = await backendAPI.post("/teams/join", { teamId });
-      const joinedTeam = response.data?.team as TeamSummary | undefined;
-      if (joinedTeam) {
-        activeTeamRef.current = joinedTeam;
-        setActiveTeam(joinedTeam);
-        setTeams((currentTeams) => [
-          ...currentTeams.filter((team) => team.id !== teamId),
-          joinedTeam,
-        ]);
-      }
+      const joinedTeam =
+        (response.data?.team as TeamSummary | undefined) ||
+        teams.find((team) => team.id === teamId) ||
+        { id: teamId, status: "waiting" as const };
+      activeTeamRef.current = joinedTeam;
+      setActiveTeam(joinedTeam);
+      setTeams((currentTeams) => [
+        ...currentTeams.filter((team) => team.id !== teamId),
+        joinedTeam,
+      ]);
       selectedTeamIdRef.current = teamId;
       setSelectedTeamId(teamId);
       setMode("multiplayer");
@@ -159,6 +167,32 @@ export const StartGameCard = ({ theme, onStart, isLoading }: StartGameCardProps)
     } catch (error) {
       const message = (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
       setTeamMessage(message || "Unable to join that team.");
+    }
+  };
+
+  const handleLeaveTeam = async () => {
+    if (!playerTeam || isLeavingTeam) return;
+    activeTeamRef.current = playerTeam;
+
+    try {
+      setIsLeavingTeam(true);
+      setTeamMessage("Leaving team…");
+      const response = await backendAPI.post("/teams/leave");
+      const nextTeams: TeamSummary[] = response.data?.teams ?? [];
+
+      activeTeamRef.current = null;
+      setActiveTeam(null);
+      setTeams(nextTeams);
+      const nextSelectedTeamId = nextTeams[0]?.id || "";
+      selectedTeamIdRef.current = nextSelectedTeamId;
+      setSelectedTeamId(nextSelectedTeamId);
+      setMode("multiplayer");
+      setTeamMessage("You left the team.");
+    } catch (error) {
+      const message = (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setTeamMessage(message || "Unable to leave the team right now.");
+    } finally {
+      setIsLeavingTeam(false);
     }
   };
 
@@ -178,7 +212,7 @@ export const StartGameCard = ({ theme, onStart, isLoading }: StartGameCardProps)
       mode={mode}
       onModeChange={setMode}
       teams={teams}
-      activeTeam={activeTeam}
+      activeTeam={playerTeam}
       selectedTeamId={selectedTeamId}
       onSelectedTeamIdChange={(teamId) => {
         selectedTeamIdRef.current = teamId;
@@ -186,6 +220,8 @@ export const StartGameCard = ({ theme, onStart, isLoading }: StartGameCardProps)
       }}
       onCreateTeam={handleCreateTeam}
       onJoinTeam={handleJoinTeam}
+      onLeaveTeam={handleLeaveTeam}
+      isLeavingTeam={isLeavingTeam}
       onStart={handleStart}
       teamMessage={teamMessage}
       teamHasStarted={teamHasStarted}

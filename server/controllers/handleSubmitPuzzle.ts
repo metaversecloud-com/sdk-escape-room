@@ -586,9 +586,12 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
       badgesFailed.push(...failed);
     };
 
-    const analytics: any[] = [
+    const analytics = [
       {
-        analyticName: `puzzle${puzzleNumber}Completed`,
+        analyticName:
+          theme.themeID === "SPACE"
+            ? `puzzle${puzzleNumber}Completed`
+            : `libraryPuzzle${puzzleNumber}Completed`,
         profileId,
         urlSlug,
         uniqueKey: `${profileId}-${sessionKey}-puzzle-${puzzleNumber}`,
@@ -603,12 +606,14 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         !isRoomReady(theme, transition.toRoom, game.puzzlesCompleted)
       ) continue;
       game.currentRoom = transition.toRoom;
-      analytics.push({
-        analyticName: transition.analyticName,
-        profileId,
-        urlSlug,
-        uniqueKey: `${profileId}-${sessionKey}`,
-      });
+      if (theme.themeID === "SPACE") {
+        analytics.push({
+          analyticName: transition.analyticName,
+          profileId,
+          urlSlug,
+          uniqueKey: `${profileId}-${sessionKey}`,
+        });
+      }
       collectBadges(
         await checkEscapeBadges({
           credentials,
@@ -733,7 +738,7 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         );
 
       analytics.push({
-        analyticName: "gameCompleted",
+        analyticName: theme.themeID === "SPACE" ? "gameCompleted" : "libraryGameCompleted",
         profileId,
         urlSlug,
         uniqueKey: `${profileId}-${sessionKey}-puzzle-${puzzleNumber}`,

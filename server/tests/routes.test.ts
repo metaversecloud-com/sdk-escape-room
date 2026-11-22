@@ -445,6 +445,11 @@ describe("escape-room routes", () => {
       "EscapeRoom_room1_teleport",
     );
     expect(res.body.visitorData.themeID).toBe("SPACE");
+    const analyticNames = visitor.updateDataObject.mock.calls[0][1].analytics.map(
+      ({ analyticName }: { analyticName: string }) => analyticName,
+    );
+    expect(analyticNames).toEqual(expect.arrayContaining(["gameStarts", "room1Entries"]));
+    expect(analyticNames).not.toContain("libraryGameStarts");
   });
 
   test("POST /start-game starts a solo run without restarting a completed team", async () => {
@@ -756,6 +761,170 @@ describe("escape-room routes", () => {
     expectTeamsUpdated("open-team");
   });
 
+  test("POST /teams/leave removes the member, transfers leadership, and broadcasts a lobby update", async () => {
+    const { visitor, session } = buildVisitorMock({ groupId: "team-1" });
+    const alice = {
+      profileId: baseCreds.profileId,
+      displayName: baseCreds.displayName,
+    };
+    const bob = { profileId: "profile-2", displayName: "Bob" };
+    const keyAsset = {
+      dataObject: {
+        teams: {
+          "team-1": {
+            id: "team-1",
+            createdBy: alice,
+            leaderProfileId: alice.profileId,
+            members: [alice, bob],
+            status: "waiting",
+            createdAt: new Date().toISOString(),
+            keyItems: [],
+          },
+        },
+      },
+      updateDataObject: jest.fn().mockImplementation(async (updates: any) => {
+        applyDataObjectUpdates(keyAsset.dataObject, updates);
+      }),
+    };
+    mockUtils.getKeyAsset.mockResolvedValue(keyAsset as any);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/teams/leave").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(keyAsset.dataObject.teams["team-1"]).toMatchObject({
+      createdBy: bob,
+      leaderProfileId: bob.profileId,
+      members: [bob],
+    });
+    expect(visitor.updateDataObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: expect.objectContaining({
+          groupId: undefined,
+        }),
+      }),
+      expect.any(Object),
+    );
+    expectTeamsUpdated("team-1");
+  });
+
+  test("POST /teams/leave makes a team unavailable when its last member leaves", async () => {
+    const { visitor, session } = buildVisitorMock({ groupId: "team-1" });
+    const keyAsset = {
+      dataObject: {
+        teams: {
+          "team-1": {
+            id: "team-1",
+            createdBy: { profileId: baseCreds.profileId, displayName: baseCreds.displayName },
+            leaderProfileId: baseCreds.profileId,
+            members: [{ profileId: baseCreds.profileId, displayName: baseCreds.displayName }],
+            status: "waiting",
+            createdAt: new Date().toISOString(),
+            keyItems: [],
+          },
+        },
+      },
+      updateDataObject: jest.fn().mockImplementation(async (updates: any) => {
+        applyDataObjectUpdates(keyAsset.dataObject, updates);
+      }),
+    };
+    mockUtils.getKeyAsset.mockResolvedValue(keyAsset as any);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/teams/leave").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(res.body.team).toBeNull();
+    expect(keyAsset.dataObject.teams["team-1"].members).toEqual([]);
+    expect(res.body.teams).toEqual([]);
+    expectTeamsUpdated("team-1");
+
+    Object.assign(session, { groupId: undefined });
+    const listRes = await request(makeApp()).get("/api/teams").query(baseCreds);
+    expect(listRes.status).toBe(200);
+    expect(listRes.body.teams).toEqual([]);
+  });
+
+  test("POST /teams/join rejects a team with an empty roster", async () => {
+    const { visitor, session } = buildVisitorMock();
+    const keyAsset = {
+      dataObject: {
+        teams: {
+          "team-1": {
+            id: "team-1",
+            createdBy: { profileId: "profile-2", displayName: "Bob" },
+            leaderProfileId: "profile-2",
+            members: [],
+            status: "waiting",
+            createdAt: new Date().toISOString(),
+            keyItems: [],
+          },
+        },
+      },
+      updateDataObject: jest.fn(),
+    };
+    mockUtils.getKeyAsset.mockResolvedValue(keyAsset as any);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp())
+      .post("/api/teams/join")
+      .query(baseCreds)
+      .send({ teamId: "team-1" });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe("This team is no longer available.");
+    expect(keyAsset.updateDataObject).not.toHaveBeenCalled();
+  });
+
+  test("POST /teams/leave rejects leaving after the team run starts", async () => {
+    const { visitor, session } = buildVisitorMock({ groupId: "team-1" });
+    const keyAsset = {
+      dataObject: {
+        teams: {
+          "team-1": {
+            id: "team-1",
+            createdBy: { profileId: baseCreds.profileId, displayName: baseCreds.displayName },
+            leaderProfileId: baseCreds.profileId,
+            members: [{ profileId: baseCreds.profileId, displayName: baseCreds.displayName }],
+            status: "started",
+            createdAt: new Date().toISOString(),
+            keyItems: [],
+          },
+        },
+      },
+      updateDataObject: jest.fn(),
+    };
+    mockUtils.getKeyAsset.mockResolvedValue(keyAsset as any);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/teams/leave").query(baseCreds);
+
+    expect(res.status).toBe(409);
+    expect(keyAsset.updateDataObject).not.toHaveBeenCalled();
+    expect(visitor.updateDataObject).not.toHaveBeenCalled();
+  });
+
   test("POST /teams/start broadcasts a lobby update", async () => {
     const { visitor, session } = buildVisitorMock();
     const team = {
@@ -828,8 +997,17 @@ describe("escape-room routes", () => {
       expect.objectContaining({
         [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: expect.objectContaining({ themeID: "LIBRARY" }),
       }),
-      expect.any(Object),
+      expect.objectContaining({
+        analytics: expect.arrayContaining([
+          expect.objectContaining({ analyticName: "libraryGameStarts" }),
+        ]),
+      }),
     );
+    const analyticNames = visitor.updateDataObject.mock.calls[0][1].analytics.map(
+      ({ analyticName }: { analyticName: string }) => analyticName,
+    );
+    expect(analyticNames).not.toContain("gameStarts");
+    expect(analyticNames).not.toContain("room1Entries");
   });
 
   test("POST /start-game fails instead of using another theme's room entry asset", async () => {
@@ -897,6 +1075,11 @@ describe("escape-room routes", () => {
     expect(visitor.grantInventoryItem).toHaveBeenCalledWith(battery, 1);
     expect(visitor.fetchInventoryItems).toHaveBeenCalledTimes(1);
     expect(res.body.visitorInventory.items).toEqual([{ id: battery.id, name: battery.name }]);
+    const analyticNames = visitor.updateDataObject.mock.calls[0][1].analytics.map(
+      ({ analyticName }: { analyticName: string }) => analyticName,
+    );
+    expect(analyticNames).toContain("puzzle1Completed");
+    expect(analyticNames).not.toContain("libraryPuzzle1Completed");
   });
 
   test("POST /submit-puzzle backfills a missing SPACE reward on an already-completed puzzle", async () => {
@@ -1051,6 +1234,48 @@ describe("escape-room routes", () => {
       "EscapeRoom_start_teleport",
     );
     expect(visitor.updateDataObject).toHaveBeenCalledTimes(1);
+    const analyticNames = visitor.updateDataObject.mock.calls[0][1].analytics.map(
+      ({ analyticName }: { analyticName: string }) => analyticName,
+    );
+    expect(analyticNames).toEqual(
+      expect.arrayContaining(["libraryPuzzle4Completed", "libraryGameCompleted"]),
+    );
+    expect(analyticNames).not.toContain("puzzle4Completed");
+    expect(analyticNames).not.toContain("gameCompleted");
+  });
+
+  test("POST /submit-puzzle keeps the SPACE completion analytics on puzzle 7", async () => {
+    const { visitor, session } = buildVisitorMock({
+      themeID: "SPACE",
+      sessionActive: true,
+      startTime: new Date(Date.now() - 60000).toISOString(),
+      currentRoom: 3,
+      puzzlesCompleted: {
+        1: true,
+        2: true,
+        3: true,
+        4: true,
+        5: true,
+        6: true,
+        7: false,
+      },
+    });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/submit-puzzle").query(baseCreds).send({ puzzleNumber: 7 });
+
+    expect(res.status).toBe(200);
+    const analyticNames = visitor.updateDataObject.mock.calls[0][1].analytics.map(
+      ({ analyticName }: { analyticName: string }) => analyticName,
+    );
+    expect(analyticNames).toEqual(expect.arrayContaining(["puzzle7Completed", "gameCompleted"]));
+    expect(analyticNames).not.toContain("libraryPuzzle7Completed");
+    expect(analyticNames).not.toContain("libraryGameCompleted");
   });
 
   test("POST /submit-puzzle publishes team completion after shared state is complete", async () => {
@@ -1540,6 +1765,153 @@ describe("escape-room routes", () => {
       baseCreds,
       "EscapeRoom_start_teleport",
     );
+    const analyticNames = visitor.updateDataObject.mock.calls[0][1].analytics.map(
+      ({ analyticName }: { analyticName: string }) => analyticName,
+    );
+    expect(analyticNames).toContain("manualGameExits");
+  });
+
+  test("POST /exit records the Library-specific manual exit analytic", async () => {
+    const { visitor, session } = buildVisitorMock({
+      themeID: "LIBRARY",
+      sessionActive: true,
+      startTime: new Date().toISOString(),
+    });
+    mockUtils.getTheme.mockReturnValue(libraryTheme);
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+
+    const res = await request(makeApp()).post("/api/exit").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    const analyticNames = visitor.updateDataObject.mock.calls[0][1].analytics.map(
+      ({ analyticName }: { analyticName: string }) => analyticName,
+    );
+    expect(analyticNames).toContain("libraryManualExits");
+    expect(analyticNames).not.toContain("manualGameExits");
+  });
+
+  test("POST /exit removes a departing leader, promotes a teammate, and clears the session team", async () => {
+    const { visitor, session } = buildVisitorMock({
+      groupId: "team-1",
+      sessionActive: true,
+      startTime: new Date().toISOString(),
+    });
+    const alice = { profileId: baseCreds.profileId, displayName: "Alice" };
+    const bob = { profileId: "profile-2", displayName: "Bob" };
+    const keyAsset = {
+      dataObject: {
+        teams: {
+          "team-1": {
+            id: "team-1",
+            createdBy: alice,
+            leaderProfileId: alice.profileId,
+            members: [alice, bob],
+            status: "started",
+            createdAt: new Date().toISOString(),
+            puzzlesCompleted: { ...spaceTheme.defaultPuzzles },
+            keyItems: [],
+          },
+        },
+      },
+      updateDataObject: jest.fn().mockImplementation(async (updates: any) => {
+        applyDataObjectUpdates(keyAsset.dataObject, updates);
+      }),
+    };
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    mockUtils.getKeyAsset.mockResolvedValue(keyAsset as any);
+
+    const res = await request(makeApp()).post("/api/exit").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(keyAsset.dataObject.teams["team-1"]).toMatchObject({
+      createdBy: bob,
+      leaderProfileId: bob.profileId,
+      members: [bob],
+    });
+    expect(visitor.updateDataObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: expect.objectContaining({
+          groupId: undefined,
+          sessionActive: false,
+        }),
+      }),
+      expect.any(Object),
+    );
+    expect(res.body.visitorData.sessionActive).toBe(false);
+    expect(res.body.visitorData).not.toHaveProperty("groupId");
+    expectTeamsUpdated("team-1");
+  });
+
+  test("POST /exit clears the team roster when the departing player is its last member", async () => {
+    const { visitor, session } = buildVisitorMock({
+      groupId: "team-1",
+      sessionActive: true,
+    });
+    const alice = { profileId: baseCreds.profileId, displayName: "Alice" };
+    const keyAsset = {
+      dataObject: {
+        teams: {
+          "team-1": {
+            id: "team-1",
+            createdBy: alice,
+            leaderProfileId: alice.profileId,
+            members: [alice],
+            status: "started",
+            createdAt: new Date().toISOString(),
+            puzzlesCompleted: { ...spaceTheme.defaultPuzzles },
+            keyItems: [],
+          },
+        },
+      },
+      updateDataObject: jest.fn().mockImplementation(async (updates: any) => {
+        applyDataObjectUpdates(keyAsset.dataObject, updates);
+      }),
+    };
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    mockUtils.getKeyAsset.mockResolvedValue(keyAsset as any);
+
+    const res = await request(makeApp()).post("/api/exit").query(baseCreds);
+
+    expect(res.status).toBe(200);
+    expect(keyAsset.dataObject.teams["team-1"].members).toEqual([]);
+    expect(res.body.visitorData).not.toHaveProperty("groupId");
+    expectTeamsUpdated("team-1");
+  });
+
+  test("POST /exit reports failure when a team key asset is unavailable", async () => {
+    const { visitor, session } = buildVisitorMock({
+      groupId: "team-1",
+      sessionActive: true,
+    });
+    mockUtils.getVisitor.mockResolvedValue({
+      visitor,
+      visitorDataObject: { [`${baseCreds.urlSlug}-${baseCreds.sceneDropId}`]: session },
+      session,
+      visitorInventory: { badges: {}, items: [] },
+    });
+    mockUtils.getKeyAsset.mockResolvedValue(null);
+
+    const res = await request(makeApp()).post("/api/exit").query(baseCreds);
+
+    expect(res.status).toBe(500);
+    expect(visitor.updateDataObject).not.toHaveBeenCalled();
+    expect(mockUtils.moveVisitorToAsset).not.toHaveBeenCalled();
+    expect(visitor.closeIframe).not.toHaveBeenCalled();
   });
 
   test("GET /session returns inactive when no session has been started", async () => {
