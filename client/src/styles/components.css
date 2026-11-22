@@ -114,7 +114,7 @@ body[data-theme="LIBRARY"] {
 }
 
 .er-card .er-team-roster__text {
-  color: var(--er-text);
+  color: var(--er-bg-deep);
 }
 
 .er-text-muted {
