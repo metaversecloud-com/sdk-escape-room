@@ -15,7 +15,7 @@ export const BADGES = {
   // Awarded by /discover-decoy when a player investigates a decoy/trash asset.
   TRASH_DIGGER: "Trash Digger",
   // Awarded by `checkTrashPandaBadge` once the player owns all SPACE artifacts
-  // and their team has all four SPACE puzzle rewards. Checked after each item
+  // and all four SPACE puzzle rewards. Checked after each item
   // grant in /grant-item and /submit-puzzle.
   TRASH_PANDA: "Trash Panda",
   // Awarded by /wrong-attempt when wrongAttempts on any single puzzle crosses

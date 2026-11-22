@@ -1,4 +1,3 @@
-import { getKeyAsset } from "@utils/index.js";
 import { getArtifactItemName, THEME_CONFIGS } from "@shared/themes.js";
 import { getCachedInventoryItems } from "../utils/inventoryCache.js";
 import { awardBadge } from "../utils/awardBadge.js";
@@ -8,7 +7,6 @@ import { Credentials } from "../types/Credentials.js";
 import type { InventoryItemInterface, VisitorInterface } from "@rtsdk/topia";
 
 jest.mock("@utils/index.js", () => ({
-  getKeyAsset: jest.fn(),
   standardizeError: jest.fn((error: unknown) => error),
 }));
 
@@ -70,17 +68,25 @@ const credentials = {
 
 const completeVisitorInventory = {
   badges: {},
-  items: spaceArtifacts.map(({ id, name, metadata }) => ({
-    id,
-    name,
-    type: "ITEM",
-    status: "ACTIVE",
-    metadata,
-  })),
+  items: [
+    ...spaceArtifacts.map(({ id, name, metadata }) => ({
+      id,
+      name,
+      type: "ITEM",
+      status: "ACTIVE",
+      metadata,
+    })),
+    ...spaceKeyItems.map(({ id, name, metadata }) => ({
+      id,
+      name,
+      type: "ITEM",
+      status: "ACTIVE",
+      metadata,
+    })),
+  ],
 };
 const visitor = {} as unknown as VisitorInterface;
 
-const mockUtils = jest.mocked(require("@utils/index.js"));
 const mockAwardBadge = jest.mocked(awardBadge);
 const mockGetCachedInventoryItems = jest.mocked(getCachedInventoryItems);
 
@@ -90,15 +96,6 @@ describe("checkTrashPandaBadge for SPACE items", () => {
     mockGetCachedInventoryItems.mockResolvedValue(
       [...spaceKeyItems, ...spaceArtifacts, ...libraryItems] as unknown as InventoryItemInterface[],
     );
-    mockUtils.getKeyAsset.mockResolvedValue({
-      dataObject: {
-        teams: {
-          "team-1": {
-            keyItems: spaceKeyItems,
-          },
-        },
-      },
-    });
   });
 
   test("does not require Library items when all Space artifacts and key items are collected", async () => {
@@ -128,23 +125,72 @@ describe("checkTrashPandaBadge for SPACE items", () => {
   });
 
   test("requires all four Space key items", async () => {
-    mockUtils.getKeyAsset.mockResolvedValue({
-      dataObject: {
-        teams: {
-          "team-1": {
-            keyItems: spaceKeyItems.slice(1),
-          },
-        },
-      },
-    });
+    const visitorInventory = {
+      ...completeVisitorInventory,
+      items: completeVisitorInventory.items.filter(
+        (item) => item.metadata?.type !== "keyItem" ||
+          item.name === "Battery",
+      ),
+    };
+
+    await expect(
+      checkTrashPandaBadge({ credentials, visitor, visitorInventory }),
+    ).resolves.toBe(false);
+    expect(mockAwardBadge).not.toHaveBeenCalled();
+  });
+
+  test("awards for a solo player without a team key-item record", async () => {
+    const soloCredentials = { ...credentials, groupId: undefined };
 
     await expect(
       checkTrashPandaBadge({
-        credentials,
+        credentials: soloCredentials,
         visitor,
         visitorInventory: completeVisitorInventory,
       }),
-    ).resolves.toBe(false);
-    expect(mockAwardBadge).not.toHaveBeenCalled();
+    ).resolves.toBe(true);
+
+    expect(mockAwardBadge).toHaveBeenCalledWith(
+      expect.objectContaining({ badgeName: BADGES.TRASH_PANDA }),
+    );
+  });
+
+  test("supports eight unthemed artifacts with the legacy duplicate artifact name", async () => {
+    const duplicateArtifacts = Array.from({ length: 8 }, (_, index) => ({
+      id: `legacy-artifact-${index}`,
+      name: "EscapeRoom_artifact",
+      type: "ITEM",
+      status: "ACTIVE",
+      metadata: { type: "artifact" },
+    }));
+    mockGetCachedInventoryItems.mockResolvedValue([
+      ...spaceKeyItems,
+      ...duplicateArtifacts,
+      ...libraryItems,
+    ] as unknown as InventoryItemInterface[]);
+
+    const visitorInventory = {
+      ...completeVisitorInventory,
+      items: [
+        ...duplicateArtifacts.map(({ id, name, metadata }) => ({
+          id,
+          name,
+          type: "ITEM",
+          status: "ACTIVE",
+          metadata,
+        })),
+        ...spaceKeyItems.map(({ id, name, metadata }) => ({
+          id,
+          name,
+          type: "ITEM",
+          status: "ACTIVE",
+          metadata,
+        })),
+      ],
+    };
+
+    await expect(
+      checkTrashPandaBadge({ credentials, visitor, visitorInventory }),
+    ).resolves.toBe(true);
   });
 });

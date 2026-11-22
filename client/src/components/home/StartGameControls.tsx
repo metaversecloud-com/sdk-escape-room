@@ -64,7 +64,7 @@ export const StartGameControls = ({
     activeTeam ? (
       <section className="card small" aria-label="Your team">
         <div className="card-details grid gap-2">
-          <h4 className="card-title">Team members</h4>
+          <h4 className="card-title er-team-roster__text">Team members</h4>
           <p className="p2 er-text er-team-roster__text">
             <strong>Leader:</strong>{" "}
             {teamLeader

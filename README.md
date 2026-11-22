@@ -171,7 +171,7 @@ Defined in `server/utils/checkEscapeBadges.ts` (`BADGES` catalog).
 | `Station Survivor` | P7 submitted.                                                                            |
 | `Warp Speed`       | P7 with `completionTime < 180 seconds`.                                                  |
 | `Trash Digger`     | Any `?screen=decoy` asset click → `/discover-decoy`.                                     |
-| `Trash Panda`      | Visitor owns every ecosystem `ITEM`. Rechecked after `/grant-item` and `/submit-puzzle`. |
+| `Trash Panda`      | Visitor owns all four SPACE key items and eight SPACE artifacts (not Library items). Rechecked after `/grant-item` and `/submit-puzzle`; solo and team runs are supported. |
 | `Button Masher`    | `wrongAttempts[n] === 4` for any puzzle (exact threshold crossing).                      |
 
 ## Session Model

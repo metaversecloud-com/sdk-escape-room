@@ -113,6 +113,10 @@ body[data-theme="LIBRARY"] {
   color: var(--er-text);
 }
 
+.er-card .er-team-roster__text {
+  color: var(--er-text);
+}
+
 .er-text-muted {
   color: var(--er-text-muted);
 }

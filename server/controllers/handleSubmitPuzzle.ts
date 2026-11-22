@@ -472,7 +472,6 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
           credentials: { ...credentials, groupId: teamId },
           visitor,
           visitorInventory: reward.visitorInventory,
-          pendingTeamKeyItems: reward.teamKeyItems,
         });
       }
 
@@ -526,9 +525,6 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         credentials: { ...credentials, groupId: teamId },
         visitor,
         visitorInventory: updatedVisitorInventory,
-        pendingTeamKeyItems: teamId
-          ? reward.teamKeyItems ?? keyAssetDataObject?.teams?.[teamId]?.keyItems
-          : undefined,
       });
     } else if (granted) {
       await visitor.fetchInventoryItems();
@@ -537,9 +533,6 @@ export const handleSubmitPuzzle = async (req: Request, res: Response) => {
         credentials: { ...credentials, groupId: teamId },
         visitor,
         visitorInventory: freshInventory,
-        pendingTeamKeyItems: teamId
-          ? reward.teamKeyItems ?? keyAssetDataObject?.teams?.[teamId]?.keyItems
-          : undefined,
       });
     }
 
